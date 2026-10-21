@@ -1,0 +1,4 @@
+  To run things:
+  - Server: cd server && .venv/bin/uvicorn app.main:app --reload --port 8000
+  - Web: cd web && npm run dev
+  - Tests: cd server && .venv/bin/pytest; for a single test, .venv/bin/pytest tests/test_health.py::test_health
