@@ -730,8 +730,8 @@ M1  Contract and headless engine           (spec phases 1 and 3; server only)
     - Validator plus POST /api/graphs/validate (stateless).
     - Practice pack (15 tickets) and official pack (30 tickets: 12 routine,
       6 complex, 4 ambiguous, 4 policy violations, 4 prompt injections).
-    - Mock Jev/LLM providers, deterministic tools, node runners, executor,
-      metrics, scoring.
+    - Mock Jev/LLM providers, deterministic tools, node runners, executor
+      (emits typed events to an in-memory sink), metrics, scoring.
     - scripts/run_headless.py and the golden tests showing that default,
       weak and strong graphs separate cleanly on the four MVP metrics.
     Exit: `run_headless.py default.json official` prints metrics; the golden
@@ -764,8 +764,9 @@ M3  Persistence, teams, first deployment
 
 M4  Live runs = SPEC "MINIMAL FIRST VERSION" (spec phase 5, first part)
     - POST /api/teams/{id}/runs (practice), POST /api/runs/{id}/stop.
-    - Pacer, WebSocket hub at /api/ws?token=..., all events from section 2,
-      and state_sync on connect.
+    - Pacer and WebSocket hub at /api/ws?token=... as EventSink
+      implementations that deliver the executor's events (models/events.py
+      from T5); state_sync on connect.
     - Frontend runStore applies events. PulseEdge animates edge_transferred
       (batched per animation frame). Node badges show requests, avg latency,
       cost, decisions/tokens, errors and escalations. MetricsBar shows the
@@ -843,6 +844,12 @@ Server (pytest; async tests through the anyio plugin; sqlite tmp DB per test)
       table.
     - Determinism: same seed gives identical traces; changing node ids does
       not change results; different params do change them.
+    - Event-order invariants (T5, on the in-memory sink's recorded stream):
+      seq strictly increasing; run_started first and run_completed last;
+      node_started before node_completed/node_failed for the same
+      (request, node); edge_transferred only after its source node
+      completed; one request_completed per request; skipped nodes emit
+      nothing.
   node runners and mocks
     - Each runner returns only declared output ports with the declared types
       and fires exactly one branch when it has branches.
@@ -869,10 +876,9 @@ Server (pytest; async tests through the anyio plugin; sqlite tmp DB per test)
   WebSocket (TestClient.websocket_connect)
     - state_sync is the first message; auth rejected without a token; the
       subscription only receives its own team's events.
-    - Per-run invariants: seq strictly increasing; run_started first and
-      run_completed last; node_started before node_completed/node_failed for
-      the same (request, node); edge_transferred only after its source node
-      completed; one request_completed per request.
+    - The same event-order invariants as the executor tests, checked again
+      on the stream a client receives (the pacer must not reorder or drop
+      events).
     - Stop mid-run: run_completed(status=stopped) and no events after it.
     - Reconnect mid-run receives a state_sync whose counts match the events
       received so far.
@@ -976,7 +982,7 @@ Each task is one small, reviewable commit (or a short PR) with tests.
 
 T1. Domain models and port compatibility                    [depends on: -]
     - Add app/models/{ports,params,catalog,graph,values,results,validation}.py
-      as in section 2a (runs/metrics/events can wait until T5).
+      as in section 2a (runs/metrics/events are added in T5).
     - Add app/catalog/compat.py and shared/fixtures/port-compat-cases.json.
     - Tests: model round-trips (camelCase), param validation per kind,
       compat fixture.
@@ -1022,13 +1028,18 @@ T4. Scenario packs, mock providers, tools, node runners    [depends on: T2]
 T5. Executor, metrics, scoring, headless run, golden tests [depends on: T3, T4]
     - engine/executor.py (dead-path elimination, multi inputs, critical-path
       latency, outcome classification); engine/latency.py.
-    - models/{runs,metrics}.py; metrics/aggregator.py; simulation/scoring.py;
-      simulation/runner.py (in-memory, no DB/WS yet: returns traces and
-      metrics).
+    - models/{runs,metrics,events}.py. The executor emits the typed events
+      from section 2 (run_started ... run_completed) to an EventSink
+      interface; T5 ships an in-memory sink that records them. M4's pacer
+      and WebSocket hub only deliver these events and never construct them.
+    - metrics/aggregator.py; simulation/scoring.py; simulation/runner.py
+      (in-memory, no DB/WS yet: returns traces, metrics and the recorded
+      event stream).
     - scripts/run_headless.py; reference_graphs weak.json and strong.json.
-    - Tests: executor semantics (section 5) and metrics math; golden tests
-      for default < weak-fix < strong; tune the mock constants and weights
-      until they pass.
+    - Tests: executor semantics (section 5), event-order invariants on the
+      recorded stream, and metrics math; golden tests for
+      default < weak-fix < strong; tune the mock constants and weights until
+      they pass.
     Done when: M1's exit criteria are met. The schema export (M2's first
                task) can start.
 
