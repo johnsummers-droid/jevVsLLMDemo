@@ -33,9 +33,19 @@ Scaffolding only — no app features yet.
 - `server/`: FastAPI app in `app/main.py` with only `GET /api/health` and CORS for `http://localhost:5173`. WebSockets, SQLAlchemy, and the graph models are not added yet. Dependencies live in `pyproject.toml` (`dev` extra adds pytest and httpx).
 - `.devcontainer/`: Python 3.12 image + Node 20 feature, forwards 5173 and 8000; `postCreateCommand` installs web deps and creates `server/.venv`.
 
-Open question: what a "Jev" node does and which metrics are compared against the LLM is not yet defined — clarify before building providers.
+## Spec and plan
 
-Next planned step: typed graph node/edge models with validation and tests in `server/`.
+- Spec: `specs-and-plans/pipeline-simulator-spec.pdf`. Jev nodes make bounded, typed decisions (choice/score/boolean + confidence); LLM nodes generate text; tools are deterministic; human review handles uncertain/risky cases. Metrics: automation rate, escalation rate, unsafe-release rate, p50/p95 latency, cost per 1k requests, decision quality.
+- Implementation plan: `specs-and-plans/plan1.txt` — folder structure, shared types, node catalog/port contracts, milestones M1–M7, test plan, deployment, and tasks T1–T5. Follow it; update it when a decision changes.
+
+Key architecture decisions (details in plan1.txt §0):
+- Server owns all node logic; the browser gets the catalog as metadata from `GET /api/catalog` and never runs nodes or sees the hidden scenario pack.
+- Pydantic models are the source of truth; JSON Schema is exported to `shared/schema/` and TS types are generated into `web/src/types/generated.ts` (do not edit by hand). Port-compat logic is mirrored in TS and tested against `shared/fixtures/port-compat-cases.json`.
+- Control flow uses exclusive branch output ports (e.g. `route.billing`); nodes on unfired branches are skipped.
+- Mocks are deterministic: seed = sha256(run_seed, scenario_id, node_type, params) — never Python `hash()`.
+- Single backend instance (in-memory run state + WebSocket hub); one graph per team, last-write-wins with version (409 stale, 423 locked).
+
+Next planned step: T1 — domain models and port compatibility in `server/app/models/` and `server/app/catalog/compat.py`, with tests. Then T2–T5 (catalog, validator, mocks/runners, executor/metrics) to reach a headless engine before building the canvas.
 
 ## Commands
 

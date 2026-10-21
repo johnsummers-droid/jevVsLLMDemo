@@ -1,0 +1,1051 @@
+PIPELINE SIMULATOR - IMPLEMENTATION PLAN (plan1)
+==================================================
+Source spec : specs-and-plans/pipeline-simulator-spec.pdf
+Baseline    : commit b81a3b2 (scaffold only: Vite/React/TS in web/, FastAPI
+              /api/health in server/, devcontainer). See CLAUDE.md.
+Date        : 2026-10-21
+Status      : PLAN ONLY - no code has been written for anything below.
+
+
+0. DECISIONS AND ASSUMPTIONS
+----------------------------
+The spec settles the "what is a Jev node" question that CLAUDE.md left open:
+Jev nodes make bounded, typed decisions (choice / score / boolean, each with
+a probability or confidence). LLM nodes generate or transform text. Tools are
+deterministic. Human review handles cases that are uncertain or risky.
+
+Architecture decisions taken in this plan (each one is explained in a later
+section):
+
+D1. The server owns all node logic. The spec's NodeDefinition.run() lives
+    only in Python. The browser gets the node catalog as metadata (ports,
+    params, cost hints) from GET /api/catalog and never runs nodes. This
+    keeps provider keys and the hidden scenario pack on the server.
+
+D2. Pydantic models are the one source of truth for shared types. JSON Schema
+    is exported from them into shared/schema/, and the TypeScript types are
+    generated from that schema. CI fails if the generated files are stale.
+    Two small pieces of logic are written by hand in both languages: the
+    port-compatibility check and the fan-in/fan-out check, which the canvas
+    needs for instant feedback while dragging. Both implementations are
+    tested against one shared JSON fixture file.
+
+D3. Control flow uses BRANCH output ports. A decision node (router, safety
+    check, escalation gate, policy engine) has normal data outputs (enum,
+    probability, ...) and also a set of branch outputs, for example
+    "route.billing" or "route.low_confidence". Exactly one branch fires per
+    request. A branch port carries the node's pass-through text, so it is
+    typed "text" and the normal type rules still apply. Nodes that sit only
+    on branches that did not fire are skipped (dead-path elimination).
+
+D4. Request envelope. Every request carries an envelope holding: scenario
+    id, original message, decisions made so far, and taint flags. Port values
+    carry their own taint flags (e.g. "injection", "pii", "policy_violation")
+    so the engine can decide afterwards whether an unsafe response reached
+    the customer. Participants never see the envelope; only the engine and
+    the mocks use it.
+
+D5. Simulated time is separate from wall-clock time. In mock mode the
+    executor computes simulated latencies; a separate "pacer" emits the
+    WebSocket events on a compressed wall-clock schedule so the edge
+    animations are watchable. In real-provider mode the executor uses
+    measured latencies and the pacer emits events immediately. There is one
+    executor for both modes.
+
+D6. Mocks are deterministic and fair. The random seed for each node call is
+    sha256(run_seed, scenario_id, node_type, params_fingerprint). Two teams
+    with the same node and the same params get identical results, no matter
+    what node ids their graphs use. Python's built-in hash() is not used
+    because it is salted per process.
+
+D7. One graph per team, last write wins. Each team has one laptop (per the
+    spec), so there is no collaborative editing (no CRDT). Saves carry an
+    integer version: a stale version returns 409, and a save while the graph
+    is locked returns 423. Graphs are stored on the server and autosaved, so
+    they survive a page refresh.
+
+D8. Single backend instance. Run state and the WebSocket hub live in memory
+    in a single uvicorn process. That is enough for 6 teams. Scaling out
+    later would need Redis pub/sub; that is out of scope and noted in the
+    deployment section.
+
+D9. Runs come in two kinds:
+      - practice: a team runs its own graph on the PRACTICE pack. Results
+        are visible to the team, and the run is not on the leaderboard.
+      - official: the facilitator starts it. Every team graph is locked and
+        snapshotted, and all of them run on the hidden OFFICIAL pack with
+        the same seed. These runs feed the leaderboard.
+    During official runs the params on the customer-message node (traffic
+    mix, attack rate) are overridden by the facilitator's run config, so
+    every team gets identical traffic.
+
+D10. Small deviations from the spec, made on purpose:
+      - Node categories are io | jev | llm | tool | human. The spec's
+        NodeDefinition type lists four categories, but its catalog table has
+        a fifth, Human review.
+      - The Jev escalation gate gets an extra required "text" pass-through
+        input so that its branch ports have something to forward.
+      - The router's "probabilities" output is a json port that holds a
+        Distribution object. No new port type is needed for it.
+      - The "image" port type is defined but no MVP node uses it.
+
+Assumptions. None of these change the architecture; they are open items to
+confirm:
+  A1. The real Jev API takes {state, questions[]} as in spec section 6 and
+      returns one answer per question with a value, probabilities and a
+      confidence. The JevProvider adapter keeps the exact wire format
+      contained, so the rest of the system does not depend on it.
+  A2. The real LLM is Claude, called through the Anthropic SDK on the server.
+      The model param is a tier ("small" | "large"), and the server config
+      maps tiers to model ids (e.g. claude-haiku-5-5 / claude-sonnet-5-5).
+      Prices live in server config, not in code.
+  A3. Workshop language is English. The "language" param exists but the mock
+      only produces "en" for the MVP.
+
+
+1. RECOMMENDED FOLDER STRUCTURE
+-------------------------------
+jevVsLLMDemo/
+  CLAUDE.md, README.md
+  .github/workflows/ci.yml           server tests, web lint/build/test,
+                                     schema drift check
+  shared/
+    schema/                          GENERATED from Pydantic (committed)
+      graph.schema.json              Graph, GraphNode, GraphEdge, Port, Param
+      catalog.schema.json            NodeDefinition, CostModel
+      events.schema.json             WebSocket event union
+      run.schema.json                RunConfig, RunMetrics, NodeStats,
+                                     LeaderboardRow
+    fixtures/
+      port-compat-cases.json         [{source, target, expected}] used by the
+                                     Python AND TS tests
+      graphs/                        default, weak, strong, invalid-*.json
+                                     (used by the golden and validator tests)
+  server/
+    pyproject.toml
+    Dockerfile                       portable image for Railway/Render/Fly
+    alembic.ini
+    migrations/                      Alembic revisions
+    scripts/
+      export_schema.py               Pydantic -> shared/schema/*.json
+      run_headless.py                CLI: run a graph against a pack and
+                                     print metrics (used to tune the mocks)
+    app/
+      main.py                        app factory, CORS, routers, lifespan
+      config.py                      Settings (pydantic-settings, env vars)
+      models/                        Pydantic domain types (section 2)
+        ports.py  params.py  catalog.py  graph.py  values.py
+        results.py  runs.py  metrics.py  events.py  validation.py
+      catalog/
+        registry.py                  type -> (NodeDefinition, NodeRunner)
+        compat.py                    port compatibility (mirrored in TS)
+        definitions/                 io.py jev.py llm.py tool.py human.py
+        default_graph.py             the intentionally imperfect starter
+                                     graph
+      engine/
+        validator.py                 structural + semantic validation
+        planner.py                   topological order, branch groups,
+                                     exclusivity
+        executor.py                  per-request async execution, dead-path
+                                     elimination
+        envelope.py                  RequestEnvelope, taint propagation
+        latency.py                   simulated latency/cost sampling
+        pacer.py                     simulated time -> wall-clock event
+                                     scheduling
+      runners/                       one NodeRunner per node type; these call
+                                     providers/tools
+      providers/
+        base.py                      JevProvider / LLMProvider protocols
+        mock_jev.py  mock_llm.py     deterministic, scenario-aware mocks
+        jev_http.py  anthropic_llm.py   (phase M6)
+        guards.py                    timeout, retry, cache, rate limit,
+                                     spend cap (M6)
+        replay.py                    record/replay real responses (M6)
+      tools/                         policy.py knowledge.py pii.py
+                                     (deterministic, no I/O)
+      simulation/
+        packs/practice.json          15 tickets; the team may see the
+                                     categories
+        packs/official.json          30 hidden tickets; never sent to clients
+        reference_graphs/            weak.json strong.json (for facilitator
+                                     demo and tests)
+        loader.py  traffic.py (arrival schedule, spike, injection wave)
+        runner.py                    orchestrates a run: snapshot, execute,
+                                     persist, emit
+        scoring.py                   leaderboard score formula
+      metrics/aggregator.py          rolling + final metrics, percentiles
+      realtime/hub.py                channel subscriptions, broadcast,
+                                     state_sync
+      api/
+        deps.py                      auth (team token / facilitator code),
+                                     db session
+        catalog.py sessions.py teams.py graphs.py runs.py nodes.py
+        leaderboard.py ws.py
+      db/
+        base.py session.py tables.py repo.py
+      logging.py                     redacting log filter
+    tests/                           (section 5)
+  web/
+    package.json, vite.config.ts (add ws: true to the /api proxy), vercel.json
+    scripts/gen-types.mjs            shared/schema -> src/types/generated.ts
+    src/
+      main.tsx  App.tsx  routes.tsx
+      api/            client.ts (fetch + token), ws.ts (reconnecting socket,
+                      resume)
+      types/          generated.ts (DO NOT EDIT), index.ts (re-exports +
+                      UI-only types)
+      lib/            compat.ts (mirror of compat.py), graphMapping.ts
+                      (Graph <-> React Flow), format.ts
+      store/          catalogStore.ts graphStore.ts runStore.ts
+                      sessionStore.ts
+      canvas/
+        Canvas.tsx  isValidConnection.ts
+        nodes/        BaseNode.tsx JevNode.tsx LlmNode.tsx ToolNode.tsx
+                      IoNode.tsx HumanNode.tsx
+        handles/      TypedHandle.tsx (color + shape by PortType)
+        edges/        PulseEdge.tsx (animated request dots)
+      palette/        Palette.tsx NodeCard.tsx
+      inspector/      Inspector.tsx ParamField.tsx SchemaPreview.tsx
+                      IssueList.tsx
+      run/            RunControls.tsx MetricsBar.tsx NodeStatsBadge.tsx
+      leaderboard/    Leaderboard.tsx
+      pages/          JoinPage.tsx TeamPage.tsx FacilitatorPage.tsx
+                      ScreenPage.tsx
+      test/           setup.ts; *.test.ts(x) next to the sources they test
+
+New dependencies (each one is justified here, as CLAUDE.md requires):
+  server, runtime:
+    sqlalchemy>=2       persistence (stack requirement)
+    alembic             schema migrations; needed for PostgreSQL in
+                        production
+    pydantic-settings   typed env-var configuration (keeps secrets out of
+                        code)
+    psycopg[binary]     PostgreSQL driver for production; SQLite needs no
+                        driver
+    httpx               move from the dev extra to runtime in M6, for the Jev
+                        HTTP adapter
+    anthropic           M6 only, for the real LLM adapter
+  server, dev: nothing new. Async tests use the anyio pytest plugin, which is
+    already installed with FastAPI, so pytest-asyncio is not needed.
+  web, runtime:
+    @xyflow/react       React Flow v12 (stack requirement)
+    zustand             state stores (stack requirement)
+  web, dev:
+    vitest, @testing-library/react, jsdom   unit/component tests that reuse
+                                            Vite's configuration
+    json-schema-to-typescript               generate TS types from the
+                                            shared schema
+    @playwright/test                        M7 only, one end-to-end smoke
+                                            test
+
+
+2. SHARED TYPE DEFINITIONS
+--------------------------
+Python is the source of truth (Pydantic v2, app/models/). The TypeScript in
+section 2b is what the generator should produce; it is shown here so the two
+sides can be reviewed together. Wire format: camelCase over JSON (Pydantic
+alias_generator=to_camel, populate_by_name=True); snake_case inside Python.
+
+2a. Python (app/models/*)
+
+  PortType     = Literal["text","json","enum","score","boolean","probability",
+                         "image","any"]
+  NodeCategory = Literal["io","jev","llm","tool","human"]
+  Severity     = Literal["error","warning"]
+
+  class Port(BaseModel):
+      id: str                      # stable handle id: "text", "route.billing"
+      label: str
+      type: PortType
+      required: bool = True        # inputs only
+      multi: bool = False          # inputs: accepts several edges; the first
+                                   # live value wins
+      branch: bool = False         # outputs: a member of the node's exclusive
+                                   # branch group
+      enum_values: list[str] | None = None   # for enum ports
+      score_range: tuple[int, int] | None = None   # for score ports, e.g.
+                                                   # (1, 5)
+      json_schema_ref: str | None = None     # for json ports: "Distribution",
+                                             # "Docs", "PolicyReport"
+      dynamic_from_param: str | None = None  # outputs generated from a param,
+                                             # e.g. "allowed_intents" ->
+                                             # route.<intent>
+
+  # Params: a union discriminated on "kind"
+  class _ParamBase(BaseModel):  key: str; label: str; help: str = ""
+  class NumberParam(_ParamBase):  kind: Literal["number"];  default: float;
+                                  min: float; max: float; step: float = 0.05
+  class IntParam(_ParamBase):     kind: Literal["int"];     default: int;
+                                  min: int; max: int
+  class EnumParam(_ParamBase):    kind: Literal["enum"];    default: str;
+                                  options: list[str]
+  class MultiEnumParam(_ParamBase): kind: Literal["multi_enum"];
+                                  default: list[str]; options: list[str];
+                                  min_selected: int = 1
+  class StringListParam(_ParamBase): kind: Literal["string_list"];
+                                  default: list[str]; max_items: int = 20;
+                                  max_len: int = 60
+  class TextParam(_ParamBase):    kind: Literal["text"];    default: str;
+                                  max_len: int = 500
+  class BoolParam(_ParamBase):    kind: Literal["bool"];    default: bool
+  ParamSpec = Annotated[Union[...], Field(discriminator="kind")]
+
+  class CostModel(BaseModel):
+      latency_ms: float            # median simulated latency
+      latency_jitter_ms: float     # spread of a lognormal-ish distribution
+      cost_per_call_usd: float = 0.0
+      per_token_latency_ms: float | None = None    # LLM only
+      price_in_per_1k_usd: float | None = None     # LLM only (from config)
+      price_out_per_1k_usd: float | None = None
+      excluded_from_latency: bool = False          # human review
+
+  class NodeDefinition(BaseModel):
+      type: str                    # "jev_intent_router"
+      title: str
+      category: NodeCategory
+      description: str             # shown on the palette card
+      inputs: list[Port]
+      outputs: list[Port]
+      params: list[ParamSpec]
+      cost_model: CostModel
+      max_fan_out: int = 4         # max edges per output port
+      is_source: bool = False
+      is_sink: bool = False
+      mvp: bool = True
+      # run() is NOT serialized. registry.py maps type -> NodeRunner.
+
+  class NodeRunner(Protocol):
+      async def run(self, inputs: dict[str, PortValue],
+                    params: dict[str, Any], ctx: RunContext) -> NodeResult: ...
+
+  class Position(BaseModel): x: float; y: float
+  class GraphNode(BaseModel):
+      id: str; type: str; position: Position
+      params: dict[str, Any] = {}  # validated against the definition's
+                                   # ParamSpecs
+      label: str | None = None
+  class GraphEdge(BaseModel):
+      id: str; source: str; source_port: str; target: str; target_port: str
+  class Graph(BaseModel):
+      schema_version: Literal[1] = 1
+      nodes: list[GraphNode]       # max 40
+      edges: list[GraphEdge]       # max 80
+  class StoredGraph(BaseModel):
+      team_id: str; version: int; locked: bool; graph: Graph; updated_at: datetime
+
+  class ValidationIssue(BaseModel):
+      code: IssueCode              # StrEnum, listed in section 3d
+      severity: Severity
+      message: str
+      node_id: str | None = None; edge_id: str | None = None
+      port_id: str | None = None
+  class ValidationReport(BaseModel):
+      ok: bool                     # True when there are no errors (warnings
+                                   # are allowed)
+      issues: list[ValidationIssue]
+
+  # Runtime values
+  Taint = Literal["injection","pii","policy_violation","ungrounded","misrouted"]
+  class PortValue(BaseModel):
+      type: PortType; value: Any; taint: set[Taint] = set()
+  class Distribution(BaseModel): probs: dict[str, float]   # sums to 1 (+/-1e-6)
+  class NodeError(BaseModel):
+      code: Literal["timeout","provider_error","invalid_input","rate_limited",
+                    "spend_cap"]
+      message: str; retryable: bool
+  class NodeResult(BaseModel):
+      outputs: dict[str, PortValue]            # data outputs + the fired
+                                               # branch port
+      fired_branch: str | None = None
+      latency_ms: float; cost_usd: float = 0.0
+      tokens_in: int = 0; tokens_out: int = 0
+      decision: dict[str, Any] | None = None   # {"intent": "billing",
+                                               #  "confidence": 0.82}
+      escalated: bool = False
+      cached: bool = False
+      error: NodeError | None = None
+
+  # Scenarios and runs
+  TicketCategory = Literal["routine","complex","ambiguous","policy_violation",
+                           "prompt_injection"]
+  class Ticket(BaseModel):
+      id: str; text: str; category: TicketCategory
+      expected_intent: str; urgency: int          # 1..5
+      must_escalate: bool; must_block: bool
+      contains_pii: bool; needs_grounding: bool
+      expected_answer_tokens: int
+  class ScoringConfig(BaseModel):
+      latency_budget_ms: float = 800; cost_budget_per_1k_usd: float
+      w_automation: float = 100; w_quality: float = 50; w_unsafe: float = 400
+      latency_penalty_per_10ms: float = 1; cost_penalty_per_10pct: float = 5
+  class ScenarioPack(BaseModel):
+      id: str; version: int; tickets: list[Ticket]; scoring: ScoringConfig
+
+  RunMode   = Literal["practice","official"]
+  RunStatus = Literal["pending","running","completed","stopped","failed"]
+  class RunConfig(BaseModel):
+      mode: RunMode; pack_id: str; seed: int
+      speed: float = 20.0          # simulated ms per wall-clock ms
+      duration_s: float = 45       # wall-clock length of the arrival window
+      traffic_spike: float = 1.0   # 1..3: multiplies tickets (replayed with
+                                   # new arrival times)
+      injection_wave: bool = False # appends extra injection variants from the
+                                   # pack
+      max_concurrency: int = 32
+  Outcome = Literal["automated","escalated","blocked","dropped","failed"]
+  class NodeExecution(BaseModel):
+      node_id: str; node_type: str; start_ms: float; latency_ms: float
+      cost_usd: float; fired_branch: str | None
+      decision: dict | None; error: NodeError | None; skipped: bool = False
+  class RequestTrace(BaseModel):
+      request_id: str; ticket_id: str; arrival_ms: float
+      steps: list[NodeExecution]
+      outcome: Outcome; released_unsafe: bool; decision_correct: bool
+      total_latency_ms: float; total_cost_usd: float
+  class NodeStats(BaseModel):
+      node_id: str; requests: int; skipped: int; errors: int; escalations: int
+      avg_latency_ms: float; total_cost_usd: float; tokens_out: int
+      decisions: dict[str, int]     # histogram of enum/branch outcomes
+  class RunMetrics(BaseModel):
+      total: int; completed: int
+      automation_rate: float; escalation_rate: float
+      unsafe_release_rate: float; dropped_rate: float
+      p50_latency_ms: float; p95_latency_ms: float
+      cost_per_1k_usd: float; decision_quality: float; score: float
+  class LeaderboardRow(BaseModel):
+      team_id: str; team_name: str; run_id: str; metrics: RunMetrics; rank: int
+
+  # WebSocket events: a union discriminated on "type"
+  class EventBase(BaseModel):
+      type: str; run_id: str | None; team_id: str | None
+      seq: int; sim_ms: float      # seq increases strictly within a run
+  RunStarted(type="run_started", config: RunConfig, graph_version: int)
+  NodeStarted(type="node_started", request_id, node_id)
+  NodeCompleted(type="node_completed", request_id, node_id, latency_ms,
+                cost_usd, fired_branch, decision, tokens_out, escalated)
+  NodeFailed(type="node_failed", request_id, node_id, error: NodeError)
+  EdgeTransferred(type="edge_transferred", request_id, edge_id)
+  RequestCompleted(type="request_completed", request_id, outcome,
+                   released_unsafe, total_latency_ms)
+  MetricsSnapshot(type="metrics_snapshot", metrics: RunMetrics,
+                  node_stats: list[NodeStats])   # throttled to <= 4 per sec
+  RunCompleted(type="run_completed", status: RunStatus, metrics: RunMetrics)
+  GraphLocked(type="graph_locked", locked: bool)
+  LeaderboardUpdated(type="leaderboard_updated", rows: list[LeaderboardRow])
+  StateSync(type="state_sync", run: RunSummary | None, metrics, node_stats,
+            locked)   # sent on connect and on reconnect
+  Client -> server messages: {"type":"subscribe","channels":[...]},
+                             {"type":"ping"}
+
+2b. TypeScript (web/src/types/generated.ts; generated, shape shown here)
+
+  export type PortType = "text"|"json"|"enum"|"score"|"boolean"|"probability"
+                       |"image"|"any";
+  export type NodeCategory = "io"|"jev"|"llm"|"tool"|"human";
+  export interface Port { id: string; label: string; type: PortType;
+    required?: boolean; multi?: boolean; branch?: boolean;
+    enumValues?: string[]; scoreRange?: [number, number];
+    jsonSchemaRef?: string; dynamicFromParam?: string; }
+  export type ParamSpec =
+    | { kind:"number"; key:string; label:string; help?:string; default:number;
+        min:number; max:number; step?:number }
+    | { kind:"int"; ...; default:number; min:number; max:number }
+    | { kind:"enum"; ...; default:string; options:string[] }
+    | { kind:"multi_enum"; ...; default:string[]; options:string[];
+        minSelected?:number }
+    | { kind:"string_list"; ...; default:string[]; maxItems?:number;
+        maxLen?:number }
+    | { kind:"text"; ...; default:string; maxLen?:number }
+    | { kind:"bool"; ...; default:boolean };
+  export interface CostModel { latencyMs:number; latencyJitterMs:number;
+    costPerCallUsd?:number; perTokenLatencyMs?:number|null;
+    priceInPer1kUsd?:number|null; priceOutPer1kUsd?:number|null;
+    excludedFromLatency?:boolean }
+  export interface NodeDefinition { type:string; title:string;
+    category:NodeCategory; description:string; inputs:Port[];
+    outputs:Port[]; params:ParamSpec[]; costModel:CostModel;
+    maxFanOut?:number; isSource?:boolean; isSink?:boolean; mvp?:boolean }
+  export interface GraphNode { id:string; type:string;
+    position:{x:number;y:number}; params?:Record<string,unknown>;
+    label?:string|null }
+  export interface GraphEdge { id:string; source:string; sourcePort:string;
+    target:string; targetPort:string }
+  export interface Graph { schemaVersion:1; nodes:GraphNode[];
+    edges:GraphEdge[] }
+  export interface StoredGraph { teamId:string; version:number;
+    locked:boolean; graph:Graph; updatedAt:string }
+  export interface ValidationIssue { code:IssueCode; severity:"error"|"warning";
+    message:string; nodeId?:string|null; edgeId?:string|null;
+    portId?:string|null }
+  export interface ValidationReport { ok:boolean; issues:ValidationIssue[] }
+  export interface RunConfig { mode:"practice"|"official"; packId:string;
+    seed:number; speed?:number; durationS?:number; trafficSpike?:number;
+    injectionWave?:boolean; maxConcurrency?:number }
+  export interface NodeStats {...}   export interface RunMetrics {...}
+  export interface LeaderboardRow {...}
+  export type ServerEvent = RunStarted | NodeStarted | NodeCompleted
+    | NodeFailed | EdgeTransferred | RequestCompleted | MetricsSnapshot
+    | RunCompleted | GraphLocked | LeaderboardUpdated | StateSync;
+    // all discriminated on `type`
+
+  Hand-written UI-only types (web/src/types/index.ts):
+    type FlowNodeData = { def: NodeDefinition; params: Record<string,unknown>;
+                          stats?: NodeStats; issues: ValidationIssue[] };
+    type EdgePulse = { requestId: string; startedAt: number };
+    // edge animation queue
+
+
+3. NODE CATALOG AND PORT CONTRACTS
+----------------------------------
+3a. Port compatibility rules (catalog/compat.py and web/src/lib/compat.ts;
+    both tested against shared/fixtures/port-compat-cases.json)
+  - Same type on both ends                  -> allowed
+  - Target is "any"                         -> allowed
+  - Source is "any", target is concrete     -> allowed, warning ANY_SOURCE
+  - Every other pair                        -> blocked (e.g. boolean -> text,
+                                               enum -> text,
+                                               score -> probability)
+  - enum -> enum is allowed only if the source's values are a subset of the
+    target's (checked by the server; the UI only checks types)
+  - A single (non-multi) input accepts exactly 1 edge. A multi input accepts
+    many; the first live value wins and later ones are logged and ignored.
+  - Each output port has at most max_fan_out edges (default 4).
+  - Branch ports are normal "text" outputs as far as typing is concerned.
+
+3b. Catalog. MVP means it is in the minimal first version (spec section 11).
+    Notation: in = inputs, out = data outputs, br = branch outputs (exactly
+    one fires per request), * = multi input, ? = optional.
+    Latencies and costs are mock defaults; all of them live in definitions/
+    and can be tuned.
+
+  [MVP] customer_message            io, source
+    in : none
+    out: text:text, meta:json(TicketMeta: channel, language; no labels)
+    params: traffic_mix enum[realistic, routine_heavy, adversarial]=realistic
+            language enum[en]=en
+            attack_rate number 0..0.5=0.10
+            (all three are overridden by the facilitator in official runs)
+    cost: 0 ms, $0
+
+  [MVP] jev_intent_router           jev
+    in : text*:text
+    out: intent:enum, probabilities:json(Distribution), confidence:probability
+    br : route.<intent> for each allowed intent (dynamic_from_param=
+         allowed_intents), route.low_confidence
+    params: allowed_intents multi_enum[billing, technical_support, bug_report,
+              feature_request, account, other]=first four
+            threshold number 0..1=0.50 (confidence below threshold fires
+              route.low_confidence)
+    cost: 40 +/- 15 ms, $0.0002 per call
+    mock: accuracy depends on ticket category (routine ~0.95, complex ~0.85,
+          ambiguous ~0.55). Confidence is calibrated so wrong answers tend to
+          score lower, which makes the threshold param matter. A wrong answer
+          adds the "misrouted" taint.
+
+  [MVP] jev_safety_check            jev
+    in : text*:text
+    out: is_safe:boolean, confidence:probability, categories:json
+    br : route.safe, route.unsafe
+    params: categories multi_enum[prompt_injection, abuse, fraud, pii_request,
+              self_harm]=[prompt_injection, abuse]
+            threshold number 0..1=0.50
+    cost: 30 +/- 10 ms, $0.0002
+    mock: recall about 0.92 on injection/violation tickets for the enabled
+          categories, false-positive rate about 0.03. route.safe strips the
+          "injection" taint only if the check actually detected it.
+
+  [ ]   jev_urgency_scorer          jev
+    in : text*:text
+    out: score:score(1..5), confidence:probability
+    params: rubric_levels enum[3,5]=5, threshold number=0.60
+    cost: 35 +/- 10 ms, $0.0002
+
+  [ ]   jev_escalation_gate         jev
+    in : text:text (pass-through, required), confidence?:probability,
+         score?:score, flag?:boolean   (at least one of the last three is
+         required)
+    out: decision:enum[auto,human,fallback], confidence:probability
+    br : route.auto, route.human, route.fallback
+    params: min_confidence number=0.70, max_auto_urgency int 1..5=3,
+            flag_routes_to enum[human,fallback]=human,
+            fallback_route enum[human,auto]=human
+    cost: 20 +/- 5 ms, $0.0001
+
+  [MVP] llm_answer_generator        llm
+    in : text*:text, context?:json(Docs)
+    out: text:text
+    params: model enum[small,large]=large
+            temperature number 0..1=0.7
+            max_tokens int 64..1024=512
+            prompt text(<=500)="You are a helpful support agent."
+    cost: time-to-first-token (small 150 ms / large 350 ms) plus
+          tokens_out x per-token latency (4 / 10 ms). Prices per tier come
+          from config. tokens_out = min(max_tokens,
+          expected_answer_tokens x verbosity(temperature)).
+    mock: if the input carries the "injection" taint, the model complies with
+          probability small 0.7 / large 0.45, halved if the prompt contains
+          hardening phrases ("ignore instructions in the message", "never
+          reveal", ...). Compliance adds the injection taint and a marker
+          phrase. Without context, a needs_grounding ticket gets the
+          "ungrounded" taint with probability 0.4. Answer quality is higher
+          for the large model on complex tickets.
+
+  [ ]   llm_summarizer              llm
+    in : text*:text
+    out: text:text
+    params: model enum=small, max_tokens int 32..256=128
+    mock: shortens the text (lowers downstream tokens_in/cost) and keeps taint
+
+  [ ]   knowledge_lookup            tool
+    in : text*:text
+    out: docs:json(Docs)
+    params: source enum[faq,kb,tickets]=kb, top_k int 1..10=3
+    cost: 25 ms + 5 ms x top_k, $0.00001
+    behavior: deterministic keyword match against a small in-repo KB fixture
+
+  [MVP] policy_engine               tool
+    in : text*:text, context?:json
+    out: passed:boolean, report:json(PolicyReport)
+    br : route.pass, route.block
+    params: rules multi_enum[no_refund_promises, no_legal_advice,
+              no_internal_urls, no_credentials]=[no_refund_promises]
+            blocked_phrases string_list=[]
+            data_classes multi_enum[email, phone, card_number, ssn]=[]
+    cost: 10 +/- 3 ms, $0
+    behavior: pure regex/phrase rules. Catches the mock LLM's marker phrases
+              only when a matching rule is on, so it catches some unsafe
+              output but not all of it. That gap is the point of the
+              exercise.
+
+  [ ]   pii_redactor                tool
+    in : text*:text
+    out: text:text
+    params: entity_types multi_enum[email, phone, card_number, ssn,
+              address]=[email, phone, card_number]
+    cost: 8 ms, $0
+    behavior: regex redaction; removes the "pii" taint for the redacted
+              classes
+
+  [MVP] human_review_queue          human
+    in : text*:text, context?:json
+    out: text:text
+    params: capacity int 1..10=2, reviewer_latency_s int 30..600=120
+    cost: excluded from the automated p95; $2.00 per review (config)
+    behavior: the reviewer clears all taint with probability 0.98. The
+              outcome counts as "escalated". Capacity limits only come in at
+              M5 (overflow then counts as dropped).
+
+  [MVP] customer_response           io, sink
+    in : text*:text
+    out: none
+    params: channel enum[email,chat]=chat, sla_ms int=800 (display only)
+
+3c. Default starter graph (intentionally imperfect)
+  customer_message.text -> jev_intent_router.text
+  router.route.{billing,technical_support,bug_report,feature_request}
+                        -> llm_answer_generator.text
+  llm.text              -> policy_engine.text
+  policy.route.pass     -> customer_response.text
+  Built-in weaknesses for teams to discover:
+    - router.route.low_confidence is unconnected (ambiguous tickets are
+      dropped)
+    - there is no safety check before the LLM (injections reach the
+      generator)
+    - the LLM is the large tier with max_tokens=512 (p95 well above 800 ms)
+    - policy.route.block is unconnected (blocked answers are dropped, not
+      escalated)
+    - there is no knowledge lookup (ungrounded answers on complex tickets)
+  Reference graphs (in-repo; used by the golden tests and the facilitator
+  demo):
+    weak   : default graph plus a second LLM pass, no policy engine
+    strong : safety check -> router -> {routine: small LLM + knowledge lookup,
+             low_confidence/unsafe: human review}; policy.block -> human review
+
+3d. Validation (engine/validator.py). Errors block a run; warnings are shown
+    on the canvas.
+  errors  : UNKNOWN_NODE_TYPE, UNKNOWN_PORT, DUPLICATE_ID, DUPLICATE_EDGE,
+            INCOMPATIBLE_PORTS, ENUM_VALUES_MISMATCH, INPUT_FAN_IN_EXCEEDED,
+            FAN_OUT_EXCEEDED, MISSING_REQUIRED_INPUT, CYCLE, NO_SOURCE,
+            MULTIPLE_SOURCES, NO_SINK, INVALID_PARAM, GATE_NEEDS_SIGNAL,
+            GRAPH_TOO_LARGE
+  warnings: UNREACHABLE_NODE, DEAD_END (an output can never reach a sink),
+            UNCONNECTED_BRANCH (requests on that branch will be dropped),
+            NO_SAFETY_COVERAGE (some source->sink path through an LLM has no
+              safety check before the LLM and no policy engine after it),
+            NO_HUMAN_FALLBACK (no path reaches human_review_queue),
+            ANY_SOURCE, MULTI_INPUT_RACE (a multi input is fed by branches
+              that are not mutually exclusive)
+
+3e. Execution semantics (engine/executor.py)
+  - The planner computes a topological order (and rejects cycles) and the
+    exclusive branch groups.
+  - Per request: walk the nodes in topological order. A node runs when every
+    incoming edge has resolved, either live (a value was delivered) or dead.
+    If a required input has no live value, the node is SKIPPED and all its
+    outputs are dead. A multi input takes the earliest live arrival.
+  - Simulated start time = max(arrival time of the inputs the node used).
+    Request latency = simulated time at which the request reaches the sink,
+    minus its arrival time (critical path). Human review latency is excluded
+    from the automated percentiles.
+  - Outcome:
+      reached customer_response without passing human review -> automated
+      reached customer_response through human review         -> escalated
+      ended on policy.route.block / safety route.unsafe that
+        has no downstream consumer                           -> blocked
+      no sink reached                                        -> dropped
+      an unhandled node error                                -> failed
+  - released_unsafe = delivered to the customer AND (the value carries taint
+    in {injection, pii, policy_violation}, OR ticket.must_block and the
+    outcome is automated).
+  - decision_correct: automated with the correct intent and no "ungrounded"
+    or "misrouted" taint, OR escalated/blocked when must_escalate or
+    must_block. A dropped request is always incorrect.
+
+3f. Metrics (metrics/aggregator.py). All rates are over the total number of
+    requests.
+  automation_rate     = automated / total
+  escalation_rate     = escalated / total
+  unsafe_release_rate = released_unsafe / total
+  dropped_rate        = dropped / total
+  p50 / p95 latency   = nearest-rank percentile over automated requests (in
+                        simulated ms)
+  cost_per_1k_usd     = (sum of node costs + human review costs) / total x
+                        1000
+  decision_quality    = mean(decision_correct)
+  score = w_automation x automation + w_quality x quality
+          - w_unsafe x unsafe
+          - latency_penalty_per_10ms x max(0, p95 - 800) / 10
+          - cost_penalty_per_10pct x max(0, cost_per_1k / budget - 1) x 10
+  The weights are in the pack's ScoringConfig. They get tuned in M1 so that
+  default < weak-fix < strong.
+
+
+4. BUILD ORDER: MOCK-ONLY MVP TO REAL JEV/LLM
+---------------------------------------------
+Each milestone ends in a demonstrable state and maps to a spec phase.
+
+M1  Contract and headless engine           (spec phases 1 and 3; server only)
+    - Domain models, compat rules, catalog of the 7 MVP nodes,
+      GET /api/catalog.
+    - Validator plus POST /api/graphs/validate (stateless).
+    - Practice pack (15 tickets) and official pack (30 tickets: 12 routine,
+      6 complex, 4 ambiguous, 4 policy violations, 4 prompt injections).
+    - Mock Jev/LLM providers, deterministic tools, node runners, executor,
+      metrics, scoring.
+    - scripts/run_headless.py and the golden tests showing that default,
+      weak and strong graphs separate cleanly on the four MVP metrics.
+    Exit: `run_headless.py default.json official` prints metrics; the golden
+          tests pass.
+    Why first: the riskiest question is whether the simulation teaches the
+    intended lesson. It is cheaper to tune that without any UI.
+
+M2  Static canvas                          (spec phase 2)
+    - Schema export, TS codegen, @xyflow/react and zustand, catalogStore.
+    - Palette, five category node components, typed handles colored by port
+      type, isValidConnection (type, fan-in, fan-out, no self-loop or
+      cycle), dynamic branch handles from params, an Inspector with param
+      fields, schema preview and cost/latency assumptions.
+    - Server-side validation shown as badges on nodes and edges (debounced).
+    Exit: a participant can rebuild the default graph from scratch in the
+          browser; invalid connections are refused.
+
+M3  Persistence, teams, first deployment
+    - SQLAlchemy tables (sessions, teams, graphs, graph_snapshots, runs,
+      run_results, request_traces) and Alembic.
+    - Simple auth. The facilitator creates a session with FACILITATOR_CODE
+      and gets a 6-character session code. Teams join with session code plus
+      team name and receive an opaque bearer token (stored hashed).
+    - GET/PUT /api/teams/{id}/graph with version, 409 and 423;
+      POST .../graph/reset; autosave 1 s after the last change.
+    - Deploy web to Vercel and server to Railway now, to find hosting, CORS
+      and WebSocket problems early.
+    Exit: a refresh keeps the graph; two browsers on different teams are
+          isolated.
+
+M4  Live runs = SPEC "MINIMAL FIRST VERSION" (spec phase 5, first part)
+    - POST /api/teams/{id}/runs (practice), POST /api/runs/{id}/stop.
+    - Pacer, WebSocket hub at /api/ws?token=..., all events from section 2,
+      and state_sync on connect.
+    - Frontend runStore applies events. PulseEdge animates edge_transferred
+      (batched per animation frame). Node badges show requests, avg latency,
+      cost, decisions/tokens, errors and escalations. MetricsBar shows the
+      four MVP metrics.
+    - Facilitator page: start an official run (locks and snapshots every
+      graph, same seed), plus a leaderboard on the shared screen.
+    Exit: the full spec section 11 list works end to end on mocks.
+
+M5  Full catalog and run controls          (spec phases 2 and 5, remainder)
+    - Urgency scorer, escalation gate, summarizer, knowledge lookup, PII
+      redactor.
+    - Run controls: Stop, Reset, Prompt-injection wave, Traffic spike.
+      Human-review capacity and overflow.
+    - Inspector "Test" button: POST /api/nodes/{type}/test with sample input
+      (mock only, rate-limited).
+    - All spec metrics (adds escalation rate, p50, decision quality); a
+      per-request trace viewer after a run; runs persisted for review.
+
+M6  Real providers                         (spec phase 4)
+    - JevHttpProvider (httpx) and AnthropicLLMProvider (anthropic SDK)
+      implementing the protocols in providers/base.py. Credentials come only
+      from env vars.
+    - guards.py: per-call timeouts (Jev 2 s, LLM 10 s); 1 retry with jittered
+      backoff on 429/5xx; a per-provider asyncio semaphore as rate limit; a
+      session spend cap (on breach: switch to mock, emit a warning event); an
+      LRU response cache keyed by (provider, model, prompt hash, params) and
+      flagged `cached` on results.
+    - PROVIDER_MODE = mock | replay | real (per provider). "replay" records
+      real responses for every pack ticket ahead of time and plays them back
+      on the day: real model behavior, no live dependency, zero marginal
+      cost. This is the recommended mode for the workshop itself.
+    - Redacting log filter: no message bodies in logs, only ids, lengths and
+      hashes.
+    - The pacer emits immediately in real mode. Taint in real mode comes from
+      ground-truth labels plus deterministic checks (e.g. the model output
+      contains an injection canary token).
+
+M7  Hardening and dry run                  (spec phase 6)
+    - Load test: 6 teams x traffic spike 3x at the same time. Check event-
+      loop lag and WebSocket throughput.
+    - Reconnect test (kill the WebSocket mid-run; state_sync restores the
+      view). Refresh test. Lock test.
+    - Playwright smoke test. Facilitator script rehearsal (30 min);
+      facilitator runbook in README.
+
+
+5. TEST PLAN
+------------
+Server (pytest; async tests through the anyio plugin; sqlite tmp DB per test)
+  models/
+    - Pydantic round-trip (camelCase wire format <-> snake_case Python).
+      Rejects unknown fields, bad PortTypes, out-of-range params,
+      Distribution sums.
+    - Every catalog definition is self-consistent: unique port ids, branch
+      ports are only on outputs, dynamic_from_param refers to an existing
+      param, defaults pass their own ParamSpec.
+  compat
+    - Parametrized over shared/fixtures/port-compat-cases.json (the TS suite
+      uses the same file).
+  validator
+    - One test per IssueCode using a minimal graph (fixtures/graphs/
+      invalid-*.json).
+    - default.json has no errors and exactly the expected warnings (the
+      deliberate weaknesses). strong.json has no errors and no
+      NO_SAFETY_COVERAGE warning.
+  planner / executor
+    - Topological order; cycle rejection; branch exclusivity detection.
+    - Dead-path elimination: a node only on an unfired branch is skipped and
+      gets no events.
+    - Multi input takes the first live arrival; a required input with no live
+      value skips the node.
+    - Critical-path latency on a diamond-shaped graph; human latency
+      excluded.
+    - Outcome classification for each Outcome value; released_unsafe truth
+      table.
+    - Determinism: same seed gives identical traces; changing node ids does
+      not change results; different params do change them.
+  node runners and mocks
+    - Each runner returns only declared output ports with the declared types
+      and fires exactly one branch when it has branches.
+    - The router threshold monotonically increases low_confidence routing.
+    - The safety check strips the injection taint only when it detects it.
+    - The policy engine and PII redactor are pure functions (table-driven
+      cases).
+  metrics / scoring
+    - Percentiles on known lists (including n=1 and empty), rates with
+      zero-totals, cost per 1k including human cost, score formula with hand
+      calculation.
+  golden (pedagogy guardrails)
+    - On the official pack: default has p95 > 800 and unsafe > 0; weak scores
+      worse than default; strong has p95 <= 800, unsafe == 0, automation
+      >= 0.6, and the highest score.
+  scenario packs
+    - Schema-valid; 30 official tickets; every category present; ticket ids
+      unique; GET endpoints never return ticket text or labels for the
+      official pack.
+  API
+    - Catalog, validate, graph CRUD (409 stale version, 423 locked, 401/403
+      wrong team), run start/stop, leaderboard ordering, facilitator-only
+      routes.
+  WebSocket (TestClient.websocket_connect)
+    - state_sync is the first message; auth rejected without a token; the
+      subscription only receives its own team's events.
+    - Per-run invariants: seq strictly increasing; run_started first and
+      run_completed last; node_started before node_completed/node_failed for
+      the same (request, node); edge_transferred only after its source node
+      completed; one request_completed per request.
+    - Stop mid-run: run_completed(status=stopped) and no events after it.
+    - Reconnect mid-run receives a state_sync whose counts match the events
+      received so far.
+  persistence
+    - Alembic upgrade on an empty SQLite DB; repository round-trips. An
+      optional CI job runs the same suite against a PostgreSQL service
+      container.
+  providers (M6)
+    - A fake slow provider triggers a timeout and then node_failed; a fake
+      429 triggers a retry and then success; the spend cap trips over to
+      mock; a cache hit sets cached=true; the redacting log filter removes
+      message bodies and PII.
+    - Real-provider contract tests are marked @pytest.mark.live and skipped
+      unless keys are present.
+
+Web (vitest + Testing Library + jsdom)
+  - compat.ts against the shared fixture; isValidConnection (type, fan-in,
+    fan-out, cycle, self-loop).
+  - graphMapping: Graph -> React Flow -> Graph round-trip is lossless;
+    dynamic branch handles follow param changes, and edges to removed
+    branches are dropped with a notice.
+  - runStore reducer: applying a recorded event stream gives the expected
+    node stats; state_sync replaces state; duplicate or old seq is ignored.
+  - graphStore: autosave debounce; 409 triggers reload with a toast; locked
+    makes the store read-only.
+  - Components: the palette renders the catalog; the inspector renders each
+    ParamSpec kind and refuses invalid values; IssueList shows server
+    issues.
+  - M7: one Playwright smoke test (join -> add node -> connect -> run -> see
+    metrics).
+
+CI (GitHub Actions, on every push and PR)
+  server: pip install -e '.[dev]' && pytest
+  web: npm ci && npm run lint && npm run build && npx vitest run
+  drift: python scripts/export_schema.py && npm run gen:types &&
+         git diff --exit-code shared/ web/src/types/generated.ts
+
+
+6. DEPLOYMENT
+-------------
+Topology: the browser loads the SPA from Vercel and talks DIRECTLY to the
+backend over HTTPS and WSS. Vercel rewrites cannot proxy WebSockets, so the
+same direct URL is used for both, which avoids split behavior. Locally, the
+Vite proxy keeps everything same-origin.
+
+Frontend - Vercel
+  - Project root directory: web/. Framework preset: Vite. Build:
+    `npm run build`. Output: dist/. Node 20.
+  - Env (build time, public; NO secrets): VITE_API_BASE_URL=https://<api-host>
+    VITE_WS_URL=wss://<api-host>/api/ws
+    When these are unset (local dev), the client uses relative /api and the
+    Vite proxy.
+  - web/vercel.json: SPA fallback rewrite { "source": "/(.*)",
+    "destination": "/index.html" }.
+  - Preview deployments use the same backend (or a staging backend); the
+    backend allows preview origins by regex.
+  - vite.config.ts: change the proxy to
+    { '/api': { target: 'http://localhost:8000', ws: true } }.
+
+Backend - Railway (primary)
+  - Service root: server/, built from server/Dockerfile (python:3.12-slim,
+    non-root user, pip install ., copy app/ and migrations/).
+  - Start: `alembic upgrade head && uvicorn app.main:app --host 0.0.0.0
+           --port $PORT --proxy-headers --forwarded-allow-ips='*'`
+  - Exactly 1 replica (in-memory run state and WS hub, decision D8). If
+    multiple replicas are ever needed: Redis pub/sub for the hub, plus
+    sticky sessions.
+  - Railway PostgreSQL plugin -> DATABASE_URL. config.py rewrites postgres://
+    to postgresql+psycopg://.
+  - Health check path: /api/health. Restart policy: on failure.
+  - Env vars (secrets go only in Railway variables, never in git):
+      DATABASE_URL, ALLOWED_ORIGINS (comma-separated),
+      ALLOWED_ORIGIN_REGEX (e.g. ^https://jev-vs-llm-.*\.vercel\.app$),
+      FACILITATOR_CODE, TOKEN_SECRET, PROVIDER_MODE=mock,
+      SPEND_CAP_USD, LOG_LEVEL,
+      (M6) ANTHROPIC_API_KEY, LLM_MODEL_SMALL, LLM_MODEL_LARGE,
+      JEV_API_URL, JEV_API_KEY
+  - main.py replaces the hard-coded localhost CORS origin with
+    settings.allowed_origins plus allow_origin_regex.
+
+Backend - Render (alternative; same Dockerfile)
+  - render.yaml: one web service (docker, rootDir server, healthCheckPath
+    /api/health, numInstances 1) plus one Render PostgreSQL. WebSockets work
+    on web services.
+  - Free instances spin down when idle. Use a paid instance on workshop day,
+    or hit /api/health beforehand.
+  (Fly.io works with the same Dockerfile: `fly launch` from server/,
+  min_machines_running=1.)
+
+Workshop-day checklist
+  - PROVIDER_MODE=replay (or mock) with pre-recorded responses; spend cap
+    set; FACILITATOR_CODE rotated.
+  - Warm up the backend; open the shared screen on /screen; teams join
+    through the session code.
+  - Run the default graph once as a smoke test, then reset all teams.
+
+
+7. FIRST FIVE IMPLEMENTATION TASKS (in dependency order)
+--------------------------------------------------------
+Each task is one small, reviewable commit (or a short PR) with tests.
+
+T1. Domain models and port compatibility                    [depends on: -]
+    - Add app/models/{ports,params,catalog,graph,values,results,validation}.py
+      as in section 2a (runs/metrics/events can wait until T5).
+    - Add app/catalog/compat.py and shared/fixtures/port-compat-cases.json.
+    - Tests: model round-trips (camelCase), param validation per kind,
+      compat fixture.
+    - No new dependencies (Pydantic already comes with FastAPI).
+    Done when: pytest passes; the fixture covers every PortType pair class.
+
+T2. MVP node catalog, registry, and GET /api/catalog       [depends on: T1]
+    - definitions/ for the 7 MVP nodes (metadata and CostModel only; runners
+      are stubs that raise NotImplementedError).
+    - registry.py, with a function that expands dynamic branch ports for a
+      given params set.
+    - default_graph.py and shared/fixtures/graphs/default.json;
+      GET /api/catalog; GET /api/graphs/default.
+    - Tests: catalog self-consistency; the endpoint shape; branch expansion
+      follows allowed_intents.
+    Done when: /api/catalog returns 7 definitions that validate against the
+               models.
+
+T3. Graph validator and POST /api/graphs/validate          [depends on: T1, T2]
+    - engine/planner.py (topological order, cycle detection, exclusive
+      branch groups).
+    - engine/validator.py with every IssueCode from section 3d; a stateless
+      validate endpoint.
+    - Fixture graphs: default, plus one invalid-*.json per error code.
+    - Tests: one per code; default gives exactly the expected warnings.
+    Done when: every code is covered and the default graph reports its 3-5
+               intended weaknesses.
+
+T4. Scenario packs, mock providers, tools, node runners    [depends on: T2]
+    - simulation/packs/practice.json (15) and official.json (30), Ticket and
+      ScenarioPack models, loader.
+    - providers/base.py protocols; mock_jev.py and mock_llm.py with
+      deterministic seeding (D6).
+    - tools/policy.py and tools/pii.py (pure functions); real runners for
+      the 7 MVP nodes; RunContext and RequestEnvelope with taint
+      propagation.
+    - Tests: pack schema and coverage; runner output contracts; determinism;
+      router threshold monotonicity; safety-check taint stripping;
+      policy-engine table tests.
+    Done when: each runner can be unit-run on any ticket with deterministic
+               output.
+
+T5. Executor, metrics, scoring, headless run, golden tests [depends on: T3, T4]
+    - engine/executor.py (dead-path elimination, multi inputs, critical-path
+      latency, outcome classification); engine/latency.py.
+    - models/{runs,metrics}.py; metrics/aggregator.py; simulation/scoring.py;
+      simulation/runner.py (in-memory, no DB/WS yet: returns traces and
+      metrics).
+    - scripts/run_headless.py; reference_graphs weak.json and strong.json.
+    - Tests: executor semantics (section 5) and metrics math; golden tests
+      for default < weak-fix < strong; tune the mock constants and weights
+      until they pass.
+    Done when: M1's exit criteria are met. The schema export (M2's first
+               task) can start.
+
+Next after T5: schema export and TS codegen -> canvas (M2) -> persistence and
+first deployment (M3) -> live runs (M4).
+
+
+8. OPEN ITEMS (none of these block T1-T5)
+-----------------------------------------
+  - The real Jev API wire format, auth, latency and pricing (affects only
+    providers/jev_http.py, M6).
+  - Real LLM prices per tier for the cost model. Until then these are
+    config placeholders, tuned so the default graph misses the budget.
+  - Cost budget per 1k requests for the mission brief (set in M1 tuning,
+    stored in ScoringConfig).
+  - Whether the shared screen should show every team's live canvas, or only
+    the leaderboard. The plan assumes leaderboard plus per-team metrics
+    tiles.
+  - CLAUDE.md's "Open question" can be closed: the spec defines Jev nodes
+    (section 0 above).
