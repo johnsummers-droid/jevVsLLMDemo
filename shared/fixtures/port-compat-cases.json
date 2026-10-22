@@ -1,0 +1,325 @@
+{
+  "description": "Port type compatibility (plan1.txt section 3a). Used by server/tests/test_compat.py and the web compat tests. Edit by hand; both implementations must agree.",
+  "cases": [
+    {
+      "source": "text",
+      "target": "text",
+      "expected": "ok"
+    },
+    {
+      "source": "text",
+      "target": "json",
+      "expected": "blocked"
+    },
+    {
+      "source": "text",
+      "target": "enum",
+      "expected": "blocked"
+    },
+    {
+      "source": "text",
+      "target": "score",
+      "expected": "blocked"
+    },
+    {
+      "source": "text",
+      "target": "boolean",
+      "expected": "blocked"
+    },
+    {
+      "source": "text",
+      "target": "probability",
+      "expected": "blocked"
+    },
+    {
+      "source": "text",
+      "target": "image",
+      "expected": "blocked"
+    },
+    {
+      "source": "text",
+      "target": "any",
+      "expected": "ok"
+    },
+    {
+      "source": "json",
+      "target": "text",
+      "expected": "blocked"
+    },
+    {
+      "source": "json",
+      "target": "json",
+      "expected": "ok"
+    },
+    {
+      "source": "json",
+      "target": "enum",
+      "expected": "blocked"
+    },
+    {
+      "source": "json",
+      "target": "score",
+      "expected": "blocked"
+    },
+    {
+      "source": "json",
+      "target": "boolean",
+      "expected": "blocked"
+    },
+    {
+      "source": "json",
+      "target": "probability",
+      "expected": "blocked"
+    },
+    {
+      "source": "json",
+      "target": "image",
+      "expected": "blocked"
+    },
+    {
+      "source": "json",
+      "target": "any",
+      "expected": "ok"
+    },
+    {
+      "source": "enum",
+      "target": "text",
+      "expected": "blocked"
+    },
+    {
+      "source": "enum",
+      "target": "json",
+      "expected": "blocked"
+    },
+    {
+      "source": "enum",
+      "target": "enum",
+      "expected": "ok"
+    },
+    {
+      "source": "enum",
+      "target": "score",
+      "expected": "blocked"
+    },
+    {
+      "source": "enum",
+      "target": "boolean",
+      "expected": "blocked"
+    },
+    {
+      "source": "enum",
+      "target": "probability",
+      "expected": "blocked"
+    },
+    {
+      "source": "enum",
+      "target": "image",
+      "expected": "blocked"
+    },
+    {
+      "source": "enum",
+      "target": "any",
+      "expected": "ok"
+    },
+    {
+      "source": "score",
+      "target": "text",
+      "expected": "blocked"
+    },
+    {
+      "source": "score",
+      "target": "json",
+      "expected": "blocked"
+    },
+    {
+      "source": "score",
+      "target": "enum",
+      "expected": "blocked"
+    },
+    {
+      "source": "score",
+      "target": "score",
+      "expected": "ok"
+    },
+    {
+      "source": "score",
+      "target": "boolean",
+      "expected": "blocked"
+    },
+    {
+      "source": "score",
+      "target": "probability",
+      "expected": "blocked"
+    },
+    {
+      "source": "score",
+      "target": "image",
+      "expected": "blocked"
+    },
+    {
+      "source": "score",
+      "target": "any",
+      "expected": "ok"
+    },
+    {
+      "source": "boolean",
+      "target": "text",
+      "expected": "blocked"
+    },
+    {
+      "source": "boolean",
+      "target": "json",
+      "expected": "blocked"
+    },
+    {
+      "source": "boolean",
+      "target": "enum",
+      "expected": "blocked"
+    },
+    {
+      "source": "boolean",
+      "target": "score",
+      "expected": "blocked"
+    },
+    {
+      "source": "boolean",
+      "target": "boolean",
+      "expected": "ok"
+    },
+    {
+      "source": "boolean",
+      "target": "probability",
+      "expected": "blocked"
+    },
+    {
+      "source": "boolean",
+      "target": "image",
+      "expected": "blocked"
+    },
+    {
+      "source": "boolean",
+      "target": "any",
+      "expected": "ok"
+    },
+    {
+      "source": "probability",
+      "target": "text",
+      "expected": "blocked"
+    },
+    {
+      "source": "probability",
+      "target": "json",
+      "expected": "blocked"
+    },
+    {
+      "source": "probability",
+      "target": "enum",
+      "expected": "blocked"
+    },
+    {
+      "source": "probability",
+      "target": "score",
+      "expected": "blocked"
+    },
+    {
+      "source": "probability",
+      "target": "boolean",
+      "expected": "blocked"
+    },
+    {
+      "source": "probability",
+      "target": "probability",
+      "expected": "ok"
+    },
+    {
+      "source": "probability",
+      "target": "image",
+      "expected": "blocked"
+    },
+    {
+      "source": "probability",
+      "target": "any",
+      "expected": "ok"
+    },
+    {
+      "source": "image",
+      "target": "text",
+      "expected": "blocked"
+    },
+    {
+      "source": "image",
+      "target": "json",
+      "expected": "blocked"
+    },
+    {
+      "source": "image",
+      "target": "enum",
+      "expected": "blocked"
+    },
+    {
+      "source": "image",
+      "target": "score",
+      "expected": "blocked"
+    },
+    {
+      "source": "image",
+      "target": "boolean",
+      "expected": "blocked"
+    },
+    {
+      "source": "image",
+      "target": "probability",
+      "expected": "blocked"
+    },
+    {
+      "source": "image",
+      "target": "image",
+      "expected": "ok"
+    },
+    {
+      "source": "image",
+      "target": "any",
+      "expected": "ok"
+    },
+    {
+      "source": "any",
+      "target": "text",
+      "expected": "warn"
+    },
+    {
+      "source": "any",
+      "target": "json",
+      "expected": "warn"
+    },
+    {
+      "source": "any",
+      "target": "enum",
+      "expected": "warn"
+    },
+    {
+      "source": "any",
+      "target": "score",
+      "expected": "warn"
+    },
+    {
+      "source": "any",
+      "target": "boolean",
+      "expected": "warn"
+    },
+    {
+      "source": "any",
+      "target": "probability",
+      "expected": "warn"
+    },
+    {
+      "source": "any",
+      "target": "image",
+      "expected": "warn"
+    },
+    {
+      "source": "any",
+      "target": "any",
+      "expected": "ok"
+    }
+  ]
+}
