@@ -18,7 +18,9 @@ class Port(CamelModel):
     enum_values: list[str] | None = None
     score_range: tuple[int, int] | None = None
     json_schema_ref: str | None = None  # e.g. "Distribution", "Docs", "PolicyReport"
-    dynamic_from_param: str | None = None  # outputs generated from a param's values
+    # Outputs generated from a param's values: a template like "route.*" expands to
+    # one port per selected value ("route.billing", ...). See catalog/registry.py.
+    dynamic_from_param: str | None = None
 
     @model_validator(mode="after")
     def _check_type_specific_fields(self) -> Self:
@@ -39,4 +41,6 @@ class Port(CamelModel):
             raise ValueError("json_schema_ref is only allowed on json ports")
         if self.branch and self.type != "text":
             raise ValueError("branch ports carry pass-through text and must be typed text")
+        if (self.dynamic_from_param is not None) != self.id.endswith(".*"):
+            raise ValueError('dynamic ports, and only dynamic ports, use a template id ending in ".*"')
         return self

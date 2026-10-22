@@ -269,7 +269,10 @@ alias_generator=to_camel, populate_by_name=True); snake_case inside Python.
                                              # "Docs", "PolicyReport"
       dynamic_from_param: str | None = None  # outputs generated from a param,
                                              # e.g. "allowed_intents" ->
-                                             # route.<intent>
+                                             # route.<intent>. The port's id is
+                                             # a template ending in ".*"
+                                             # ("route.*"); registry.py
+                                             # expands it per selected value.
 
   # Params: a union discriminated on "kind"
   class _ParamBase(BaseModel):  key: str; label: str; help: str = ""
@@ -530,8 +533,8 @@ alias_generator=to_camel, populate_by_name=True); snake_case inside Python.
   [MVP] jev_intent_router           jev
     in : text*:text
     out: intent:enum, probabilities:json(Distribution), confidence:probability
-    br : route.<intent> for each allowed intent (dynamic_from_param=
-         allowed_intents), route.low_confidence
+    br : route.<intent> for each allowed intent (template port "route.*",
+         dynamic_from_param=allowed_intents), route.low_confidence
     params: allowed_intents multi_enum[billing, technical_support, bug_report,
               feature_request, account, other]=first four
             threshold number 0..1=0.50 (confidence below threshold fires
@@ -1000,6 +1003,11 @@ T2. MVP node catalog, registry, and GET /api/catalog       [depends on: T1]
       follows allowed_intents.
     Done when: /api/catalog returns 7 definitions that validate against the
                models.
+    As built: GET /api/catalog returns {"nodes": [NodeDefinition, ...]} with
+      dynamic ports left as templates (the client expands them, like
+      registry.expand_outputs). The llm CostModel shows the default "large"
+      tier; per-tier latency is in definitions/llm.py and token prices are
+      left unset until server config exists (T4).
 
 T3. Graph validator and POST /api/graphs/validate          [depends on: T1, T2]
     - engine/planner.py (topological order, cycle detection, exclusive
