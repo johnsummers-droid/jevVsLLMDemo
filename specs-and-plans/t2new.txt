@@ -1,0 +1,89 @@
+T2: MVP NODE CATALOG, REGISTRY, AND GET /api/catalog
+=====================================================
+Status: implemented, 146 server tests passing (was 118). Not yet committed.
+
+WHAT'S NEW
+----------
+server/app/catalog/definitions/
+  The 7 MVP NodeDefinitions with ports, params and cost models from
+  plan1.txt section 3b:
+    io.py     customer_message (source), customer_response (sink)
+    jev.py    jev_intent_router, jev_safety_check
+    llm.py    llm_answer_generator (+ TIER_LATENCY_MS for small/large)
+    tool.py   policy_engine
+    human.py  human_review_queue
+  __init__.py exposes ALL_DEFINITIONS in palette order (source first,
+  sink last).
+
+server/app/catalog/registry.py
+  - REGISTRY: node type -> (NodeDefinition, NodeRunner). Runners are
+    StubRunner instances that raise NotImplementedError until T4.
+  - catalog(), get_definition(type), default_params(definition).
+  - resolve_params(definition, params): fills in defaults and checks each
+    value; raises ValueError on unknown keys or bad values.
+  - expand_outputs(definition, params): turns a dynamic template port
+    ("route.*", dynamic_from_param="allowed_intents") into one branch port
+    per selected value, in selection order, e.g. route.billing ...
+    route.feature_request, followed by route.low_confidence.
+
+server/app/catalog/default_graph.py
+  Builds the intentionally imperfect starter graph from section 3c:
+    customer_message -> router -> (4 intent routes) -> llm -> policy
+    -> (route.pass) -> response
+  shared/fixtures/graphs/default.json is generated from it:
+    .venv/bin/python -m app.catalog.default_graph \
+      > ../shared/fixtures/graphs/default.json
+  A test fails if the fixture and the code drift apart.
+
+server/app/api/
+  catalog.py  GET /api/catalog         -> {"nodes": [NodeDefinition, ...]}
+  graphs.py   GET /api/graphs/default  -> Graph
+  Both routers are included in app/main.py.
+
+server/tests/test_catalog.py (28 new tests)
+  - Every definition is self-consistent (re-validates from the wire form,
+    defaults pass their specs, full expansion has no id collisions).
+  - Exactly one source and one sink; decision nodes have branches;
+    the runners are stubs and raise.
+  - resolve_params: defaults filled; unknown/out-of-range values rejected.
+  - Branch expansion follows allowed_intents; static nodes are untouched.
+  - The default graph matches its fixture, every edge is type-compatible,
+    and its deliberate weaknesses are still there.
+  - The shape of both endpoints.
+
+DECISIONS TO REVIEW
+-------------------
+1. "route.*" template ids. A rule was added to the T1 Port model: a
+   dynamic port's id must end in ".*", and only dynamic ports may use that
+   form. Two T1 tests changed from "route.<intent>" to "route.*".
+2. The catalog sends templates, not expanded ports. The frontend will
+   expand "route.*" the same way registry.expand_outputs does.
+3. LLM costs. The catalog's CostModel shows the default "large" tier
+   (350 ms to first token + 10 ms/token). Small-tier numbers live in
+   TIER_LATENCY_MS. Token prices are unset until server config exists (T4).
+4. Values chosen where the plan gave none:
+   - customer_response.sla_ms range 100..10000
+   - human_review_queue cost model: 120 s, $2.00, excluded from latency
+   - policy_engine rules and data_classes may be empty (min_selected=0)
+5. Param keys stay snake_case in graph JSON ("traffic_mix"). They are data
+   that matches ParamSpec.key, not model fields.
+Decisions 1-3 are recorded in plan1.txt (sections 2a and 3b, and an
+"As built" note under T2).
+
+VERIFY
+------
+From server/:
+  .venv/bin/pytest tests/test_catalog.py -v
+  .venv/bin/uvicorn app.main:app --reload --port 8000
+  curl -s localhost:8000/api/catalog | python3 -m json.tool
+  curl -s localhost:8000/api/graphs/default | python3 -m json.tool
+
+COMMIT NOTE
+-----------
+Commit everything in git status except server/scratch.py (local manual
+check script for T1).
+
+NEXT
+----
+T3 (graph validator + POST /api/graphs/validate) and T4 (scenario packs,
+mock providers, tools, runners) are independent of each other.
