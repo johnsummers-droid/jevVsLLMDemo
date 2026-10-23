@@ -1,0 +1,220 @@
+[
+  {
+    "id": "kb-sso-cert",
+    "source": "kb",
+    "intent": "technical_support",
+    "title": "Updating SSO after a certificate rotation",
+    "snippet": "Upload the new signing certificate under Settings > Security > SSO and re-download the metadata.",
+    "keywords": [
+      "sso",
+      "saml",
+      "okta",
+      "certificate",
+      "signing",
+      "assertion"
+    ]
+  },
+  {
+    "id": "kb-proration",
+    "source": "kb",
+    "intent": "billing",
+    "title": "How plan changes are prorated",
+    "snippet": "Upgrades mid-cycle are prorated daily; unused seats are credited to the new annual invoice.",
+    "keywords": [
+      "proration",
+      "prorated",
+      "annual",
+      "enterprise",
+      "seats",
+      "plan",
+      "upgrade"
+    ]
+  },
+  {
+    "id": "kb-webhooks",
+    "source": "kb",
+    "intent": "bug_report",
+    "title": "Webhook retries and deduplication",
+    "snippet": "Retries reuse the event id; deduplicate on the id and return 2xx within 10 seconds.",
+    "keywords": [
+      "webhook",
+      "webhooks",
+      "duplicate",
+      "retried",
+      "retry",
+      "deduplicate",
+      "event"
+    ]
+  },
+  {
+    "id": "kb-eu-region",
+    "source": "kb",
+    "intent": "technical_support",
+    "title": "Endpoints after moving to the EU region",
+    "snippet": "EU workspaces use api.eu.example.com; update DNS allowlists and regional base URLs.",
+    "keywords": [
+      "eu",
+      "region",
+      "dns",
+      "endpoints",
+      "migrating",
+      "timeout",
+      "api"
+    ]
+  },
+  {
+    "id": "kb-invoice-currency",
+    "source": "kb",
+    "intent": "billing",
+    "title": "Invoice currency and VAT corrections",
+    "snippet": "Billing can reissue invoices in the contract currency with the correct VAT rate per country.",
+    "keywords": [
+      "invoice",
+      "invoiced",
+      "vat",
+      "currency",
+      "eur",
+      "usd",
+      "tax",
+      "reissue"
+    ]
+  },
+  {
+    "id": "kb-import-encoding",
+    "source": "kb",
+    "intent": "bug_report",
+    "title": "Import drops rows with special characters",
+    "snippet": "Save the CSV as UTF-8 before import; rows with other encodings are skipped.",
+    "keywords": [
+      "import",
+      "ascii",
+      "characters",
+      "contacts",
+      "csv",
+      "rows",
+      "encoding"
+    ]
+  },
+  {
+    "id": "kb-ownership",
+    "source": "kb",
+    "intent": "account",
+    "title": "Transferring workspace ownership",
+    "snippet": "An admin can transfer ownership of a deactivated user's workspace and shared folders.",
+    "keywords": [
+      "ownership",
+      "transfer",
+      "deactivated",
+      "departed",
+      "folders",
+      "workspace"
+    ]
+  },
+  {
+    "id": "kb-scim",
+    "source": "kb",
+    "intent": "technical_support",
+    "title": "SCIM provisioning and email case",
+    "snippet": "Map the identity provider's immutable user id, not the email, to avoid duplicate users.",
+    "keywords": [
+      "scim",
+      "provisioning",
+      "identity",
+      "duplicate",
+      "users",
+      "mapping"
+    ]
+  },
+  {
+    "id": "kb-partner-1099",
+    "source": "kb",
+    "intent": "billing",
+    "title": "Partner credits on tax forms",
+    "snippet": "Partner program credits appear on the 1099 under other income; request corrections from billing.",
+    "keywords": [
+      "1099",
+      "partner",
+      "credits",
+      "tax",
+      "form"
+    ]
+  },
+  {
+    "id": "faq-password",
+    "source": "faq",
+    "intent": "technical_support",
+    "title": "Resetting your password",
+    "snippet": "Check spam for the reset email or ask an admin to send a new link.",
+    "keywords": [
+      "password",
+      "reset",
+      "email"
+    ]
+  },
+  {
+    "id": "faq-double-charge",
+    "source": "faq",
+    "intent": "billing",
+    "title": "Duplicate charges",
+    "snippet": "Pending authorizations drop off in 3-5 days; settled duplicates are refunded by billing.",
+    "keywords": [
+      "charged",
+      "twice",
+      "invoice",
+      "bill",
+      "charge"
+    ]
+  },
+  {
+    "id": "faq-upload-limit",
+    "source": "faq",
+    "intent": "technical_support",
+    "title": "Upload size limits",
+    "snippet": "Files up to 20 MB upload in the app; larger files need the desktop client.",
+    "keywords": [
+      "upload",
+      "files",
+      "limit",
+      "mb"
+    ]
+  },
+  {
+    "id": "faq-admins",
+    "source": "faq",
+    "intent": "account",
+    "title": "Adding admins",
+    "snippet": "Workspace owners can add admins under Settings > Members.",
+    "keywords": [
+      "admin",
+      "workspace",
+      "add",
+      "members"
+    ]
+  },
+  {
+    "id": "tkt-export-firefox",
+    "source": "tickets",
+    "intent": "bug_report",
+    "title": "Export button in Firefox",
+    "snippet": "Known issue fixed in 4.2; clear the cache after updating.",
+    "keywords": [
+      "export",
+      "firefox",
+      "button",
+      "reports"
+    ]
+  },
+  {
+    "id": "tkt-logout-android",
+    "source": "tickets",
+    "intent": "technical_support",
+    "title": "Frequent logouts on Android",
+    "snippet": "Disable battery optimisation for the app to keep sessions alive.",
+    "keywords": [
+      "logging",
+      "logged",
+      "android",
+      "logout"
+    ]
+  }
+]
