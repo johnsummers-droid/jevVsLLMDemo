@@ -35,6 +35,9 @@ class NodeDefinition(CamelModel):
     params: list[ParamSpec]
     cost_model: CostModel
     max_fan_out: int = Field(default=4, ge=1)
+    # Optional inputs of which at least one must be connected (e.g. an escalation gate needs
+    # a confidence, score or flag signal). Checked by the validator as GATE_NEEDS_SIGNAL.
+    requires_one_of: list[str] = Field(default_factory=list)
     is_source: bool = False
     is_sink: bool = False
     mvp: bool = True
@@ -50,6 +53,10 @@ class NodeDefinition(CamelModel):
         for port in self.inputs:
             if port.branch or port.dynamic_from_param:
                 raise ValueError(f"input {port.id!r}: branch/dynamic ports are outputs only")
+        inputs = {p.id: p for p in self.inputs}
+        for port_id in self.requires_one_of:
+            if port_id not in inputs or inputs[port_id].required:
+                raise ValueError(f"requires_one_of: {port_id!r} must be an optional input")
         params = {p.key: p for p in self.params}
         for port in self.outputs:
             if port.multi:

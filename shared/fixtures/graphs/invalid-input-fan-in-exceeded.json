@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "nodes": [
+    {
+      "id": "msg",
+      "type": "customer_message",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "params": {
+        "traffic_mix": "realistic",
+        "language": "en",
+        "attack_rate": 0.1
+      }
+    },
+    {
+      "id": "router",
+      "type": "jev_intent_router",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "params": {
+        "allowed_intents": [
+          "billing",
+          "technical_support",
+          "bug_report",
+          "feature_request"
+        ],
+        "threshold": 0.5
+      }
+    },
+    {
+      "id": "llm",
+      "type": "llm_answer_generator",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "params": {
+        "model": "large",
+        "temperature": 0.7,
+        "max_tokens": 512,
+        "prompt": "You are a helpful support agent."
+      }
+    },
+    {
+      "id": "resp",
+      "type": "customer_response",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "msg.text->router.text",
+      "source": "msg",
+      "sourcePort": "text",
+      "target": "router",
+      "targetPort": "text"
+    },
+    {
+      "id": "msg.text->llm.text",
+      "source": "msg",
+      "sourcePort": "text",
+      "target": "llm",
+      "targetPort": "text"
+    },
+    {
+      "id": "msg.meta->llm.context",
+      "source": "msg",
+      "sourcePort": "meta",
+      "target": "llm",
+      "targetPort": "context"
+    },
+    {
+      "id": "router.probabilities->llm.context",
+      "source": "router",
+      "sourcePort": "probabilities",
+      "target": "llm",
+      "targetPort": "context"
+    },
+    {
+      "id": "llm.text->resp.text",
+      "source": "llm",
+      "sourcePort": "text",
+      "target": "resp",
+      "targetPort": "text"
+    }
+  ]
+}

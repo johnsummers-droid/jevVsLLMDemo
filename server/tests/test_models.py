@@ -220,6 +220,8 @@ def test_valid_node_definition_round_trip() -> None:
             {"outputs": [Port(id="o.*", label="o", type="text", dynamic_from_param="allowed_intents")]},
             "must be branch",
         ),
+        ({"requires_one_of": ["missing"]}, "must be an optional input"),
+        ({"requires_one_of": ["text"]}, "must be an optional input"),
         ({"is_source": True}, "source nodes have no inputs"),
         ({"is_sink": True}, "sink nodes have no outputs"),
         ({"category": "human_review"}, "category"),

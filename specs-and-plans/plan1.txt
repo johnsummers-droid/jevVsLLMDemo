@@ -312,6 +312,8 @@ alias_generator=to_camel, populate_by_name=True); snake_case inside Python.
       params: list[ParamSpec]
       cost_model: CostModel
       max_fan_out: int = 4         # max edges per output port
+      requires_one_of: list[str] = []   # optional inputs; at least one must be
+                                        # connected (GATE_NEEDS_SIGNAL)
       is_source: bool = False
       is_sink: bool = False
       mvp: bool = True
@@ -1018,6 +1020,17 @@ T3. Graph validator and POST /api/graphs/validate          [depends on: T1, T2]
     - Tests: one per code; default gives exactly the expected warnings.
     Done when: every code is covered and the default graph reports its 3-5
                intended weaknesses.
+    As built: validate_payload() checks node/edge counts on the raw JSON before
+      parsing, so an oversized graph is a GRAPH_TOO_LARGE report (200), not a
+      422; a body that is not graph-shaped is still a 422. GATE_NEEDS_SIGNAL is
+      driven by NodeDefinition.requires_one_of rather than a hard-coded type.
+      An edge to a missing node id is reported as UNKNOWN_PORT. NO_SAFETY_COVERAGE
+      counts a safety check only when the path leaves it through route.safe, and
+      a policy engine only through route.pass. The default graph reports three
+      warnings: two UNCONNECTED_BRANCH (router.route.low_confidence,
+      policy.route.block) and NO_HUMAN_FALLBACK; its other weaknesses (no safety
+      check before the LLM, which the policy engine covers for this warning; the
+      large LLM tier; no knowledge lookup) only show up in the metrics.
 
 T4. Scenario packs, mock providers, tools, node runners    [depends on: T2]
     - simulation/packs/practice.json (15) and official.json (30), Ticket and
