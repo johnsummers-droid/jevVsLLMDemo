@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "nodes": [
+    {
+      "id": "customer_message",
+      "type": "customer_message",
+      "position": {
+        "x": 0.0,
+        "y": 0.0
+      },
+      "params": {
+        "traffic_mix": "realistic",
+        "language": "en",
+        "attack_rate": 0.1
+      },
+      "label": null
+    },
+    {
+      "id": "router",
+      "type": "jev_intent_router",
+      "position": {
+        "x": 280.0,
+        "y": 0.0
+      },
+      "params": {
+        "allowed_intents": [
+          "billing",
+          "technical_support",
+          "bug_report",
+          "feature_request"
+        ],
+        "threshold": 0.5
+      },
+      "label": null
+    },
+    {
+      "id": "llm",
+      "type": "llm_answer_generator",
+      "position": {
+        "x": 560.0,
+        "y": 0.0
+      },
+      "params": {
+        "model": "large",
+        "temperature": 0.7,
+        "max_tokens": 512,
+        "prompt": "You are a helpful support agent."
+      },
+      "label": null
+    },
+    {
+      "id": "llm_rewrite",
+      "type": "llm_answer_generator",
+      "position": {
+        "x": 840.0,
+        "y": 0.0
+      },
+      "params": {
+        "model": "large",
+        "temperature": 0.7,
+        "max_tokens": 512,
+        "prompt": "Rewrite the answer to sound friendlier."
+      },
+      "label": null
+    },
+    {
+      "id": "response",
+      "type": "customer_response",
+      "position": {
+        "x": 1120.0,
+        "y": 0.0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      },
+      "label": null
+    }
+  ],
+  "edges": [
+    {
+      "id": "customer_message.text->router.text",
+      "source": "customer_message",
+      "sourcePort": "text",
+      "target": "router",
+      "targetPort": "text"
+    },
+    {
+      "id": "router.route.billing->llm.text",
+      "source": "router",
+      "sourcePort": "route.billing",
+      "target": "llm",
+      "targetPort": "text"
+    },
+    {
+      "id": "router.route.technical_support->llm.text",
+      "source": "router",
+      "sourcePort": "route.technical_support",
+      "target": "llm",
+      "targetPort": "text"
+    },
+    {
+      "id": "router.route.bug_report->llm.text",
+      "source": "router",
+      "sourcePort": "route.bug_report",
+      "target": "llm",
+      "targetPort": "text"
+    },
+    {
+      "id": "router.route.feature_request->llm.text",
+      "source": "router",
+      "sourcePort": "route.feature_request",
+      "target": "llm",
+      "targetPort": "text"
+    },
+    {
+      "id": "llm.text->llm_rewrite.text",
+      "source": "llm",
+      "sourcePort": "text",
+      "target": "llm_rewrite",
+      "targetPort": "text"
+    },
+    {
+      "id": "llm_rewrite.text->response.text",
+      "source": "llm_rewrite",
+      "sourcePort": "text",
+      "target": "response",
+      "targetPort": "text"
+    }
+  ]
+}
