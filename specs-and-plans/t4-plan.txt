@@ -1,0 +1,112 @@
+T4: SCENARIO PACKS, MOCK PROVIDERS, TOOLS, NODE RUNNERS
+========================================================
+Status: implemented, 690 server tests passing (was 202). Not yet committed.
+Decisions 1-5 accepted (5 = option a). Depends on T2.
+Source: plan1.txt section 7 (T4), with the deviations below.
+
+DECISIONS (accepted)
+--------------------
+1. Seed only on what the provider sees. D6 seeds on all node params, but the
+   router's threshold is applied after the Jev call, so a different threshold
+   would change the seed and redraw the confidence, and per-ticket threshold
+   monotonicity would not hold. The seed is
+     sha256(run_seed, ticket_id, node_type, provider-relevant params,
+            fingerprint of the input values and their taint)
+   Provider-relevant params: router allowed_intents; safety categories; LLM
+   model, temperature, max_tokens, prompt. The input fingerprint stops two
+   identical nodes in a row (weak graph's second LLM pass) from drawing the
+   same numbers. Still independent of node ids, so D6's fairness holds.
+2. Latency sampling moves from T5 into T4: engine/latency.py provides
+   sample_latency(median_ms, jitter_ms, rng) (lognormal around the median),
+   because every NodeResult needs latency_ms.
+3. No new dependencies. app/config.py holds plain constants (LLM token prices
+   per tier, placeholders tuned in T5). pydantic-settings waits for M3.
+4. Ticket gains two optional fields (deviation from plan1.txt 2a):
+     risk: refund_promise | legal_advice | internal_url | credentials | None
+       Which marker phrase the mock LLM writes when an injection or policy
+       violation gets through. Each phrase is caught by exactly one policy
+       rule; the default policy only enables no_refund_promises.
+     pii_kinds: list[email | phone | card_number | ssn]
+       The mock LLM sometimes echoes this PII and then adds the "pii" taint.
+5. (option a) knowledge_lookup is added in T4 as an 8th catalog node
+   (definition, small in-repo KB fixture, pure lookup function), because the
+   strong reference graph (T5 golden tests) uses it.
+6. Noted, no action: official.json lives in git, so "never sent to clients"
+   holds only at the API level. Revisit if the repo is public on workshop day.
+
+BUILD
+-----
+- app/models/scenarios.py: TicketCategory, Ticket (+ risk, pii_kinds),
+  ScoringConfig, ScenarioPack.
+- app/models/payloads.py: json port payloads TicketMeta, Docs/Doc,
+  PolicyReport/PolicyViolation.
+- app/simulation/packs/practice.json (15: 6 routine / 3 complex /
+  2 ambiguous / 2 policy / 2 injection) and official.json (30: 12/6/4/4/4);
+  app/simulation/loader.py: cached load_pack(id) and a public summary with no
+  ticket text or labels.
+- app/config.py: LLM token prices per tier.
+- app/engine/envelope.py: RequestEnvelope (ticket, request id, decisions so
+  far), RunContext (run_seed, envelope, providers, rng()), taint helpers.
+  Taint rides on text values.
+- app/engine/seeding.py (decision 1), app/engine/latency.py (decision 2).
+- app/providers/base.py: JevProvider (questions in, answers with value,
+  probabilities, confidence out; shaped like A1) and LLMProvider
+  (generate -> text, tokens_in, tokens_out, taint). mock_jev.py, mock_llm.py.
+- app/tools/policy.py, pii.py, knowledge.py (+ kb.json): pure, no I/O.
+- app/runners/{io,jev,llm,tool,human}.py: one runner per node type;
+  registry.py swaps StubRunner for them. Runners assume resolved params,
+  return only declared ports, fire exactly one branch; the branch carries
+  the pass-through text with its updated taint.
+
+MOCK BEHAVIOR
+-------------
+- Router: correct with p 0.95 / 0.85 / 0.55 (routine / complex / ambiguous;
+  0.85 for policy and injection tickets). Confidence is calibrated (higher
+  when right). A wrong intent branch adds "misrouted"; an expected intent
+  outside allowed_intents is always wrong. confidence < threshold fires
+  route.low_confidence.
+- Safety: ~0.92 recall on enabled categories, ~0.03 false positives.
+- LLM: per-intent template answers. On an injected input it complies with p
+  0.7 small / 0.45 large, halved by hardening phrases in the prompt;
+  compliance adds the risk's marker phrase and taint. Without context a
+  needs_grounding ticket gets "ungrounded" with p 0.4 (large).
+  tokens_out = min(max_tokens, expected_answer_tokens x verbosity(temp)).
+  Latency = time to first token + tokens x per-token latency.
+- Human review: clears all taint with p 0.98; escalated=True; review latency
+  and cost.
+- customer_message emits the ticket text (injection taint on injection
+  tickets); customer_response passes through.
+
+TESTS
+-----
+- test_packs.py: schema, counts, category coverage, unique ids, labels
+  consistent, summary leaks nothing.
+- test_tools.py: table-driven policy, PII and knowledge lookup cases.
+- test_runners.py: output contracts for every runner x every ticket;
+  determinism (same inputs -> same output; node ids irrelevant); router
+  threshold monotonic per ticket; safety taint behavior; LLM compliance rates
+  roughly right and large < small.
+
+COMMITS
+-------
+1. Scenario models, packs, loader
+2. Seeding, envelope/context, latency, config
+3. Mock providers
+4. Tools
+5. Runners and registry wiring (+ knowledge_lookup)
+Then plan1.txt "As built" notes and CLAUDE.md status.
+Note: tests/test_packs.py uses tools/pii.py, so pii.py goes in commit 1.
+
+AS BUILT (differences from the plan above)
+------------------------------------------
+- ScoringConfig wire keys are Pydantic's camelCase: costBudgetPer1KUsd,
+  latencyPenaltyPer10Ms, costPenaltyPer10Pct.
+- Safety check never strips taint (plan1.txt 3b said route.safe strips it
+  when detected, which cannot happen: a detection fires route.unsafe).
+  Policy-violation tickets count as the "abuse" category.
+- The flagged-score distribution is beta(12,2) so the effective recall at
+  the default threshold (0.5) is the planned 0.92.
+- The mock LLM drops the "injection" taint when it refuses, and replaces the
+  input's taint with its own (keeps misrouted; adds pii/ungrounded/...).
+- pyproject.toml ships the JSON fixtures as package data (packs, kb.json),
+  checked with a wheel build.
