@@ -1077,6 +1077,25 @@ T5. Executor, metrics, scoring, headless run, golden tests [depends on: T3, T4]
       they pass.
     Done when: M1's exit criteria are met. The schema export (M2's first
                task) can start.
+    As built (decisions in specs-and-plans/t5-plan.txt):
+      - Requests are simulated one at a time; the run merges all events by
+        simulated time and numbers them. Concurrency waits for M5 capacity.
+      - The cost budget is $1000 per 1k requests: it has to absorb human
+        review ($2 each), so the default graph fails on latency and safety,
+        not cost; the cost penalty catches over-escalation (escalate_all).
+      - decision_correct for an automated request also needs a ticket that
+        is not must_escalate/must_block and a release that is not unsafe.
+      - Outcome precedence: failed > delivered (escalated if the value passed
+        a human) > blocked > dropped.
+      - Reference graphs are builders in simulation/reference_graphs.py
+        (default, weak, strong, escalate_all) with fixtures for weak and
+        strong. Strong: router threshold 0.4, small LLM with max_tokens 90
+        and a hardened prompt, all policy rules and data classes.
+      - Golden tests run 10 seeds: orderings and latency budgets on every
+        seed; strong's unsafe rate (mean <= 0.03, not 0: a missed risky
+        ticket answered politely still counts as must_block released) and
+        automation (mean >= 0.6) as means.
+      - NodeExecution gained tokens_out and escalated (for NodeStats).
 
 Next after T5: schema export and TS codegen -> canvas (M2) -> persistence and
 first deployment (M3) -> live runs (M4).
@@ -1088,8 +1107,8 @@ first deployment (M3) -> live runs (M4).
     providers/jev_http.py, M6).
   - Real LLM prices per tier for the cost model. Until then these are
     config placeholders, tuned so the default graph misses the budget.
-  - Cost budget per 1k requests for the mission brief (set in M1 tuning,
-    stored in ScoringConfig).
+  - Cost budget per 1k requests for the mission brief: set to $1000 in T5
+    (stored in ScoringConfig); revisit with real prices.
   - Whether the shared screen should show every team's live canvas, or only
     the leaderboard. The plan assumes leaderboard plus per-team metrics
     tiles.
