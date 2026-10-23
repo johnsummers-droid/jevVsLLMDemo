@@ -556,8 +556,9 @@ alias_generator=to_camel, populate_by_name=True); snake_case inside Python.
             threshold number 0..1=0.50
     cost: 30 +/- 10 ms, $0.0002
     mock: recall about 0.92 on injection/violation tickets for the enabled
-          categories, false-positive rate about 0.03. route.safe strips the
-          "injection" taint only if the check actually detected it.
+          categories, false-positive rate about 0.03. As built (T4): taint is
+          never stripped; a missed injection keeps its taint on route.safe,
+          and a caught one leaves on route.unsafe for a human to clear.
 
   [ ]   jev_urgency_scorer          jev
     in : text*:text
@@ -601,7 +602,7 @@ alias_generator=to_camel, populate_by_name=True); snake_case inside Python.
     params: model enum=small, max_tokens int 32..256=128
     mock: shortens the text (lowers downstream tokens_in/cost) and keeps taint
 
-  [ ]   knowledge_lookup            tool
+  [MVP] knowledge_lookup            tool   (promoted in T4; the strong graph needs it)
     in : text*:text
     out: docs:json(Docs)
     params: source enum[faq,kb,tickets]=kb, top_k int 1..10=3
@@ -1045,6 +1046,19 @@ T4. Scenario packs, mock providers, tools, node runners    [depends on: T2]
       policy-engine table tests.
     Done when: each runner can be unit-run on any ticket with deterministic
                output.
+    As built (decisions in specs-and-plans/t4-plan.txt):
+      - Seeds cover only the params the provider sees plus a fingerprint of
+        the inputs and their taint (refines D6), so the router threshold is
+        monotonic per ticket. engine/latency.py moved here from T5.
+      - Ticket has two extra fields: risk (which marker phrase the mock LLM
+        writes; one policy rule per marker) and pii_kinds. ScoringConfig keys
+        use Pydantic's camelCase (costBudgetPer1KUsd, latencyPenaltyPer10Ms).
+      - knowledge_lookup is an 8th catalog node (tools/kb.json fixture).
+      - app/config.py holds placeholder LLM prices; no new dependencies.
+      - NodeRunner now lives in runners/base.py and takes a RunContext
+        (engine/envelope.py). Taint rides on text values only.
+      - Mock safety: policy-violation tickets count as "abuse"; injections are
+        detected through the input's "injection" taint.
 
 T5. Executor, metrics, scoring, headless run, golden tests [depends on: T3, T4]
     - engine/executor.py (dead-path elimination, multi inputs, critical-path

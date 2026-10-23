@@ -8,7 +8,7 @@ from app.catalog.compat import port_compat
 from app.catalog.default_graph import default_graph
 from app.catalog.registry import (
     REGISTRY,
-    StubRunner,
+    RUNNERS,
     catalog,
     default_params,
     expand_outputs,
@@ -30,6 +30,7 @@ MVP_TYPES = {
     "jev_safety_check",
     "llm_answer_generator",
     "policy_engine",
+    "knowledge_lookup",
     "human_review_queue",
     "customer_response",
 }
@@ -37,7 +38,7 @@ MVP_TYPES = {
 # --- catalog self-consistency --------------------------------------------------
 
 
-def test_catalog_has_the_seven_mvp_nodes() -> None:
+def test_catalog_has_the_eight_mvp_nodes() -> None:
     assert {d.type for d in catalog()} == MVP_TYPES
     assert all(d.mvp for d in catalog())
 
@@ -65,16 +66,10 @@ def test_decision_nodes_have_branches() -> None:
         assert any(p.branch for p in get_definition(node_type).outputs), node_type
 
 
-def test_registry_runners_are_stubs() -> None:
-    assert set(REGISTRY) == MVP_TYPES
-    for entry in REGISTRY.values():
-        assert isinstance(entry.runner, StubRunner)
-
-
-@pytest.mark.anyio
-async def test_stub_runner_raises() -> None:
-    with pytest.raises(NotImplementedError, match="jev_intent_router"):
-        await REGISTRY["jev_intent_router"].runner.run({}, {}, None)
+def test_every_node_type_has_a_runner() -> None:
+    assert set(REGISTRY) == set(RUNNERS) == MVP_TYPES
+    for node_type, entry in REGISTRY.items():
+        assert entry.runner is RUNNERS[node_type]
 
 
 def test_unknown_type() -> None:
@@ -176,7 +171,7 @@ def test_get_catalog() -> None:
     assert response.status_code == 200
     body = response.json()
     assert list(body) == ["nodes"]
-    assert len(body["nodes"]) == 7
+    assert len(body["nodes"]) == len(MVP_TYPES)
     definitions = [NodeDefinition.model_validate(d) for d in body["nodes"]]
     assert definitions == catalog()
     router = next(d for d in body["nodes"] if d["type"] == "jev_intent_router")

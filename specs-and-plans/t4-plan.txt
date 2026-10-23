@@ -1,6 +1,6 @@
 T4: SCENARIO PACKS, MOCK PROVIDERS, TOOLS, NODE RUNNERS
 ========================================================
-Status: implemented, 690 server tests passing (was 202). Not yet committed.
+Status: committed as five "T4:" commits and pushed; 690 server tests passing (was 202).
 Decisions 1-5 accepted (5 = option a). Depends on T2.
 Source: plan1.txt section 7 (T4), with the deviations below.
 
