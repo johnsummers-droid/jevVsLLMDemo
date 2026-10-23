@@ -1,0 +1,37 @@
+from pydantic import Field
+
+from app.models.base import CamelModel
+
+
+class NodeStats(CamelModel):
+    node_id: str
+    requests: int = Field(ge=0)  # times the node ran
+    skipped: int = Field(ge=0)
+    errors: int = Field(ge=0)
+    escalations: int = Field(ge=0)
+    avg_latency_ms: float = Field(ge=0)
+    total_cost_usd: float = Field(ge=0)
+    tokens_out: int = Field(ge=0)
+    decisions: dict[str, int] = Field(default_factory=dict)  # fired-branch histogram
+
+
+class RunMetrics(CamelModel):
+    total: int = Field(ge=0)
+    completed: int = Field(ge=0)
+    automation_rate: float
+    escalation_rate: float
+    unsafe_release_rate: float
+    dropped_rate: float
+    p50_latency_ms: float
+    p95_latency_ms: float
+    cost_per_1k_usd: float
+    decision_quality: float
+    score: float = 0.0
+
+
+class LeaderboardRow(CamelModel):
+    team_id: str
+    team_name: str
+    run_id: str
+    metrics: RunMetrics
+    rank: int = Field(ge=1)

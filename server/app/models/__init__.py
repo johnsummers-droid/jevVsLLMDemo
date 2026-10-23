@@ -1,5 +1,6 @@
 from app.models.catalog import CostModel, NodeCategory, NodeDefinition
 from app.models.graph import Graph, GraphEdge, GraphNode, Position, StoredGraph
+from app.models.metrics import LeaderboardRow, NodeStats, RunMetrics
 from app.models.params import (
     BoolParam,
     EnumParam,
@@ -13,6 +14,15 @@ from app.models.params import (
 from app.models.payloads import Doc, Docs, PolicyReport, PolicyViolation, TicketMeta
 from app.models.ports import PORT_TYPES, Port, PortType
 from app.models.results import NodeError, NodeResult
+from app.models.runs import (
+    NodeExecution,
+    Outcome,
+    RequestTrace,
+    RunConfig,
+    RunMode,
+    RunStatus,
+    RunSummary,
+)
 from app.models.scenarios import (
     PackSummary,
     PiiKind,
@@ -38,12 +48,16 @@ __all__ = [
     "GraphNode",
     "IntParam",
     "IssueCode",
+    "LeaderboardRow",
     "MultiEnumParam",
     "NodeCategory",
     "NodeDefinition",
     "NodeError",
+    "NodeExecution",
     "NodeResult",
+    "NodeStats",
     "NumberParam",
+    "Outcome",
     "PackSummary",
     "ParamSpec",
     "PiiKind",
@@ -53,7 +67,13 @@ __all__ = [
     "PortType",
     "PortValue",
     "Position",
+    "RequestTrace",
     "Risk",
+    "RunConfig",
+    "RunMetrics",
+    "RunMode",
+    "RunStatus",
+    "RunSummary",
     "ScenarioPack",
     "ScoringConfig",
     "Severity",

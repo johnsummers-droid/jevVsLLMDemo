@@ -1,0 +1,117 @@
+T5: EXECUTOR, METRICS, SCORING, HEADLESS RUN, GOLDEN TESTS
+===========================================================
+Status: committed as four "T5:" commits and pushed; 808 server tests passing (was 690).
+Depends on T3 (planner, validator) and T4 (runners, packs).
+Source: plan1.txt sections 2a (runs/metrics/events), 3e, 3f, 5, 7 (T5).
+
+DECISIONS (taken while planning; review)
+----------------------------------------
+1. Requests execute one at a time; the stream is merged by simulated time.
+   Each request is simulated on its own (pure: simulated clock, mock
+   providers), producing its trace plus a list of untimed-seq events. The run
+   then merges every request's events sorted by (sim_ms, request index,
+   emission index), inserts metrics snapshots, and assigns seq. The stream is
+   in simulated-time order (what the M4 pacer needs) and causal order holds
+   within a request. Concurrency and capacity only matter once human-review
+   capacity arrives (M5); max_concurrency is accepted but unused.
+2. The cost budget must include human review. A review costs $2.00 while an
+   LLM answer costs well under a cent, so no budget can make the LLM-only
+   default graph miss on cost without crushing every graph that escalates.
+   The default graph fails on latency and safety instead; the cost penalty
+   is aimed at over-escalation (a test checks that an "escalate everything"
+   graph scores below the strong graph). Budget tuned during this task.
+   This replaces plan1.txt section 8's "tuned so the default graph misses
+   the budget".
+3. decision_correct for an automated request also requires that the ticket
+   is neither must_escalate nor must_block (plan1.txt 3e is silent on
+   automated must_block tickets; counting them correct would reward unsafe
+   releases).
+4. Outcome precedence: failed (any node error) > delivered (escalated if the
+   delivered value passed through human review, else automated) > blocked
+   (a policy route.block or safety route.unsafe branch fired with no
+   consumer) > dropped. "Passed through human review" is tracked as
+   provenance on values, not "a human node ran somewhere in the request".
+5. Traffic: a run uses the whole pack. traffic_spike cycles through the
+   tickets to round(n x spike) requests; injection_wave appends one more
+   copy of every injection ticket. Arrivals are spread evenly over the
+   window with seeded jitter. customer_message's traffic_mix/attack_rate are
+   ignored until M5 (as in T4).
+6. Reference graphs are Python builders (like default_graph.py) in
+   app/simulation/reference_graphs.py, with generated fixtures
+   shared/fixtures/graphs/{weak,strong}.json and a drift test.
+7. Golden tests run on the official pack over a fixed list of run seeds and
+   check every seed, so a lucky seed cannot hide a regression. If a
+   plan1.txt threshold (e.g. strong automation >= 0.6) cannot hold with the
+   T4 mock rates, the threshold or the mock constants change and both are
+   recorded here.
+
+BUILD
+-----
+- app/models/runs.py: RunMode, RunStatus, RunConfig, Outcome,
+  NodeExecution, RequestTrace, RunSummary.
+- app/models/metrics.py: NodeStats, RunMetrics, LeaderboardRow.
+- app/models/events.py: every event in plan1.txt 2a, a union discriminated
+  on type; client messages (subscribe, ping).
+- app/engine/executor.py: ExecutionPlan (validated graph, topo order,
+  resolved params, expanded ports, incoming edges per port) and
+  execute_request(plan, ticket, arrival_ms, ctx) -> (RequestTrace, events).
+  Semantics from plan1.txt 3e: dead-path elimination, required inputs,
+  multi input = earliest live arrival, start = max(arrival of used inputs),
+  critical-path latency, outcome, released_unsafe, decision_correct.
+- app/engine/events.py: EventSink protocol and InMemorySink.
+- app/metrics/aggregator.py: nearest-rank percentiles, rates, node stats,
+  RunMetrics (score filled by scoring).
+- app/simulation/scoring.py: plan1.txt 3f score formula.
+- app/simulation/traffic.py: arrival schedule (decision 5).
+- app/simulation/runner.py: run_simulation(graph, pack, config, sink=...)
+  -> RunResult(traces, metrics, node_stats, events). Refuses graphs with
+  validation errors.
+- app/simulation/reference_graphs.py + fixtures (decision 6).
+- scripts/run_headless.py: run a graph JSON (or default/weak/strong) on a
+  pack and print metrics and node stats; --seed, --json.
+
+TESTS
+-----
+- test_executor.py: dead-path elimination (no events for skipped nodes),
+  multi input first live arrival, required input missing -> skipped,
+  critical path on a diamond, human latency excluded from percentiles,
+  every Outcome, released_unsafe truth table, determinism (same seed ->
+  same traces; renamed node ids -> same results; changed params -> changed
+  results).
+- test_events.py: event-order invariants on the recorded stream.
+- test_metrics.py: percentiles (n=0, n=1, known lists), zero totals, cost
+  per 1k with human cost, score by hand.
+- test_golden.py: default p95 > 800 and unsafe > 0; weak < default;
+  strong p95 <= 800, unsafe == 0, automation >= threshold, highest score;
+  escalate-everything < strong.
+- test_simulation.py: traffic schedule, refusing invalid graphs, headless
+  script smoke test.
+
+COMMITS (as built: four, so every commit's tests pass on their own)
+-------
+1. Run, metrics and event models
+2. Executor, event sink, aggregator and scoring (+ test_metrics)
+3. Traffic, simulation runner, reference graphs, headless script
+   (+ test_executor, test_events, test_simulation)
+4. Golden tests and tuning; plan1.txt / CLAUDE.md updates
+
+AS BUILT / TUNING RESULTS
+-------------------------
+- Cost budget $1000 per 1k (was a $5 placeholder, which scored the strong
+  graph at about -7900 because of its $804/1k of human review).
+- Strong graph: router threshold 0.4 (automation 0.60 -> 0.64, quality
+  barely moves), LLM max_tokens 90 (p95 max over 40 seeds 770 ms; at 100 it
+  reached 817). Hardened prompt; all policy rules and data classes.
+- Golden checks (decision 7): strong unsafe == 0 per seed is impossible with
+  the T4 mocks (mean about 1%): an 8% safety miss on a risky ticket whose LLM
+  answer is harmless still counts as must_block released automatically. The
+  test checks the mean (<= 0.03) instead; orderings and budgets per seed.
+- Official pack, mean of 20 seeds, after tuning: default score about -289
+  (p95 ~4000 ms, unsafe 0.14), weak about -691, escalate_all about -31
+  (cost $2000/1k), strong about +102 (p95 ~705 ms, unsafe 0.008,
+  automation 0.65, quality 0.81, cost $700/1k).
+- MULTI_INPUT_RACE warnings on the strong graph's human and response inputs
+  are false positives: the planner cannot prove exclusivity for inputs
+  reached through several intent branches. Left as is.
+- NodeExecution gained tokens_out and escalated; default_graph.py exposes
+  build_graph() for the reference graphs.
