@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "nodes": [
+    {
+      "id": "msg",
+      "type": "customer_message",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "params": {
+        "traffic_mix": "realistic",
+        "language": "en",
+        "attack_rate": 0.1
+      }
+    },
+    {
+      "id": "resp1",
+      "type": "customer_response",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp2",
+      "type": "customer_response",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp3",
+      "type": "customer_response",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp4",
+      "type": "customer_response",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp5",
+      "type": "customer_response",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "msg.text->resp1.text",
+      "source": "msg",
+      "sourcePort": "text",
+      "target": "resp1",
+      "targetPort": "text"
+    },
+    {
+      "id": "msg.text->resp2.text",
+      "source": "msg",
+      "sourcePort": "text",
+      "target": "resp2",
+      "targetPort": "text"
+    },
+    {
+      "id": "msg.text->resp3.text",
+      "source": "msg",
+      "sourcePort": "text",
+      "target": "resp3",
+      "targetPort": "text"
+    },
+    {
+      "id": "msg.text->resp4.text",
+      "source": "msg",
+      "sourcePort": "text",
+      "target": "resp4",
+      "targetPort": "text"
+    },
+    {
+      "id": "msg.text->resp5.text",
+      "source": "msg",
+      "sourcePort": "text",
+      "target": "resp5",
+      "targetPort": "text"
+    }
+  ]
+}

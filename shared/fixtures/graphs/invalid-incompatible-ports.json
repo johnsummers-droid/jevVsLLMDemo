@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "nodes": [
+    {
+      "id": "msg",
+      "type": "customer_message",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "params": {
+        "traffic_mix": "realistic",
+        "language": "en",
+        "attack_rate": 0.1
+      }
+    },
+    {
+      "id": "router",
+      "type": "jev_intent_router",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "params": {
+        "allowed_intents": [
+          "billing",
+          "technical_support",
+          "bug_report",
+          "feature_request"
+        ],
+        "threshold": 0.5
+      }
+    },
+    {
+      "id": "resp",
+      "type": "customer_response",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "msg.text->resp.text",
+      "source": "msg",
+      "sourcePort": "text",
+      "target": "resp",
+      "targetPort": "text"
+    },
+    {
+      "id": "msg.text->router.text",
+      "source": "msg",
+      "sourcePort": "text",
+      "target": "router",
+      "targetPort": "text"
+    },
+    {
+      "id": "router.confidence->resp.text",
+      "source": "router",
+      "sourcePort": "confidence",
+      "target": "resp",
+      "targetPort": "text"
+    }
+  ]
+}

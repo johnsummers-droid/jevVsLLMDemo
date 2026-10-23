@@ -1,0 +1,139 @@
+T3: GRAPH VALIDATOR AND POST /api/graphs/validate
+=================================================
+Status: implemented, 202 server tests passing (was 146). Not yet committed.
+
+WHAT'S NEW
+----------
+server/app/engine/planner.py
+  Pure graph functions that know nothing about the catalog; T5's executor
+  will reuse them.
+    - topological_order(): Kahn's algorithm; ties are broken by node order,
+      so the result is deterministic. Raises CycleError (with the cycles).
+    - find_cycles(): iterative Tarjan SCC (no recursion limit). Returns the
+      components that contain a cycle, self-loops included.
+    - reachable(): forward/backward reachability.
+    - branch_conditions(): for each edge, the set of (node, branch_port)
+      that must have fired for the edge to be live. A node's set is the
+      intersection over its incoming edges, so it under-approximates: edges
+      are only called exclusive when that is certain.
+    - mutually_exclusive(a, b): the two need different branches of the same
+      node.
+
+server/app/engine/validator.py
+  validate_graph(graph, definitions=None) -> ValidationReport
+    Covers every IssueCode in plan1.txt 3d. `definitions` defaults to the
+    registry; tests inject extra node types.
+  validate_payload(raw) -> ValidationReport
+    For untrusted JSON. Checks the node/edge counts on the raw JSON before
+    parsing, so an oversized graph is reported as GRAPH_TOO_LARGE instead of
+    being rejected by the Graph model's max_length. Raises
+    pydantic.ValidationError if the body is not graph-shaped at all.
+  Order of checks: nodes (duplicate ids, unknown types, params) -> edges
+  (duplicate ids/links, ports, compatibility) -> fan-in/fan-out/required
+  inputs/gate signals -> sources/sinks -> cycles -> warnings. Checks keep
+  going after an error so the canvas can badge everything at once. Later
+  checks only see nodes and edges that resolved, so one mistake does not
+  set off more errors further down:
+    - edges to a node of unknown type are not checked again;
+    - an invalid multi_enum branch param (e.g. allowed_intents=[]) expands
+      to every option, so edges on it are not also reported as UNKNOWN_PORT;
+    - incompatible edges count as "connected" for fan-in, required-input and
+      gate-signal checks, but are left out of flow analysis (cycles,
+      reachability, safety coverage, races).
+  Every issue carries nodeId/edgeId/portId where one applies, for canvas
+  badges. Messages are written for workshop participants.
+
+server/app/api/graphs.py
+  POST /api/graphs/validate: stateless; returns a ValidationReport (200),
+  including when the graph has errors. The body is read as raw JSON so that
+  GRAPH_TOO_LARGE comes back as a report; a malformed body is a 422.
+
+server/app/models/catalog.py
+  NodeDefinition.requires_one_of: list[str] = [] (wire: requiresOneOf).
+  The validator raises GATE_NEEDS_SIGNAL when none of these inputs is
+  connected. Self-check: each entry must name an optional input. All MVP
+  definitions leave it empty; it is there for jev_escalation_gate.
+
+shared/fixtures/graphs/invalid-<code>.json (14 files)
+  One minimal graph per error code that the MVP catalog can produce:
+    unknown-node-type, unknown-port, duplicate-id, duplicate-edge,
+    incompatible-ports, input-fan-in-exceeded, fan-out-exceeded,
+    missing-required-input, cycle, no-source, multiple-sources, no-sink,
+    invalid-param, graph-too-large
+  Each produces exactly its own error code. no-source also gives
+  MISSING_REQUIRED_INPUT, because any non-empty graph without a source has
+  an unfed required input. The files are hand-maintained data; there is no
+  generator in the repo.
+
+Tests
+  test_planner.py (8): topological order and its determinism, cycle
+    detection (self-loop, two components, a 2000-node chain), reachability,
+    branch conditions (router, merge, nested branches).
+  test_validator.py (46): one parametrized case per fixture with its exact
+    error set; issue locations; edges to missing nodes; no cascading errors;
+    the router's ports following allowed_intents; too many edges;
+    ENUM_VALUES_MISMATCH, GATE_NEEDS_SIGNAL and ANY_SOURCE via test-only
+    definitions; each warning, including an 8-case table for
+    NO_SAFETY_COVERAGE; the default graph's exact warnings; the endpoint
+    (ok, errors, too large, malformed bodies).
+  test_models.py: +2 cases for requires_one_of.
+
+Docs
+  plan1.txt: requires_one_of added to the NodeDefinition sketch (2a); an
+  "As built" note under T3.
+  CLAUDE.md: status, engine/ description, test list, next step (T4).
+  claude1.md: a copy of CLAUDE.md as it was before this change.
+
+DECISIONS TO REVIEW
+-------------------
+1. Default graph result: ok=true with exactly three warnings:
+   UNCONNECTED_BRANCH router.route.low_confidence, UNCONNECTED_BRANCH
+   policy.route.block, NO_HUMAN_FALLBACK. The plan asked for "3-5 intended
+   weaknesses". There is no NO_SAFETY_COVERAGE warning: under the 3d rule
+   ("no safety check before the LLM AND no policy engine after it"), the
+   policy engine after the LLM covers it. The large tier and the missing
+   knowledge lookup are metric problems, not validation problems.
+2. NO_SAFETY_COVERAGE: a safety check counts only when the path leaves it
+   through route.safe, and a policy engine only through route.pass. It is
+   reported once per offending LLM node. It is a state search over
+   (node, screened, unprotected LLM), so it stays cheap without listing
+   every path.
+3. GATE_NEEDS_SIGNAL is data-driven (requires_one_of on NodeDefinition)
+   rather than hard-coded to "jev_escalation_gate". This adds requiresOneOf
+   to the catalog wire format.
+4. An edge to a missing node id is reported as UNKNOWN_PORT (with edgeId);
+   3d has no separate code for it.
+5. DUPLICATE_ID covers node ids and edge ids separately. A node and an edge
+   may share an id, as in React Flow. The second occurrence is reported and
+   ignored.
+6. MULTIPLE_SOURCES is one issue per source node, so every source gets a
+   badge. Several customer_response sinks are allowedhttps://crispy-space-yodel-965j99gx4xwgh7j4q.github.dev/.
+7. Multi inputs have no fan-in limit; only non-multi inputs raise
+   INPUT_FAN_IN_EXCEEDED.
+8. DEAD_END is per node: no path from the node reaches a sink. Unconnected
+   data outputs (intent, confidence, ...) are not warned about; unconnected
+   branch outputs are UNCONNECTED_BRANCH.
+9. Graphs without a source skip UNREACHABLE_NODE, NO_SAFETY_COVERAGE and
+   NO_HUMAN_FALLBACK (NO_SOURCE already covers them). Cyclic graphs skip
+   MULTI_INPUT_RACE.
+10. MULTI_INPUT_RACE is one warning per multi input (naming one racing
+    pair), not one per pair.
+
+VERIFY
+------
+From server/:
+  .venv/bin/pytest tests/test_planner.py tests/test_validator.py -v
+  .venv/bin/uvicorn app.main:app --reload --port 8000
+  curl -s -X POST localhost:8000/api/graphs/validate \
+    -H 'content-type: application/json' \
+    -d @../shared/fixtures/graphs/default.json | python3 -m json.tool
+
+COMMIT NOTE
+-----------
+Commit everything in git status except server/scratch.py (git-ignored).
+Decide whether claude1.md should be committed or kept local.
+
+NEXT
+----
+T4 (scenario packs, mock providers, tools, runners). T5 then needs both T3
+(planner) and T4.

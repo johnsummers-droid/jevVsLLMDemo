@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "nodes": [
+    {
+      "id": "msg",
+      "type": "customer_message",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "params": {
+        "traffic_mix": "realistic",
+        "language": "en",
+        "attack_rate": 0.1
+      }
+    },
+    {
+      "id": "llm",
+      "type": "llm_answer_generator",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "params": {
+        "model": "large",
+        "temperature": 0.7,
+        "max_tokens": 512,
+        "prompt": "You are a helpful support agent."
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "msg.text->llm.text",
+      "source": "msg",
+      "sourcePort": "text",
+      "target": "llm",
+      "targetPort": "text"
+    }
+  ]
+}

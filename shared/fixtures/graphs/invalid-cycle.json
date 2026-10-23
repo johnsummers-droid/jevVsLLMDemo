@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "nodes": [
+    {
+      "id": "msg",
+      "type": "customer_message",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "params": {
+        "traffic_mix": "realistic",
+        "language": "en",
+        "attack_rate": 0.1
+      }
+    },
+    {
+      "id": "llm",
+      "type": "llm_answer_generator",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "params": {
+        "model": "large",
+        "temperature": 0.7,
+        "max_tokens": 512,
+        "prompt": "You are a helpful support agent."
+      }
+    },
+    {
+      "id": "policy",
+      "type": "policy_engine",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "params": {
+        "rules": [
+          "no_refund_promises"
+        ],
+        "blocked_phrases": [],
+        "data_classes": []
+      }
+    },
+    {
+      "id": "resp",
+      "type": "customer_response",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "msg.text->llm.text",
+      "source": "msg",
+      "sourcePort": "text",
+      "target": "llm",
+      "targetPort": "text"
+    },
+    {
+      "id": "llm.text->policy.text",
+      "source": "llm",
+      "sourcePort": "text",
+      "target": "policy",
+      "targetPort": "text"
+    },
+    {
+      "id": "policy.route.pass->llm.text",
+      "source": "policy",
+      "sourcePort": "route.pass",
+      "target": "llm",
+      "targetPort": "text"
+    },
+    {
+      "id": "policy.route.block->resp.text",
+      "source": "policy",
+      "sourcePort": "route.block",
+      "target": "resp",
+      "targetPort": "text"
+    }
+  ]
+}

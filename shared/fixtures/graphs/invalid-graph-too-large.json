@@ -1,0 +1,498 @@
+{
+  "schemaVersion": 1,
+  "nodes": [
+    {
+      "id": "resp0",
+      "type": "customer_response",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp1",
+      "type": "customer_response",
+      "position": {
+        "x": 100,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp2",
+      "type": "customer_response",
+      "position": {
+        "x": 200,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp3",
+      "type": "customer_response",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp4",
+      "type": "customer_response",
+      "position": {
+        "x": 400,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp5",
+      "type": "customer_response",
+      "position": {
+        "x": 500,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp6",
+      "type": "customer_response",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp7",
+      "type": "customer_response",
+      "position": {
+        "x": 700,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp8",
+      "type": "customer_response",
+      "position": {
+        "x": 800,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp9",
+      "type": "customer_response",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp10",
+      "type": "customer_response",
+      "position": {
+        "x": 1000,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp11",
+      "type": "customer_response",
+      "position": {
+        "x": 1100,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp12",
+      "type": "customer_response",
+      "position": {
+        "x": 1200,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp13",
+      "type": "customer_response",
+      "position": {
+        "x": 1300,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp14",
+      "type": "customer_response",
+      "position": {
+        "x": 1400,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp15",
+      "type": "customer_response",
+      "position": {
+        "x": 1500,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp16",
+      "type": "customer_response",
+      "position": {
+        "x": 1600,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp17",
+      "type": "customer_response",
+      "position": {
+        "x": 1700,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp18",
+      "type": "customer_response",
+      "position": {
+        "x": 1800,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp19",
+      "type": "customer_response",
+      "position": {
+        "x": 1900,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp20",
+      "type": "customer_response",
+      "position": {
+        "x": 2000,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp21",
+      "type": "customer_response",
+      "position": {
+        "x": 2100,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp22",
+      "type": "customer_response",
+      "position": {
+        "x": 2200,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp23",
+      "type": "customer_response",
+      "position": {
+        "x": 2300,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp24",
+      "type": "customer_response",
+      "position": {
+        "x": 2400,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp25",
+      "type": "customer_response",
+      "position": {
+        "x": 2500,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp26",
+      "type": "customer_response",
+      "position": {
+        "x": 2600,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp27",
+      "type": "customer_response",
+      "position": {
+        "x": 2700,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp28",
+      "type": "customer_response",
+      "position": {
+        "x": 2800,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp29",
+      "type": "customer_response",
+      "position": {
+        "x": 2900,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp30",
+      "type": "customer_response",
+      "position": {
+        "x": 3000,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp31",
+      "type": "customer_response",
+      "position": {
+        "x": 3100,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp32",
+      "type": "customer_response",
+      "position": {
+        "x": 3200,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp33",
+      "type": "customer_response",
+      "position": {
+        "x": 3300,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp34",
+      "type": "customer_response",
+      "position": {
+        "x": 3400,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp35",
+      "type": "customer_response",
+      "position": {
+        "x": 3500,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp36",
+      "type": "customer_response",
+      "position": {
+        "x": 3600,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp37",
+      "type": "customer_response",
+      "position": {
+        "x": 3700,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp38",
+      "type": "customer_response",
+      "position": {
+        "x": 3800,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp39",
+      "type": "customer_response",
+      "position": {
+        "x": 3900,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "resp40",
+      "type": "customer_response",
+      "position": {
+        "x": 4000,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    }
+  ],
+  "edges": []
+}

@@ -72,6 +72,8 @@ def test_unknown_port_type_rejected() -> None:
         {"type": "text", "json_schema_ref": "Docs"},
         {"type": "boolean", "branch": True},
         {"type": "text", "id": ""},
+        {"type": "text", "branch": True, "dynamic_from_param": "intents"},  # id lacks ".*"
+        {"type": "text", "id": "route.*"},  # template id without dynamic_from_param
     ],
 )
 def test_invalid_port_fields(kwargs: dict[str, Any]) -> None:
@@ -83,6 +85,7 @@ def test_valid_typed_ports() -> None:
     Port(id="intent", label="Intent", type="enum", enum_values=["billing", "bug_report"])
     Port(id="score", label="Score", type="score", score_range=(1, 5))
     Port(id="probs", label="Probabilities", type="json", json_schema_ref="Distribution")
+    Port(id="route.*", label="Route", type="text", branch=True, dynamic_from_param="intents")
 
 
 # --- params ------------------------------------------------------------------
@@ -177,7 +180,7 @@ def _router(**overrides: Any) -> NodeDefinition:
         "outputs": [
             Port(id="intent", label="Intent", type="enum"),
             Port(id="confidence", label="Confidence", type="probability"),
-            Port(id="route.<intent>", label="Route", type="text", branch=True,
+            Port(id="route.*", label="Route", type="text", branch=True,
                  dynamic_from_param="allowed_intents"),
             Port(id="route.low_confidence", label="Low confidence", type="text", branch=True),
         ],
@@ -209,14 +212,16 @@ def test_valid_node_definition_round_trip() -> None:
         ({"inputs": [Port(id="t", label="t", type="text", branch=True)]}, "outputs only"),
         ({"outputs": [Port(id="o", label="o", type="text", multi=True)]}, "inputs only"),
         (
-            {"outputs": [Port(id="o", label="o", type="text", branch=True,
+            {"outputs": [Port(id="o.*", label="o", type="text", branch=True,
                               dynamic_from_param="threshold")]},
             "multi_enum",
         ),
         (
-            {"outputs": [Port(id="o", label="o", type="text", dynamic_from_param="allowed_intents")]},
+            {"outputs": [Port(id="o.*", label="o", type="text", dynamic_from_param="allowed_intents")]},
             "must be branch",
         ),
+        ({"requires_one_of": ["missing"]}, "must be an optional input"),
+        ({"requires_one_of": ["text"]}, "must be an optional input"),
         ({"is_source": True}, "source nodes have no inputs"),
         ({"is_sink": True}, "sink nodes have no outputs"),
         ({"category": "human_review"}, "category"),
