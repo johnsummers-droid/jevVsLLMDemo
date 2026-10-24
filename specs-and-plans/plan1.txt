@@ -116,6 +116,7 @@ jevVsLLMDemo/
       events.schema.json             WebSocket event union
       run.schema.json                RunConfig, RunMetrics, NodeStats,
                                      LeaderboardRow
+      validation.schema.json         ValidationReport, IssueCode (added in T6)
     fixtures/
       port-compat-cases.json         [{source, target, expected}] used by the
                                      Python AND TS tests
@@ -982,8 +983,8 @@ Workshop-day checklist
   - Run the default graph once as a smoke test, then reset all teams.
 
 
-7. FIRST FIVE IMPLEMENTATION TASKS (in dependency order)
---------------------------------------------------------
+7. IMPLEMENTATION TASKS (in dependency order)
+---------------------------------------------
 Each task is one small, reviewable commit (or a short PR) with tests.
 
 T1. Domain models and port compatibility                    [depends on: -]
@@ -1097,8 +1098,89 @@ T5. Executor, metrics, scoring, headless run, golden tests [depends on: T3, T4]
         automation (mean >= 0.6) as means.
       - NodeExecution gained tokens_out and escalated (for NodeStats).
 
-Next after T5: schema export and TS codegen -> canvas (M2) -> persistence and
-first deployment (M3) -> live runs (M4).
+M2 tasks (T6-T10). M2 decisions, accepted 2026-10-24:
+  - No persistence in M2: the graph lives in graphStore (memory only) and
+    starts from GET /api/graphs/default. Saving arrives with M3.
+  - Plain CSS; no UI or CSS framework dependency.
+  - The M2 exit criterion gets an automated test (T10) as well as a manual
+    pass in the browser.
+  - CI (GitHub Actions) is deferred to M3; until then the drift check runs
+    locally.
+
+T6. Schema export and TS codegen                          [depends on: T5]
+    - server/scripts/export_schema.py writes shared/schema/{graph,catalog,
+      events,run,validation}.schema.json from the Pydantic models (camelCase
+      aliases). Each file is self-contained ($defs). A field whose value is a
+      single constant (the `type`/`kind` discriminators) is always marked
+      required, so TS unions narrow on it.
+    - web/scripts/gen-types.mjs (npm run gen:types) merges the $defs of every
+      schema file (identical names must have identical schemas) and writes
+      web/src/types/generated.ts (DO NOT EDIT header). web/src/types/
+      index.ts re-exports it and holds the UI-only types.
+    - New web dev dependency: json-schema-to-typescript (generates the TS
+      types from the shared schema; plan section 1).
+    - Tests: server test that the committed shared/schema matches a fresh
+      export; the web build type-checks generated.ts; a drift command
+      (export + gen:types + git diff --exit-code) documented in CLAUDE.md.
+    Done when: generated.ts matches the shapes in section 2b (discriminated
+               ParamSpec and ServerEvent unions) and npm run build passes.
+    As built:
+      - Aliases promoted to named $defs: PortType, NodeCategory, Severity,
+        RunMode, RunStatus, Outcome, ParamSpec, ServerEvent, ClientMessage.
+        Property titles are dropped (the generator would name each one).
+      - json-schema-to-typescript 16.0.0 with ignoreMinAndMaxItems, so
+        min-length lists stay string[]; prefixItems is rewritten to draft-07
+        tuple items inside gen-types.mjs only (scoreRange -> [number, number]).
+      - catalog.schema.json also exports CatalogResponse (GET /api/catalog).
+      - export_schema.py --check exits 1 on stale files; tests/test_schema.py
+        runs the same comparison plus ref, alias and discriminator checks.
+
+T7. Web foundations                                       [depends on: T6]
+    - Dependencies: @xyflow/react and zustand (runtime; stack requirement);
+      vitest, @testing-library/react, jsdom (dev; tests that reuse Vite's
+      configuration).
+    - api/client.ts (fetch wrapper, typed responses), store/catalogStore.ts
+      (loads GET /api/catalog once).
+    - lib/compat.ts, the TS mirror of catalog/compat.py's type_compat.
+    - lib/graphMapping.ts: Graph <-> React Flow nodes/edges, and
+      expandOutputs (mirror of registry.expand_outputs for "route.*").
+    - Tests: compat.ts against shared/fixtures/port-compat-cases.json;
+      lossless round-trip of the default, weak and strong fixtures;
+      expandOutputs matches the server's expansion for the fixtures.
+    Done when: npx vitest run, npm run lint and npm run build pass.
+
+T8. Canvas, palette and node components                   [depends on: T7]
+    - store/graphStore.ts (memory only; add/move/delete node, connect,
+      delete edge, load default graph).
+    - canvas/Canvas.tsx, palette/{Palette,NodeCard}.tsx (drag or click to
+      add), nodes/BaseNode.tsx plus the five category components,
+      handles/TypedHandle.tsx (color and shape by PortType).
+    - canvas/isValidConnection.ts: type compat, fan-in (single inputs take
+      one edge), fan-out (maxFanOut), no self-loop, no cycle.
+    - Tests: one case per refusal rule in isValidConnection; the palette
+      renders the catalog.
+    Done when: the default graph renders and edges can be drawn and refused
+               in the browser.
+
+T9. Inspector                                             [depends on: T8]
+    - inspector/{Inspector,ParamField,SchemaPreview}.tsx: one field per
+      ParamSpec kind (number, int, enum, multi_enum, string_list, text,
+      bool), port list with types, cost/latency assumptions from CostModel.
+    - Changing a param that drives a dynamic port re-expands the branch
+      handles; edges to removed branches are dropped with a notice.
+    - Tests: every ParamSpec kind renders and refuses invalid values; the
+      edge-pruning case.
+    Done when: every MVP node's params can be edited in the browser.
+
+T10. Server validation overlay and M2 exit                [depends on: T9]
+    - Debounced (500 ms) POST /api/graphs/validate after each graph change;
+      issue badges on nodes and edges; inspector/IssueList.tsx.
+    - Tests: issues map onto the right node/edge badges; a store-level test
+      builds the default graph from an empty canvas and matches
+      default.json (ignoring ids and positions).
+    Done when: M2's exit criteria are met (manual browser pass included).
+
+Next after T10: persistence and first deployment (M3) -> live runs (M4).
 
 
 8. OPEN ITEMS (none of these block T1-T5)

@@ -1,6 +1,7 @@
 T2: MVP NODE CATALOG, REGISTRY, AND GET /api/catalog
 =====================================================
-Status: implemented, 146 server tests passing (was 118). Not yet committed.
+Status: implemented and committed (fceba65). Design decisions 1-5 below
+reviewed and accepted 2026-10-24.
 
 WHAT'S NEW
 ----------
@@ -51,8 +52,8 @@ server/tests/test_catalog.py (28 new tests)
     and its deliberate weaknesses are still there.
   - The shape of both endpoints.
 
-DECISIONS TO REVIEW
--------------------
+DECISIONS (REVIEWED AND ACCEPTED 2026-10-24)
+--------------------------------------------
 1. "route.*" template ids. A rule was added to the T1 Port model: a
    dynamic port's id must end in ".*", and only dynamic ports may use that
    form. Two T1 tests changed from "route.<intent>" to "route.*".
