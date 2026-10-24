@@ -1,0 +1,792 @@
+{
+  "nodes": [
+    {
+      "type": "customer_message",
+      "title": "Customer message",
+      "category": "io",
+      "description": "Entry point: emits one support ticket per request.",
+      "inputs": [],
+      "outputs": [
+        {
+          "id": "text",
+          "label": "Text",
+          "type": "text",
+          "required": true,
+          "multi": false,
+          "branch": false,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": null,
+          "dynamicFromParam": null
+        },
+        {
+          "id": "meta",
+          "label": "Meta",
+          "type": "json",
+          "required": true,
+          "multi": false,
+          "branch": false,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": "TicketMeta",
+          "dynamicFromParam": null
+        }
+      ],
+      "params": [
+        {
+          "key": "traffic_mix",
+          "label": "Traffic mix",
+          "help": "",
+          "kind": "enum",
+          "default": "realistic",
+          "options": [
+            "realistic",
+            "routine_heavy",
+            "adversarial"
+          ]
+        },
+        {
+          "key": "language",
+          "label": "Language",
+          "help": "",
+          "kind": "enum",
+          "default": "en",
+          "options": [
+            "en"
+          ]
+        },
+        {
+          "key": "attack_rate",
+          "label": "Attack rate",
+          "help": "",
+          "kind": "number",
+          "default": 0.1,
+          "min": 0.0,
+          "max": 0.5,
+          "step": 0.05
+        }
+      ],
+      "costModel": {
+        "latencyMs": 0.0,
+        "latencyJitterMs": 0.0,
+        "costPerCallUsd": 0.0,
+        "perTokenLatencyMs": null,
+        "priceInPer1KUsd": null,
+        "priceOutPer1KUsd": null,
+        "excludedFromLatency": false
+      },
+      "maxFanOut": 4,
+      "requiresOneOf": [],
+      "isSource": true,
+      "isSink": false,
+      "mvp": true
+    },
+    {
+      "type": "jev_intent_router",
+      "title": "Jev intent router",
+      "category": "jev",
+      "description": "Classifies the message into one allowed intent and routes it. Low-confidence decisions go to their own branch.",
+      "inputs": [
+        {
+          "id": "text",
+          "label": "Text",
+          "type": "text",
+          "required": true,
+          "multi": true,
+          "branch": false,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": null,
+          "dynamicFromParam": null
+        }
+      ],
+      "outputs": [
+        {
+          "id": "intent",
+          "label": "Intent",
+          "type": "enum",
+          "required": true,
+          "multi": false,
+          "branch": false,
+          "enumValues": [
+            "billing",
+            "technical_support",
+            "bug_report",
+            "feature_request",
+            "account",
+            "other"
+          ],
+          "scoreRange": null,
+          "jsonSchemaRef": null,
+          "dynamicFromParam": null
+        },
+        {
+          "id": "probabilities",
+          "label": "Probabilities",
+          "type": "json",
+          "required": true,
+          "multi": false,
+          "branch": false,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": "Distribution",
+          "dynamicFromParam": null
+        },
+        {
+          "id": "confidence",
+          "label": "Confidence",
+          "type": "probability",
+          "required": true,
+          "multi": false,
+          "branch": false,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": null,
+          "dynamicFromParam": null
+        },
+        {
+          "id": "route.*",
+          "label": "Route",
+          "type": "text",
+          "required": true,
+          "multi": false,
+          "branch": true,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": null,
+          "dynamicFromParam": "allowed_intents"
+        },
+        {
+          "id": "route.low_confidence",
+          "label": "Low confidence",
+          "type": "text",
+          "required": true,
+          "multi": false,
+          "branch": true,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": null,
+          "dynamicFromParam": null
+        }
+      ],
+      "params": [
+        {
+          "key": "allowed_intents",
+          "label": "Allowed intents",
+          "help": "",
+          "kind": "multi_enum",
+          "default": [
+            "billing",
+            "technical_support",
+            "bug_report",
+            "feature_request"
+          ],
+          "options": [
+            "billing",
+            "technical_support",
+            "bug_report",
+            "feature_request",
+            "account",
+            "other"
+          ],
+          "minSelected": 1
+        },
+        {
+          "key": "threshold",
+          "label": "Confidence threshold",
+          "help": "Below this confidence the request takes route.low_confidence.",
+          "kind": "number",
+          "default": 0.5,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05
+        }
+      ],
+      "costModel": {
+        "latencyMs": 40.0,
+        "latencyJitterMs": 15.0,
+        "costPerCallUsd": 0.0002,
+        "perTokenLatencyMs": null,
+        "priceInPer1KUsd": null,
+        "priceOutPer1KUsd": null,
+        "excludedFromLatency": false
+      },
+      "maxFanOut": 4,
+      "requiresOneOf": [],
+      "isSource": false,
+      "isSink": false,
+      "mvp": true
+    },
+    {
+      "type": "jev_safety_check",
+      "title": "Jev safety check",
+      "category": "jev",
+      "description": "Flags prompt injection, abuse and other risky messages for the enabled categories.",
+      "inputs": [
+        {
+          "id": "text",
+          "label": "Text",
+          "type": "text",
+          "required": true,
+          "multi": true,
+          "branch": false,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": null,
+          "dynamicFromParam": null
+        }
+      ],
+      "outputs": [
+        {
+          "id": "is_safe",
+          "label": "Is safe",
+          "type": "boolean",
+          "required": true,
+          "multi": false,
+          "branch": false,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": null,
+          "dynamicFromParam": null
+        },
+        {
+          "id": "confidence",
+          "label": "Confidence",
+          "type": "probability",
+          "required": true,
+          "multi": false,
+          "branch": false,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": null,
+          "dynamicFromParam": null
+        },
+        {
+          "id": "categories",
+          "label": "Categories",
+          "type": "json",
+          "required": true,
+          "multi": false,
+          "branch": false,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": null,
+          "dynamicFromParam": null
+        },
+        {
+          "id": "route.safe",
+          "label": "Safe",
+          "type": "text",
+          "required": true,
+          "multi": false,
+          "branch": true,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": null,
+          "dynamicFromParam": null
+        },
+        {
+          "id": "route.unsafe",
+          "label": "Unsafe",
+          "type": "text",
+          "required": true,
+          "multi": false,
+          "branch": true,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": null,
+          "dynamicFromParam": null
+        }
+      ],
+      "params": [
+        {
+          "key": "categories",
+          "label": "Categories",
+          "help": "",
+          "kind": "multi_enum",
+          "default": [
+            "prompt_injection",
+            "abuse"
+          ],
+          "options": [
+            "prompt_injection",
+            "abuse",
+            "fraud",
+            "pii_request",
+            "self_harm"
+          ],
+          "minSelected": 1
+        },
+        {
+          "key": "threshold",
+          "label": "Threshold",
+          "help": "",
+          "kind": "number",
+          "default": 0.5,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05
+        }
+      ],
+      "costModel": {
+        "latencyMs": 30.0,
+        "latencyJitterMs": 10.0,
+        "costPerCallUsd": 0.0002,
+        "perTokenLatencyMs": null,
+        "priceInPer1KUsd": null,
+        "priceOutPer1KUsd": null,
+        "excludedFromLatency": false
+      },
+      "maxFanOut": 4,
+      "requiresOneOf": [],
+      "isSource": false,
+      "isSink": false,
+      "mvp": true
+    },
+    {
+      "type": "llm_answer_generator",
+      "title": "LLM answer generator",
+      "category": "llm",
+      "description": "Writes a reply to the customer, optionally grounded in retrieved docs.",
+      "inputs": [
+        {
+          "id": "text",
+          "label": "Text",
+          "type": "text",
+          "required": true,
+          "multi": true,
+          "branch": false,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": null,
+          "dynamicFromParam": null
+        },
+        {
+          "id": "context",
+          "label": "Context",
+          "type": "json",
+          "required": false,
+          "multi": false,
+          "branch": false,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": "Docs",
+          "dynamicFromParam": null
+        }
+      ],
+      "outputs": [
+        {
+          "id": "text",
+          "label": "Text",
+          "type": "text",
+          "required": true,
+          "multi": false,
+          "branch": false,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": null,
+          "dynamicFromParam": null
+        }
+      ],
+      "params": [
+        {
+          "key": "model",
+          "label": "Model tier",
+          "help": "",
+          "kind": "enum",
+          "default": "large",
+          "options": [
+            "small",
+            "large"
+          ]
+        },
+        {
+          "key": "temperature",
+          "label": "Temperature",
+          "help": "",
+          "kind": "number",
+          "default": 0.7,
+          "min": 0.0,
+          "max": 1.0,
+          "step": 0.05
+        },
+        {
+          "key": "max_tokens",
+          "label": "Max tokens",
+          "help": "",
+          "kind": "int",
+          "default": 512,
+          "min": 64,
+          "max": 1024
+        },
+        {
+          "key": "prompt",
+          "label": "System prompt",
+          "help": "",
+          "kind": "text",
+          "default": "You are a helpful support agent.",
+          "maxLen": 500
+        }
+      ],
+      "costModel": {
+        "latencyMs": 350.0,
+        "latencyJitterMs": 0.0,
+        "costPerCallUsd": 0.0,
+        "perTokenLatencyMs": 10.0,
+        "priceInPer1KUsd": null,
+        "priceOutPer1KUsd": null,
+        "excludedFromLatency": false
+      },
+      "maxFanOut": 4,
+      "requiresOneOf": [],
+      "isSource": false,
+      "isSink": false,
+      "mvp": true
+    },
+    {
+      "type": "policy_engine",
+      "title": "Policy engine",
+      "category": "tool",
+      "description": "Deterministic regex and phrase rules. Passes or blocks the text.",
+      "inputs": [
+        {
+          "id": "text",
+          "label": "Text",
+          "type": "text",
+          "required": true,
+          "multi": true,
+          "branch": false,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": null,
+          "dynamicFromParam": null
+        },
+        {
+          "id": "context",
+          "label": "Context",
+          "type": "json",
+          "required": false,
+          "multi": false,
+          "branch": false,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": null,
+          "dynamicFromParam": null
+        }
+      ],
+      "outputs": [
+        {
+          "id": "passed",
+          "label": "Passed",
+          "type": "boolean",
+          "required": true,
+          "multi": false,
+          "branch": false,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": null,
+          "dynamicFromParam": null
+        },
+        {
+          "id": "report",
+          "label": "Report",
+          "type": "json",
+          "required": true,
+          "multi": false,
+          "branch": false,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": "PolicyReport",
+          "dynamicFromParam": null
+        },
+        {
+          "id": "route.pass",
+          "label": "Pass",
+          "type": "text",
+          "required": true,
+          "multi": false,
+          "branch": true,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": null,
+          "dynamicFromParam": null
+        },
+        {
+          "id": "route.block",
+          "label": "Block",
+          "type": "text",
+          "required": true,
+          "multi": false,
+          "branch": true,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": null,
+          "dynamicFromParam": null
+        }
+      ],
+      "params": [
+        {
+          "key": "rules",
+          "label": "Rules",
+          "help": "",
+          "kind": "multi_enum",
+          "default": [
+            "no_refund_promises"
+          ],
+          "options": [
+            "no_refund_promises",
+            "no_legal_advice",
+            "no_internal_urls",
+            "no_credentials"
+          ],
+          "minSelected": 0
+        },
+        {
+          "key": "blocked_phrases",
+          "label": "Blocked phrases",
+          "help": "",
+          "kind": "string_list",
+          "default": [],
+          "maxItems": 20,
+          "maxLen": 60
+        },
+        {
+          "key": "data_classes",
+          "label": "Data classes",
+          "help": "",
+          "kind": "multi_enum",
+          "default": [],
+          "options": [
+            "email",
+            "phone",
+            "card_number",
+            "ssn"
+          ],
+          "minSelected": 0
+        }
+      ],
+      "costModel": {
+        "latencyMs": 10.0,
+        "latencyJitterMs": 3.0,
+        "costPerCallUsd": 0.0,
+        "perTokenLatencyMs": null,
+        "priceInPer1KUsd": null,
+        "priceOutPer1KUsd": null,
+        "excludedFromLatency": false
+      },
+      "maxFanOut": 4,
+      "requiresOneOf": [],
+      "isSource": false,
+      "isSink": false,
+      "mvp": true
+    },
+    {
+      "type": "knowledge_lookup",
+      "title": "Knowledge lookup",
+      "category": "tool",
+      "description": "Finds help-center articles that match the message, to ground an LLM answer.",
+      "inputs": [
+        {
+          "id": "text",
+          "label": "Text",
+          "type": "text",
+          "required": true,
+          "multi": true,
+          "branch": false,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": null,
+          "dynamicFromParam": null
+        }
+      ],
+      "outputs": [
+        {
+          "id": "docs",
+          "label": "Docs",
+          "type": "json",
+          "required": true,
+          "multi": false,
+          "branch": false,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": "Docs",
+          "dynamicFromParam": null
+        }
+      ],
+      "params": [
+        {
+          "key": "source",
+          "label": "Source",
+          "help": "",
+          "kind": "enum",
+          "default": "kb",
+          "options": [
+            "faq",
+            "kb",
+            "tickets"
+          ]
+        },
+        {
+          "key": "top_k",
+          "label": "Top k",
+          "help": "",
+          "kind": "int",
+          "default": 3,
+          "min": 1,
+          "max": 10
+        }
+      ],
+      "costModel": {
+        "latencyMs": 25.0,
+        "latencyJitterMs": 5.0,
+        "costPerCallUsd": 1e-05,
+        "perTokenLatencyMs": null,
+        "priceInPer1KUsd": null,
+        "priceOutPer1KUsd": null,
+        "excludedFromLatency": false
+      },
+      "maxFanOut": 4,
+      "requiresOneOf": [],
+      "isSource": false,
+      "isSink": false,
+      "mvp": true
+    },
+    {
+      "type": "human_review_queue",
+      "title": "Human review queue",
+      "category": "human",
+      "description": "A person reviews the case. Slow and costly, but almost always safe. Counts as escalated.",
+      "inputs": [
+        {
+          "id": "text",
+          "label": "Text",
+          "type": "text",
+          "required": true,
+          "multi": true,
+          "branch": false,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": null,
+          "dynamicFromParam": null
+        },
+        {
+          "id": "context",
+          "label": "Context",
+          "type": "json",
+          "required": false,
+          "multi": false,
+          "branch": false,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": null,
+          "dynamicFromParam": null
+        }
+      ],
+      "outputs": [
+        {
+          "id": "text",
+          "label": "Text",
+          "type": "text",
+          "required": true,
+          "multi": false,
+          "branch": false,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": null,
+          "dynamicFromParam": null
+        }
+      ],
+      "params": [
+        {
+          "key": "capacity",
+          "label": "Reviewers",
+          "help": "",
+          "kind": "int",
+          "default": 2,
+          "min": 1,
+          "max": 10
+        },
+        {
+          "key": "reviewer_latency_s",
+          "label": "Review time (s)",
+          "help": "",
+          "kind": "int",
+          "default": 120,
+          "min": 30,
+          "max": 600
+        }
+      ],
+      "costModel": {
+        "latencyMs": 120000.0,
+        "latencyJitterMs": 0.0,
+        "costPerCallUsd": 2.0,
+        "perTokenLatencyMs": null,
+        "priceInPer1KUsd": null,
+        "priceOutPer1KUsd": null,
+        "excludedFromLatency": true
+      },
+      "maxFanOut": 4,
+      "requiresOneOf": [],
+      "isSource": false,
+      "isSink": false,
+      "mvp": true
+    },
+    {
+      "type": "customer_response",
+      "title": "Customer response",
+      "category": "io",
+      "description": "Exit point: whatever arrives here is sent to the customer.",
+      "inputs": [
+        {
+          "id": "text",
+          "label": "Text",
+          "type": "text",
+          "required": true,
+          "multi": true,
+          "branch": false,
+          "enumValues": null,
+          "scoreRange": null,
+          "jsonSchemaRef": null,
+          "dynamicFromParam": null
+        }
+      ],
+      "outputs": [],
+      "params": [
+        {
+          "key": "channel",
+          "label": "Channel",
+          "help": "",
+          "kind": "enum",
+          "default": "chat",
+          "options": [
+            "email",
+            "chat"
+          ]
+        },
+        {
+          "key": "sla_ms",
+          "label": "SLA (ms, display only)",
+          "help": "",
+          "kind": "int",
+          "default": 800,
+          "min": 100,
+          "max": 10000
+        }
+      ],
+      "costModel": {
+        "latencyMs": 0.0,
+        "latencyJitterMs": 0.0,
+        "costPerCallUsd": 0.0,
+        "perTokenLatencyMs": null,
+        "priceInPer1KUsd": null,
+        "priceOutPer1KUsd": null,
+        "excludedFromLatency": false
+      },
+      "maxFanOut": 4,
+      "requiresOneOf": [],
+      "isSource": false,
+      "isSink": true,
+      "mvp": true
+    }
+  ]
+}
