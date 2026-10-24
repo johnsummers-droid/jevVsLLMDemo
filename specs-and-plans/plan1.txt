@@ -1255,7 +1255,7 @@ T10. Server validation overlay and M2 exit                [depends on: T9]
 M3 tasks (T11-T17). Exit (section 4): a refresh keeps the graph; two
 browsers on different teams are isolated; web and server are deployed.
 
-M3 decisions, PROPOSED 2026-10-24 (to confirm before T11):
+M3 decisions, accepted 2026-10-24:
   P1. Hosting as in section 6: server and PostgreSQL on Railway, web on
       Vercel. The code side (Dockerfile, configs, CI) is done in the repo;
       creating the projects and setting secrets needs the owner's accounts,
