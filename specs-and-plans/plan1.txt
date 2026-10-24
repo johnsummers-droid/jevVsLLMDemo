@@ -1228,6 +1228,29 @@ T10. Server validation overlay and M2 exit                [depends on: T9]
       builds the default graph from an empty canvas and matches
       default.json (ignoring ids and positions).
     Done when: M2's exit criteria are met (manual browser pass included).
+    As built (M2 exit met 2026-10-24):
+      - store/validationStore.ts: startAutoValidation subscribes to
+        graphStore and posts 500 ms after the last change that matters
+        (node positions and selection are left out of the signature, so
+        dragging does not revalidate); responses to superseded requests are
+        dropped. Validation waits until the graph is loaded.
+      - Issue placement (lib/issues.ts): edgeId -> edge badge; else nodeId
+        -> node badge plus port highlight when portId is set; else listed
+        as graph-wide. canvas/PipelineEdge.tsx overrides React Flow's
+        default edge type to draw the edge badge.
+      - The inspector shows the whole issue list ("Pipeline check") when no
+        node is selected, and the selected node's issues (its edges'
+        included) at the top otherwise. Clicking an issue selects its node.
+      - The canvas refuses every connection that would cause an edge-level
+        error, so edge badges show only for graphs loaded with problems;
+        unit tests cover them.
+      - Exit checks: store/rebuildDefault.test.ts rebuilds default.json from
+        an empty canvas with store actions. Browser pass (Playwright,
+        scratch dir): default graph shows 0 errors, 3 warnings with badges
+        on router and policy; deleting the entry node gives NO_SOURCE and
+        MISSING_REQUIRED_INPUT; after clearing the canvas, the default
+        graph was rebuilt with palette clicks and 7 dragged edges and
+        validated to the same 3 warnings (5 validate requests in total).
 
 Next after T10: persistence and first deployment (M3) -> live runs (M4).
 

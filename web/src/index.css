@@ -29,6 +29,12 @@
   --port-probability: #ec4899;
   --port-image: #14b8a6;
   --port-any: #9ca3af;
+
+  /* validation */
+  --issue-error: #d92d20;
+  --issue-error-bg: #fde8e7;
+  --issue-warning: #b25e09;
+  --issue-warning-bg: #fef3e2;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -41,6 +47,10 @@
     --accent: #6d9cf2;
     --notice-bg: #e6e9ef;
     --notice-text: #15181e;
+    --issue-error: #f97066;
+    --issue-error-bg: #3d1d1b;
+    --issue-warning: #fdb022;
+    --issue-warning-bg: #3a2a12;
   }
 }
 

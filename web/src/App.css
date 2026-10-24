@@ -455,3 +455,103 @@
   color: var(--cat-unknown);
   font-size: 0.75rem;
 }
+
+/* validation */
+
+.issue-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 6px;
+  border: 1px solid var(--issue-color);
+  border-radius: 999px;
+  background: var(--issue-bg);
+  color: var(--issue-color);
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.issue-badge--error { --issue-color: var(--issue-error); --issue-bg: var(--issue-error-bg); }
+.issue-badge--warning { --issue-color: var(--issue-warning); --issue-bg: var(--issue-warning-bg); }
+
+.issue-badge--node {
+  position: absolute;
+  top: -10px;
+  right: 8px;
+  z-index: 1;
+}
+
+.issue-badge--edge {
+  position: absolute;
+  pointer-events: all;
+  cursor: default;
+}
+
+.pipeline-node {
+  position: relative;
+}
+
+.pipeline-node--error { border-color: var(--issue-error); }
+.pipeline-node--warning { border-color: var(--issue-warning); }
+
+.port--error { background: var(--issue-error-bg); }
+.port--warning { background: var(--issue-warning-bg); }
+
+.react-flow__edge-path.pipeline-edge--error { stroke: var(--issue-error); stroke-width: 2; }
+.react-flow__edge-path.pipeline-edge--warning { stroke: var(--issue-warning); stroke-width: 2; stroke-dasharray: 6 3; }
+.react-flow__edge-path.pipeline-edge--selected { stroke-width: 3; }
+
+.inspector__section--first {
+  margin-top: 4px;
+}
+
+.issue-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.issue-list__item + .issue-list__item {
+  margin-top: 6px;
+}
+
+.issue-list__button {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 6px;
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+button.issue-list__button {
+  cursor: pointer;
+}
+
+button.issue-list__button:hover,
+button.issue-list__button:focus-visible {
+  border-color: var(--accent);
+}
+
+.issue-list__message {
+  flex: 1 1 160px;
+}
+
+.issue-list__where,
+.issue-list__code {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.issue-list__empty {
+  margin: 4px 0;
+  color: var(--muted);
+}

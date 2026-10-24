@@ -16,6 +16,10 @@ import { NODE_DRAG_TYPE } from '../palette/NodeCard'
 import { useCatalogStore } from '../store/catalogStore'
 import { useGraphStore } from '../store/graphStore'
 import { checkConnection, type Link } from './isValidConnection'
+import { PipelineEdge } from './PipelineEdge'
+
+// Replaces React Flow's default edge, so every edge can carry a validation badge.
+const edgeTypes = { default: PipelineEdge }
 
 const NOTICE_MS = 4000
 
@@ -96,6 +100,7 @@ export function Canvas() {
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}

@@ -3,9 +3,12 @@
 import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { expandOutputs } from '../lib/graphMapping'
+import { countBySeverity } from '../lib/issues'
 import { useCatalogStore } from '../store/catalogStore'
 import { useGraphStore } from '../store/graphStore'
+import { useValidationStore } from '../store/validationStore'
 import type { CostModel, NodeDefinition, Port } from '../types'
+import { IssueList } from './IssueList'
 import { ParamField } from './ParamField'
 import { SchemaPreview } from './SchemaPreview'
 
@@ -43,6 +46,15 @@ function NodeDetails({ nodeId, definition }: { nodeId: string; definition: NodeD
   const deleteNode = useGraphStore((s) => s.deleteNode)
   const params = node?.data.params
   const outputs = useMemo(() => expandOutputs(definition, params), [definition, params])
+  const index = useValidationStore((s) => s.index)
+  const edges = useGraphStore((s) => s.edges)
+  const issues = useMemo(
+    () => [
+      ...(index.byNode[nodeId] ?? []),
+      ...edges.filter((e) => e.source === nodeId || e.target === nodeId).flatMap((e) => index.byEdge[e.id] ?? []),
+    ],
+    [index, edges, nodeId],
+  )
   if (!node) return null
 
   return (
@@ -53,6 +65,13 @@ function NodeDetails({ nodeId, definition }: { nodeId: string; definition: NodeD
         <code>{node.id}</code>
         <p>{definition.description}</p>
       </header>
+
+      {issues.length > 0 && (
+        <section className="inspector__section">
+          <h3>Issues</h3>
+          <IssueList issues={issues} />
+        </section>
+      )}
 
       {definition.params.length > 0 && (
         <section className="inspector__section">
@@ -103,6 +122,27 @@ function NodeDetails({ nodeId, definition }: { nodeId: string; definition: NodeD
   )
 }
 
+function GraphIssues() {
+  const status = useValidationStore((s) => s.status)
+  const report = useValidationStore((s) => s.report)
+  const error = useValidationStore((s) => s.error)
+  const counts = countBySeverity(report?.issues ?? [])
+  let summary = 'Checking…'
+  if (status === 'error') summary = `Validation unavailable: ${error}`
+  else if (report && status !== 'pending') {
+    summary = report.issues.length === 0 ? 'No issues found.' : `${counts.error} errors, ${counts.warning} warnings`
+  }
+  return (
+    <section className="inspector__section inspector__section--first">
+      <h3>Pipeline check</h3>
+      <p className="inspector__note" role="status">
+        {summary}
+      </p>
+      {report && <IssueList issues={report.issues} emptyText="" />}
+    </section>
+  )
+}
+
 export function Inspector() {
   const selected = useGraphStore(useShallow((s) => s.nodes.filter((n) => n.selected)))
   const catalog = useCatalogStore((s) => s.byType)
@@ -112,9 +152,12 @@ export function Inspector() {
   return (
     <aside className="inspector" aria-label="Inspector">
       {!only && (
-        <p className="inspector__empty">
-          {selected.length > 1 ? `${selected.length} nodes selected.` : 'Select a node to see and edit its settings.'}
-        </p>
+        <>
+          <p className="inspector__empty">
+            {selected.length > 1 ? `${selected.length} nodes selected.` : 'Select a node to see and edit its settings.'}
+          </p>
+          <GraphIssues />
+        </>
       )}
       {only && !definition && (
         <p className="inspector__empty">Node type “{only.data.nodeType}” is not in the catalog.</p>

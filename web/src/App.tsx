@@ -7,6 +7,7 @@ import { Inspector } from './inspector/Inspector'
 import { Palette } from './palette/Palette'
 import { useCatalogStore } from './store/catalogStore'
 import { useGraphStore } from './store/graphStore'
+import { startAutoValidation } from './store/validationStore'
 
 function Workbench() {
   const catalog = useCatalogStore()
@@ -21,6 +22,8 @@ function Workbench() {
   useEffect(() => {
     void loadCatalog()
   }, [loadCatalog])
+
+  useEffect(() => startAutoValidation(), [])
 
   // The graph's node components need the catalog, so the default graph loads after it.
   useEffect(() => {
