@@ -1252,7 +1252,150 @@ T10. Server validation overlay and M2 exit                [depends on: T9]
         graph was rebuilt with palette clicks and 7 dragged edges and
         validated to the same 3 warnings (5 validate requests in total).
 
-Next after T10: persistence and first deployment (M3) -> live runs (M4).
+M3 tasks (T11-T17). Exit (section 4): a refresh keeps the graph; two
+browsers on different teams are isolated; web and server are deployed.
+
+M3 decisions, PROPOSED 2026-10-24 (to confirm before T11):
+  P1. Hosting as in section 6: server and PostgreSQL on Railway, web on
+      Vercel. The code side (Dockerfile, configs, CI) is done in the repo;
+      creating the projects and setting secrets needs the owner's accounts,
+      so T17 ends in a short runbook the owner follows (or does with Claude
+      in the terminal once logged in).
+  P2. Facilitator auth: FACILITATOR_CODE (env) is only needed to create a
+      session. Creating one returns the session code AND a session-scoped
+      facilitator token (opaque, stored hashed like team tokens). No
+      separate facilitator login.
+  P3. Rejoining: joining a session with a team name that already exists
+      issues a new token for that team and revokes the old one, so a team
+      that loses its browser storage can get back in. The cost: anyone with
+      the session code can take over a team by its name. Acceptable for a
+      workshop room; the facilitator sees the join time per team.
+  P4. Tables in M3: sessions, teams, graphs. graph_snapshots, runs,
+      run_results and request_traces arrive with M4/M5 as new migrations,
+      when code first writes them (section 4 listed them under M3).
+  P5. Synchronous SQLAlchemy 2.0 (Session, not AsyncSession). FastAPI runs
+      sync endpoints in its thread pool; M4's async run code will call the
+      repository through run_in_threadpool. One code path for SQLite and
+      PostgreSQL, no async driver.
+  P6. No router dependency in the web app: four pages (/join, /team,
+      /facilitator, later /screen) are picked from location.pathname in
+      App.tsx, with history.pushState for navigation. Revisit if routes
+      gain parameters.
+  P7. Saving an invalid graph is allowed (work in progress); only the
+      shape is checked (Graph model, size limits). Validation stays
+      separate and advisory until a run needs it (M4).
+  P8. Rename the web env var VITE_API_URL (T7) to VITE_API_BASE_URL, as
+      section 6 names it.
+
+T11. Settings, database and migrations                    [depends on: T10]
+    - Dependencies: sqlalchemy>=2, alembic, pydantic-settings, psycopg[binary]
+      (section 1 justifies each).
+    - app/config.py becomes a pydantic-settings Settings: database_url
+      (default sqlite:///./dev.db; "postgres://" rewritten to
+      "postgresql+psycopg://"), allowed_origins, allowed_origin_regex,
+      facilitator_code, token_secret, log_level. LLM prices stay constants.
+      An .env.example lists every variable; .env stays git-ignored.
+    - app/db/{base,session,tables,repo}.py: tables sessions (id, code
+      unique, facilitator_token_hash, created_at), teams (id, session_id,
+      name, name_key unique per session, token_hash, joined_at), graphs
+      (team_id PK, version, locked, graph JSON, updated_at). repo.py holds
+      the queries; get_db is a FastAPI dependency.
+    - server/migrations/ (Alembic) with the initial revision; JSON column
+      type works on SQLite and PostgreSQL.
+    - main.py: CORS from settings (allow_origins plus allow_origin_regex).
+    - Tests: alembic upgrade head on an empty SQLite file; repo round-trips;
+      settings parsing (URL rewrite, comma lists); a tmp SQLite DB per test
+      through a dependency override.
+    Done when: pytest passes and `alembic upgrade head` creates the tables.
+
+T12. Sessions, teams and auth                             [depends on: T11]
+    - POST /api/sessions {facilitatorCode} -> {sessionCode, facilitatorToken}.
+      Codes: 6 characters from an alphabet without 0/O/1/I/L; retry on
+      collision. 401 on a wrong code (constant-time compare).
+    - POST /api/sessions/{code}/teams {teamName} -> {teamId, teamName,
+      token}. Names: 1-30 characters, trimmed, unique per session ignoring
+      case (P3 for an existing name). At most 12 teams per session. The new
+      team's graph starts as the default graph, version 0.
+    - Tokens: secrets.token_urlsafe(32); the DB stores
+      HMAC-SHA256(TOKEN_SECRET, token) only. api/deps.py: current_team and
+      session_facilitator dependencies read "Authorization: Bearer".
+    - GET /api/sessions/{code} (facilitator): teams with name, joined_at,
+      graph version, locked. POST /api/sessions/{code}/lock {locked}
+      (facilitator) locks or unlocks every team graph ("pencils down";
+      M4's official run reuses it).
+    - Tests: wrong facilitator code 401; join, rejoin revokes the old token;
+      duplicate name in another case; team limit; missing token 401; a
+      facilitator token from another session 403; tokens never stored in
+      plain text.
+    Done when: the flow works through TestClient end to end.
+
+T13. Team graph API                                       [depends on: T12]
+    - GET /api/teams/{id}/graph -> StoredGraph (403 for another team).
+    - PUT /api/teams/{id}/graph {version, graph} -> StoredGraph with
+      version + 1. 409 when version is stale (body: the current
+      StoredGraph, so the client can reload without another request); 423
+      when locked; 422 when the graph is not graph-shaped or too large (P7).
+    - POST /api/teams/{id}/graph/reset -> the default graph, version + 1
+      (423 when locked).
+    - Tests (section 5 API list): CRUD, 409 with the current graph, 423,
+      wrong team 403, reset, a PUT after reset with the old version is 409.
+    Done when: two teams' graphs are isolated at the API level.
+
+T14. Web: join flow, pages and authenticated client       [depends on: T13]
+    - store/sessionStore.ts: team or facilitator credentials in
+      localStorage (try/catch; works without it), sign-out.
+    - api/client.ts: Authorization header from sessionStore; a 401 clears
+      the credentials and returns to /join. VITE_API_BASE_URL (P8).
+    - Pages (P6): pages/JoinPage.tsx (session code + team name),
+      pages/TeamPage.tsx (today's workbench), pages/FacilitatorPage.tsx
+      (facilitator code -> create session; session code shown large; team
+      list; lock/unlock).
+    - Tests: join stores the token and opens /team; 401 returns to /join;
+      the facilitator page creates a session and lists teams (fetch mocked).
+    Done when: a team can join and see the canvas in the browser.
+
+T15. Web: autosave, conflicts and lock                    [depends on: T14]
+    - graphStore loads GET /api/teams/{id}/graph (not the default graph)
+      and keeps version and locked.
+    - Autosave 1 s after the last change, positions included (unlike
+      validation). One request in flight at a time; changes made meanwhile
+      are saved after it. A save pending at pagehide is sent with
+      fetch keepalive.
+    - 409: load the server's graph from the response body and show a notice
+      ("Your graph was changed elsewhere; reloaded."). 423: read-only mode
+      (no drag, connect, delete, palette or param edits) with a banner.
+      Network errors: retry with backoff and show "Offline - retrying".
+    - Header save status: Saved / Saving... / Offline. A "Reset to default
+      graph" action with a confirm step.
+    - Tests (section 5 graphStore list): autosave debounce and coalescing;
+      409 reloads with a notice; 423 makes the store read-only; retry after
+      a network error.
+    Done when: a refresh keeps the graph, in the browser.
+
+T16. CI                                                   [depends on: T11]
+    - .github/workflows/ci.yml as in section 5: server tests on Python 3.12
+      (the local venv is 3.14; CI pins the deployment version), web lint,
+      build and vitest, the schema/fixture drift check, and Alembic
+      upgrade on SQLite. Optional job: the server suite against a
+      PostgreSQL service container.
+    Done when: the workflow passes on the open-terminal branch.
+
+T17. Deployment and M3 exit                               [depends on: T15, T16]
+    - server/Dockerfile (python:3.12-slim, non-root, pip install .,
+      migrations included), start command from section 6, railway.json
+      (health check /api/health, 1 replica).
+    - web/vercel.json (SPA rewrite); vite proxy gets ws: true for M4.
+    - specs-and-plans/deploy-runbook.txt: create the Railway project and
+      PostgreSQL, set the variables (section 6), create the Vercel project
+      (root web/, VITE_API_BASE_URL), and the post-deploy checks.
+    - Exit checks, automated: API test with two teams (isolation, 403
+      across teams); store test that a reload restores the saved graph.
+      Manual on the deployed URLs: join two teams in two browsers, edit,
+      refresh, confirm each keeps its own graph; facilitator lock gives
+      read-only in both.
+    Done when: M3's exit criteria hold on the deployed URLs.
+
+Next after T17: live runs over WebSockets (M4).
 
 
 8. OPEN ITEMS (none of these block T1-T5)

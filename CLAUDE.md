@@ -58,7 +58,7 @@ Key architecture decisions (details in plan1.txt §0):
 - Mocks are deterministic: seed = sha256(run_seed, scenario_id, node_type, params) — never Python `hash()`.
 - Single backend instance (in-memory run state + WebSocket hub); one graph per team, last-write-wins with version (409 stale, 423 locked).
 
-M2 (T6–T10 in plan1.txt §7) is done. Next planned step: persistence, teams and first deployment (M3; not yet split into tasks), then live runs over WebSockets (M4).
+M2 (T6–T10 in plan1.txt §7) is done. Next planned step: M3 (persistence, teams, first deployment), planned as T11–T17 in plan1.txt §7 with proposed decisions P1–P8 awaiting confirmation; then live runs over WebSockets (M4).
 
 ## Commands
 
