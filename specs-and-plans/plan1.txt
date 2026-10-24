@@ -1148,6 +1148,21 @@ T7. Web foundations                                       [depends on: T6]
       lossless round-trip of the default, weak and strong fixtures;
       expandOutputs matches the server's expansion for the fixtures.
     Done when: npx vitest run, npm run lint and npm run build pass.
+    As built:
+      - Versions: @xyflow/react 12.12.0, zustand 5.0.15, vitest 5.0.3,
+        jsdom 30.1.2, @testing-library/react 16.3.3. vitest, jsdom and
+        zustand are pinned exactly: their newest releases were under two
+        weeks old.
+      - The TS tests need server-computed data, so server/scripts/
+        export_web_fixtures.py writes shared/fixtures/catalog.json (the
+        GET /api/catalog response) and expanded-outputs.json (expand_outputs
+        per node of default/weak/strong). test_web_fixtures.py checks both
+        are fresh.
+      - React Flow node type = catalog category ("unknown" if not in the
+        catalog); data = {nodeType, params, label}; edge handles = port ids.
+        These UI types live in web/src/types/index.ts.
+      - api/client.ts reads VITE_API_URL (empty in dev); the team token
+        is added with M3. `npm test` runs vitest.
 
 T8. Canvas, palette and node components                   [depends on: T7]
     - store/graphStore.ts (memory only; add/move/delete node, connect,
