@@ -161,6 +161,21 @@ export interface Subscribe {
 export interface Ping {
   type: 'ping'
 }
+export interface Distribution {
+  probs: {
+    [k: string]: number
+  }
+}
+export interface Doc {
+  id: string
+  title: string
+  snippet: string
+  intent: string
+  score: number
+}
+export interface Docs {
+  docs?: Doc[]
+}
 export interface EdgeTransferred {
   runId?: string | null
   teamId?: string | null
@@ -329,6 +344,14 @@ export interface PackSummary {
     [k: string]: number
   } | null
 }
+export interface PolicyReport {
+  passed: boolean
+  violations?: PolicyViolation[]
+}
+export interface PolicyViolation {
+  rule: string
+  match: string
+}
 export interface RequestCompleted {
   runId?: string | null
   teamId?: string | null
@@ -403,6 +426,10 @@ export interface StoredGraph {
   locked?: boolean
   graph: Graph
   updatedAt: string
+}
+export interface TicketMeta {
+  channel: string
+  language: string
 }
 export interface ValidationIssue {
   code: IssueCode
