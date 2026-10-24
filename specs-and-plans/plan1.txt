@@ -1176,6 +1176,22 @@ T8. Canvas, palette and node components                   [depends on: T7]
       renders the catalog.
     Done when: the default graph renders and edges can be drawn and refused
                in the browser.
+    As built:
+      - checkConnection also refuses unknown ports and duplicate edges; an
+        "any" source is allowed (compat warn), as on the server. Refusals
+        show as a short notice on the canvas (from onConnectEnd).
+      - Fan-out counts edges per output port (validator semantics). All MVP
+        text inputs are multi, so fan-in mainly limits context inputs.
+      - The canvas mounts once the graph is loaded and calls fitView when
+        useNodesInitialized is true: the fitView prop framed only the
+        first node. colorMode="system" matches React Flow's controls to
+        the light/dark tokens.
+      - New node ids: the node type, then <type>_2, <type>_3, ... New nodes
+        get every param default (as the server's default_graph does).
+      - Browser check (Playwright in a scratch dir, not a project
+        dependency): default graph renders with typed handles; json ->
+        text is refused with a notice; palette click and drag add nodes;
+        router.route.low_confidence -> human.text connects.
 
 T9. Inspector                                             [depends on: T8]
     - inspector/{Inspector,ParamField,SchemaPreview}.tsx: one field per

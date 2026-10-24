@@ -1,42 +1,240 @@
-#root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.app__header {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.app__header h1 {
+  margin: 0;
+  font-size: 1.1rem;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.app__status {
+  color: var(--muted);
+  font-size: 0.85rem;
 }
 
-.card {
-  padding: 2em;
+.app__body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
 }
 
-.read-the-docs {
-  color: #888;
+.app__canvas {
+  flex: 1;
+  min-width: 0;
+}
+
+/* palette */
+
+.palette {
+  width: 240px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 12px;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.palette__group + .palette__group {
+  margin-top: 12px;
+}
+
+.palette__heading {
+  margin: 0 0 6px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.node-card {
+  display: block;
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--cat-color, var(--border));
+  border-radius: 6px;
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: grab;
+}
+
+.node-card:hover,
+.node-card:focus-visible {
+  border-color: var(--accent);
+  border-left-color: var(--cat-color);
+}
+
+.node-card__title {
+  display: block;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.node-card__description {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+/* canvas */
+
+.canvas {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.canvas__notice {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  max-width: 90%;
+  padding: 8px 14px;
+  border-radius: 6px;
+  background: var(--notice-bg);
+  color: var(--notice-text);
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+
+/* nodes */
+
+.node-card--io, .pipeline-node--io { --cat-color: var(--cat-io); }
+.node-card--jev, .pipeline-node--jev { --cat-color: var(--cat-jev); }
+.node-card--llm, .pipeline-node--llm { --cat-color: var(--cat-llm); }
+.node-card--tool, .pipeline-node--tool { --cat-color: var(--cat-tool); }
+.node-card--human, .pipeline-node--human { --cat-color: var(--cat-human); }
+.pipeline-node--unknown { --cat-color: var(--cat-unknown); }
+
+.pipeline-node {
+  min-width: 200px;
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--cat-color);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.75rem;
+}
+
+.pipeline-node--selected {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.pipeline-node__header {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.pipeline-node__category {
+  color: var(--cat-color);
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.pipeline-node__title {
+  font-size: 0.85rem;
+}
+
+.pipeline-node__id,
+.pipeline-node__hint {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.pipeline-node__ports {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.pipeline-node__outputs {
+  text-align: right;
+}
+
+.pipeline-node__missing {
+  margin: 0;
+  padding: 6px 10px;
+  color: var(--cat-unknown);
+}
+
+.port {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 10px;
+  white-space: nowrap;
+}
+
+.port--source {
+  justify-content: flex-end;
+}
+
+.port--required .port__label::after {
+  content: ' *';
+  color: var(--muted);
+}
+
+.port--branch .port__label {
+  font-style: italic;
+}
+
+.port__type {
+  color: var(--muted);
+  font-size: 0.65rem;
+}
+
+/* handles: color and shape by port type */
+
+.typed-handle.react-flow__handle {
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--port-color);
+  background: var(--port-color);
+}
+
+.typed-handle--text { --port-color: var(--port-text); border-radius: 50%; }
+.typed-handle--json { --port-color: var(--port-json); border-radius: 2px; }
+.typed-handle--enum { --port-color: var(--port-enum); border-radius: 1px; transform: translate(-50%, -50%) rotate(45deg); }
+.typed-handle--score { --port-color: var(--port-score); border-radius: 2px 50% 50% 2px; }
+.typed-handle--boolean { --port-color: var(--port-boolean); border-radius: 50% 50% 2px 2px; }
+.typed-handle--probability { --port-color: var(--port-probability); border-radius: 50%; background: var(--surface); }
+.typed-handle--image { --port-color: var(--port-image); border-radius: 2px; background: var(--surface); }
+.typed-handle--any { --port-color: var(--port-any); border-radius: 50%; border-style: dashed; background: var(--surface); }
+
+.typed-handle.react-flow__handle-right.typed-handle--enum {
+  transform: translate(50%, -50%) rotate(45deg);
+}
+
+/* React Flow marks handles while an edge is being drawn */
+.typed-handle.connectingto:not(.valid) {
+  box-shadow: 0 0 0 3px var(--cat-unknown);
+}
+
+.typed-handle.valid {
+  box-shadow: 0 0 0 3px var(--port-boolean);
 }

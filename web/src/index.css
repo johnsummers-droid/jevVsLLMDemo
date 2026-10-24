@@ -1,68 +1,61 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.4;
   color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --border: #d5d9e0;
+  --text: #1c2230;
+  --muted: #5d6677;
+  --accent: #3b6fd8;
+  --notice-bg: #2b2f38;
+  --notice-text: #ffffff;
+
+  /* node categories */
+  --cat-io: #6b7280;
+  --cat-jev: #7c4dcc;
+  --cat-llm: #2f80b8;
+  --cat-tool: #2e8b57;
+  --cat-human: #c77a1a;
+  --cat-unknown: #c0392b;
+
+  /* port types */
+  --port-text: #3b82f6;
+  --port-json: #f59e0b;
+  --port-enum: #a855f7;
+  --port-score: #ef4444;
+  --port-boolean: #10b981;
+  --port-probability: #ec4899;
+  --port-image: #14b8a6;
+  --port-any: #9ca3af;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15181e;
+    --surface: #1f232b;
+    --border: #363c48;
+    --text: #e6e9ef;
+    --muted: #9aa3b2;
+    --accent: #6d9cf2;
+    --notice-bg: #e6e9ef;
+    --notice-text: #15181e;
+  }
 }
-a:hover {
-  color: #535bf2;
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
 }
 
 body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+  background: var(--bg);
+  color: var(--text);
 }
