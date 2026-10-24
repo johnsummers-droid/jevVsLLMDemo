@@ -52,6 +52,17 @@ describe('graphStore', () => {
     expect(store().nodes[0].type).toBe('llm')
   })
 
+  it('nudges a node added on top of another', () => {
+    store().addNode('customer_message', { x: 100, y: 100 })
+    store().addNode('customer_message', { x: 100, y: 100 })
+    store().addNode('customer_message', { x: 105, y: 95 })
+    expect(store().nodes.map((n) => n.position)).toEqual([
+      { x: 100, y: 100 },
+      { x: 132, y: 132 },
+      { x: 169, y: 159 },
+    ])
+  })
+
   it('does not share default param values between nodes', () => {
     const a = store().addNode('jev_intent_router', { x: 0, y: 0 })
     const b = store().addNode('jev_intent_router', { x: 0, y: 0 })
@@ -99,6 +110,36 @@ describe('graphStore', () => {
     store().setGraph(defaultGraphFixture)
     store().onNodesChange([{ type: 'remove', id: 'router' }])
     expect(store().edges.some((e) => e.source === 'router' || e.target === 'router')).toBe(false)
+  })
+
+  it('drops only the edges of branches a param change removes, with a notice', () => {
+    store().setGraph(defaultGraphFixture)
+    const before = store().edges.length
+    const dropped = store().updateParam('router', 'allowed_intents', ['technical_support', 'bug_report'])
+    expect(dropped).toEqual(['router.route.billing->llm.text', 'router.route.feature_request->llm.text'])
+    expect(store().edges).toHaveLength(before - 2)
+    expect(store().notice).toMatch(/Removed 2 connections/)
+    expect(store().toGraph().nodes.find((n) => n.id === 'router')!.params!.allowed_intents).toEqual([
+      'technical_support',
+      'bug_report',
+    ])
+  })
+
+  it('keeps edges when a param change does not touch branch ports', () => {
+    store().setGraph(defaultGraphFixture)
+    const edges = store().edges
+    expect(store().updateParam('router', 'threshold', 0.9)).toEqual([])
+    expect(store().edges).toEqual(edges)
+    expect(store().notice).toBeNull()
+  })
+
+  it('keeps an edge from a port that was already missing', () => {
+    store().setGraph({
+      ...defaultGraphFixture,
+      edges: [...defaultGraphFixture.edges, { id: 'x', source: 'router', sourcePort: 'route.nope', target: 'llm', targetPort: 'text' }],
+    })
+    store().updateParam('router', 'allowed_intents', ['billing'])
+    expect(store().edges.some((e) => e.id === 'x')).toBe(true)
   })
 
   it('applies React Flow position changes', () => {

@@ -3,6 +3,7 @@ import '@xyflow/react/dist/style.css'
 import { useCallback, useEffect, useRef } from 'react'
 import './App.css'
 import { Canvas } from './canvas/Canvas'
+import { Inspector } from './inspector/Inspector'
 import { Palette } from './palette/Palette'
 import { useCatalogStore } from './store/catalogStore'
 import { useGraphStore } from './store/graphStore'
@@ -49,6 +50,7 @@ function Workbench() {
         <div className="app__canvas" ref={canvasRef}>
           {graphStatus === 'ready' && <Canvas />}
         </div>
+        <Inspector />
       </main>
     </div>
   )

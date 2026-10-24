@@ -1202,6 +1202,24 @@ T9. Inspector                                             [depends on: T8]
     - Tests: every ParamSpec kind renders and refuses invalid values; the
       edge-pruning case.
     Done when: every MVP node's params can be edited in the browser.
+    As built:
+      - Schema preview needs the json payload shapes, so export_schema.py
+        has a new "payloads" group (TicketMeta, Docs, PolicyReport,
+        Distribution; their types are now in generated.ts too).
+        lib/schemaFields.ts flattens it; the Vite dev server is allowed to
+        serve ../shared/schema (server.fs.allow).
+      - lib/params.ts checkParam mirrors ParamSpec.check (same defaults for
+        maxItems 20, maxLen 60/500, minSelected 1). Number fields have a
+        slider plus a number box; multi_enum keeps the options' order;
+        string_list is one item per line (blank lines ignored).
+      - updateParam only drops edges from ports that existed before the
+        change and are gone after it; edges the validator already flags
+        stay. The notice is shared with the canvas (graphStore.notice).
+      - Also: Delete node button; addNode nudges a node placed exactly on
+        top of another (repeated palette clicks used to stack them).
+      - Browser check: each of the 8 node types had a param edited without
+        errors; threshold 1.5 refused; unchecking "billing" removed the
+        route.billing handle and its edge with a notice.
 
 T10. Server validation overlay and M2 exit                [depends on: T9]
     - Debounced (500 ms) POST /api/graphs/validate after each graph change;

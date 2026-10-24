@@ -10,7 +10,7 @@ import {
   type Edge,
   type FinalConnectionState,
 } from '@xyflow/react'
-import { useCallback, useEffect, useRef, useState, type DragEvent } from 'react'
+import { useCallback, useEffect, useRef, type DragEvent } from 'react'
 import { nodeTypes } from '../nodes/nodeTypes'
 import { NODE_DRAG_TYPE } from '../palette/NodeCard'
 import { useCatalogStore } from '../store/catalogStore'
@@ -28,7 +28,8 @@ export function Canvas() {
   const addNode = useGraphStore((s) => s.addNode)
   const catalog = useCatalogStore((s) => s.byType)
   const { fitView, screenToFlowPosition } = useReactFlow()
-  const [notice, setNotice] = useState<string | null>(null)
+  const notice = useGraphStore((s) => s.notice)
+  const setNotice = useGraphStore((s) => s.setNotice)
 
   // The fitView prop can run before every node is measured and frame only the first one, so fit
   // once all nodes have their size.
@@ -45,7 +46,7 @@ export function Canvas() {
     if (!notice) return
     const timer = setTimeout(() => setNotice(null), NOTICE_MS)
     return () => clearTimeout(timer)
-  }, [notice])
+  }, [notice, setNotice])
 
   const isValidConnection = useCallback(
     (link: Edge | Connection) => checkConnection(link, { nodes, edges, catalog }).ok,
@@ -57,7 +58,7 @@ export function Canvas() {
       const check = connect(connection)
       if (!check.ok) setNotice(check.message)
     },
-    [connect],
+    [connect, setNotice],
   )
 
   // React Flow only reports that a drop was refused; say why.
@@ -70,7 +71,7 @@ export function Canvas() {
       const check = checkConnection(link, { nodes, edges, catalog })
       if (!check.ok) setNotice(check.message)
     },
-    [nodes, edges, catalog],
+    [nodes, edges, catalog, setNotice],
   )
 
   const onDragOver = useCallback((event: DragEvent) => {

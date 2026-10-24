@@ -238,3 +238,220 @@
 .typed-handle.valid {
   box-shadow: 0 0 0 3px var(--port-boolean);
 }
+
+/* inspector */
+
+.inspector {
+  width: 300px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 12px;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 0.85rem;
+}
+
+.inspector__header h2 {
+  margin: 2px 0;
+  font-size: 1rem;
+}
+
+.inspector__header p {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.inspector__category {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--cat-color);
+}
+
+.inspector__category--io { --cat-color: var(--cat-io); }
+.inspector__category--jev { --cat-color: var(--cat-jev); }
+.inspector__category--llm { --cat-color: var(--cat-llm); }
+.inspector__category--tool { --cat-color: var(--cat-tool); }
+.inspector__category--human { --cat-color: var(--cat-human); }
+
+.inspector__section {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+.inspector__section h3 {
+  margin: 8px 0 6px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.inspector__section h3:first-child {
+  margin-top: 0;
+}
+
+.inspector__empty,
+.inspector__note {
+  margin: 4px 0;
+  color: var(--muted);
+}
+
+.inspector__ports {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.inspector__port {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+}
+
+.inspector__swatch {
+  width: 9px;
+  height: 9px;
+  flex-shrink: 0;
+  border: 2px solid var(--port-color);
+  background: var(--port-color);
+}
+
+.inspector__swatch.typed-handle--enum {
+  transform: rotate(45deg);
+}
+
+.inspector__port-type {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.inspector__flags {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.inspector__costs {
+  margin: 0;
+}
+
+.inspector__costs div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0;
+}
+
+.inspector__costs dt {
+  color: var(--muted);
+}
+
+.inspector__costs dd {
+  margin: 0;
+  text-align: right;
+}
+
+.inspector__delete {
+  margin-top: 16px;
+  padding: 6px 10px;
+  border: 1px solid var(--cat-unknown);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--cat-unknown);
+  font: inherit;
+  cursor: pointer;
+}
+
+.schema-preview {
+  flex-basis: 100%;
+  margin: 2px 0 4px 15px;
+  padding: 4px 8px;
+  border-left: 2px solid var(--border);
+  list-style: none;
+  font-size: 0.75rem;
+}
+
+.schema-preview__optional {
+  color: var(--muted);
+}
+
+.schema-preview__type {
+  margin-left: 6px;
+  color: var(--muted);
+}
+
+/* param fields */
+
+.param-field {
+  margin-bottom: 10px;
+}
+
+.param-field__label {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 3px;
+  font-weight: 600;
+}
+
+.param-field__range {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 0.75rem;
+}
+
+.param-field input[type='number'],
+.param-field select,
+.param-field textarea {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+}
+
+.param-field textarea {
+  resize: vertical;
+}
+
+.param-field__number {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.param-field__number input[type='range'] {
+  flex: 1;
+}
+
+.param-field__number input[type='number'] {
+  width: 80px;
+}
+
+.param-field__options {
+  display: flex;
+  flex-direction: column;
+}
+
+.param-field__option {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.param-field__help {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.param-field__error {
+  margin: 3px 0 0;
+  color: var(--cat-unknown);
+  font-size: 0.75rem;
+}
