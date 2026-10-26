@@ -113,8 +113,18 @@ def test_save_graph_bumps_version_and_round_trips(db: Session) -> None:
     assert stored.version == 1 and stored.graph == smaller
     db.expire_all()
     assert repo.get_graph(db, team.id) == stored
-    with pytest.raises(LookupError):
-        repo.save_graph(db, "missing", smaller)
+    assert repo.save_graph(db, "missing", smaller) is None
+
+
+def test_save_graph_refuses_stale_version_and_locked_graph(db: Session) -> None:
+    session, team = make_team(db)
+    graph = default_graph()
+    assert repo.save_graph(db, team.id, graph, expected_version=0).version == 1
+    assert repo.save_graph(db, team.id, graph, expected_version=0) is None
+    repo.set_session_locked(db, session.id, True)
+    assert repo.save_graph(db, team.id, graph, expected_version=1) is None
+    assert repo.save_graph(db, team.id, graph) is None
+    assert repo.get_graph(db, team.id).version == 1
 
 
 def test_lock_applies_to_every_team_in_the_session_only(db: Session) -> None:

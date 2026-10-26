@@ -427,6 +427,13 @@ export interface RunSummary {
   config: RunConfig
   graphVersion?: number
 }
+/**
+ * PUT /api/teams/{id}/graph: `version` is the version the client last loaded.
+ */
+export interface SaveGraphRequest {
+  version: number
+  graph: Graph
+}
 export interface StateSync {
   runId?: string | null
   teamId?: string | null

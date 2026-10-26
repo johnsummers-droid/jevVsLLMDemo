@@ -46,6 +46,7 @@ from app.models import (
     RunMode,
     RunStatus,
     RunSummary,
+    SaveGraphRequest,
     Severity,
     SessionDetail,
     StoredGraph,
@@ -73,7 +74,7 @@ NAMED_ALIASES: dict[str, Any] = {
 
 # file stem -> (models, aliases exported as their own $defs)
 GROUPS: dict[str, tuple[list[type[BaseModel]], list[str]]] = {
-    "graph": ([Graph, StoredGraph], []),
+    "graph": ([Graph, StoredGraph, SaveGraphRequest], []),
     "catalog": ([CatalogResponse, NodeDefinition], ["PortType", "NodeCategory", "ParamSpec"]),
     "validation": ([ValidationReport], ["Severity"]),
     "run": (

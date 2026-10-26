@@ -44,3 +44,10 @@ class StoredGraph(CamelModel):
     locked: bool = False
     graph: Graph
     updated_at: datetime
+
+
+class SaveGraphRequest(CamelModel):
+    """PUT /api/teams/{id}/graph: `version` is the version the client last loaded."""
+
+    version: int = Field(ge=0)
+    graph: Graph

@@ -1359,6 +1359,14 @@ T13. Team graph API                                       [depends on: T12]
     - Tests (section 5 API list): CRUD, 409 with the current graph, 423,
       wrong team 403, reset, a PUT after reset with the old version is 409.
     Done when: two teams' graphs are isolated at the API level.
+    As built (2026-10-26): app/api/teams.py. repo.save_graph is one
+    conditional UPDATE (not locked, and version == expected when given), so
+    concurrent saves of the same version cannot both win; when it writes
+    nothing the API reads the row: 423 if locked (wins over stale), else
+    409 with the current StoredGraph as the body. Reset has no version
+    check. A token for another team, or a facilitator token, is 403.
+    SaveGraphRequest {version, graph} lives in app/models/graph.py and is
+    exported with the graph schema.
 
 T14. Web: join flow, pages and authenticated client       [depends on: T13]
     - store/sessionStore.ts: team or facilitator credentials in

@@ -93,18 +93,22 @@ def get_graph(db: Session, team_id: str) -> StoredGraph | None:
     )
 
 
-def save_graph(db: Session, team_id: str, graph: Graph) -> StoredGraph:
-    """Stores the graph and bumps its version. Version and lock checks belong to the API (T13)."""
-    row = db.get(GraphRow, team_id)
-    if row is None:
-        raise LookupError(team_id)
-    row.graph = _graph_json(graph)
-    row.version += 1
-    row.updated_at = utcnow()
+def save_graph(db: Session, team_id: str, graph: Graph, expected_version: int | None = None) -> StoredGraph | None:
+    """Stores the graph and bumps its version unless it is locked or, when expected_version is
+    given, its version differs. One conditional UPDATE, so two saves of the same version cannot
+    both win. Returns None when nothing was written; the caller reads the row to tell why.
+    """
+    conditions = [GraphRow.team_id == team_id, GraphRow.locked.is_(False)]
+    if expected_version is not None:
+        conditions.append(GraphRow.version == expected_version)
+    result = db.execute(
+        update(GraphRow)
+        .where(*conditions)
+        .values(graph=_graph_json(graph), version=GraphRow.version + 1, updated_at=utcnow())
+        .execution_options(synchronize_session="fetch")
+    )
     db.commit()
-    stored = get_graph(db, team_id)
-    assert stored is not None
-    return stored
+    return get_graph(db, team_id) if result.rowcount else None
 
 
 def set_session_locked(db: Session, session_id: str, locked: bool) -> int:

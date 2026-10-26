@@ -119,6 +119,25 @@
       "title": "Position",
       "type": "object"
     },
+    "SaveGraphRequest": {
+      "additionalProperties": false,
+      "description": "PUT /api/teams/{id}/graph: `version` is the version the client last loaded.",
+      "properties": {
+        "version": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "graph": {
+          "$ref": "#/$defs/Graph"
+        }
+      },
+      "required": [
+        "version",
+        "graph"
+      ],
+      "title": "SaveGraphRequest",
+      "type": "object"
+    },
     "StoredGraph": {
       "additionalProperties": false,
       "properties": {

@@ -1,5 +1,5 @@
 from app.models.catalog import CostModel, NodeCategory, NodeDefinition
-from app.models.graph import Graph, GraphEdge, GraphNode, Position, StoredGraph
+from app.models.graph import Graph, GraphEdge, GraphNode, Position, SaveGraphRequest, StoredGraph
 from app.models.metrics import LeaderboardRow, NodeStats, RunMetrics
 from app.models.params import (
     BoolParam,
@@ -88,6 +88,7 @@ __all__ = [
     "RunMode",
     "RunStatus",
     "RunSummary",
+    "SaveGraphRequest",
     "ScenarioPack",
     "ScoringConfig",
     "SessionDetail",
