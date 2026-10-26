@@ -1,9 +1,10 @@
 // Autosave of the team's graph (plan1.txt T15). SAVE_DEBOUNCE_MS after the last change, positions
 // included, the graph is PUT with the version it was loaded at. One request is in flight at a time;
 // changes made meanwhile are saved after it. 409: the server's graph (the response body) replaces
-// the local one, with a notice. 423: the graph becomes read-only and is polled until unlocked.
-// Network and server errors retry with backoff. A save still pending at pagehide is sent with
-// fetch keepalive.
+// the local one, with a notice. 423: the graph becomes read-only. Network and server errors retry
+// with backoff. A save still pending at pagehide is sent with fetch keepalive.
+// Until M4's WebSocket pushes changes, the graph is also polled every SYNC_POLL_MS: that is how an
+// idle team sees the facilitator lock or unlock, and how a tab picks up another tab's save.
 import { create } from 'zustand'
 import { ApiError, api } from '../api/client'
 import type { StoredGraph } from '../types'
@@ -12,7 +13,7 @@ import { graphSignature, useGraphStore } from './graphStore'
 export const SAVE_DEBOUNCE_MS = 1000
 export const RETRY_BASE_MS = 1000
 export const RETRY_MAX_MS = 30_000
-export const LOCK_POLL_MS = 10_000
+export const SYNC_POLL_MS = 10_000
 export const RELOADED_NOTICE = 'Your graph was changed elsewhere; reloaded.'
 
 export type SaveStatus = 'saved' | 'pending' | 'saving' | 'offline' | 'locked' | 'error'
@@ -102,22 +103,29 @@ async function save(): Promise<void> {
   if (isDirty() && !debounceTimer && !retryTimer && !graph().locked) await save()
 }
 
-/** While locked, ask the server every LOCK_POLL_MS whether the graph is unlocked again. */
-function pollLock(teamId: string): void {
-  if (pollTimer) return
-  pollTimer = setInterval(async () => {
-    try {
-      const stored = await api.getTeamGraph(teamId)
-      if (stored.locked || graph().teamId !== teamId) return
-      clearInterval(pollTimer)
-      pollTimer = undefined
-      if (stored.version !== graph().version) loadServerGraph(stored)
-      else graph().setLocked(false)
-      if (isDirty()) await save()
-    } catch {
-      // Offline or a server error: try again on the next tick.
-    }
-  }, LOCK_POLL_MS)
+/** Brings the lock state, and an idle graph, up to date with the server. */
+async function sync(teamId: string): Promise<void> {
+  let stored: StoredGraph
+  try {
+    stored = await api.getTeamGraph(teamId)
+  } catch {
+    return // offline or a server error: try again on the next tick (a 401 has signed the team out)
+  }
+  const g = graph()
+  if (g.teamId !== teamId) return
+  if (stored.locked) {
+    if (!g.locked) g.setLocked(true)
+    return
+  }
+  const idle = !inFlight && !debounceTimer && !retryTimer && !isDirty()
+  if (stored.version !== g.version && (g.locked || idle)) loadServerGraph(stored)
+  else if (g.locked) g.setLocked(false)
+  if (isDirty() && !debounceTimer) await save() // edits kept from before the lock
+}
+
+function startSyncPoll(teamId: string): void {
+  clearInterval(pollTimer)
+  pollTimer = setInterval(() => void sync(teamId), SYNC_POLL_MS)
 }
 
 function onGraphChange(): void {
@@ -127,7 +135,6 @@ function onGraphChange(): void {
     clearTimeout(debounceTimer)
     debounceTimer = undefined
     setStatus('locked')
-    pollLock(g.teamId)
     return
   }
   if (retryTimer || inFlight) return // the retry, or the end of the request, saves the latest graph
@@ -180,9 +187,21 @@ export function startAutosave(): () => void {
     }
   })
   window.addEventListener('pagehide', onPageHide)
+  // One sync poll for whichever team's graph is loaded.
+  let polledTeam: string | null = null
+  const followTeam = (teamId: string | null) => {
+    if (teamId === polledTeam) return
+    polledTeam = teamId
+    clearInterval(pollTimer)
+    pollTimer = undefined
+    if (teamId !== null) startSyncPoll(teamId)
+  }
+  const unsubscribeTeam = useGraphStore.subscribe((state) => followTeam(state.teamId))
+  followTeam(graph().teamId)
   onGraphChange()
   return () => {
     unsubscribe()
+    unsubscribeTeam()
     window.removeEventListener('pagehide', onPageHide)
     clearTimeout(debounceTimer)
     clearTimeout(retryTimer)

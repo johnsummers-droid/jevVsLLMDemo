@@ -1,0 +1,139 @@
+DEPLOY RUNBOOK: Pipeline Simulator (M3)
+=======================================
+
+Server + PostgreSQL on Railway, web app on Vercel (plan1.txt section 6,
+decision P1). The repo already holds everything code-side:
+  server/Dockerfile, server/railway.json   the API image and its Railway settings
+  web/vercel.json                          Vite build + rewrite of every path to index.html
+  .github/workflows/ci.yml                 tests on every push
+This runbook is the account-side part: about 20 minutes, done once. Every
+step works in the web dashboards; CLI equivalents are noted where useful.
+
+Pick the branch to deploy first (main after merging open-terminal, or
+open-terminal itself). Both Railway and Vercel redeploy on every push to the
+branch you connect, so make sure CI is green on it.
+
+
+0. SECRETS (keep them out of git)
+---------------------------------
+Generate two values and keep them in a password manager:
+
+  TOKEN_SECRET       python -c "import secrets; print(secrets.token_urlsafe(32))"
+  FACILITATOR_CODE   a passphrase you will type on the facilitator page
+
+TOKEN_SECRET signs every team and facilitator token. Changing it later signs
+everyone out (teams rejoin with their names; their graphs are kept).
+
+
+1. RAILWAY: API AND DATABASE
+----------------------------
+1. railway.com -> New Project -> Deploy from GitHub repo -> pick
+   johnsummers-droid/jevVsLLMDemo (grant Railway access to it if asked).
+2. Open the new service -> Settings:
+     Source  -> Root Directory: server
+                Branch: the branch you picked
+     Config-as-code -> Railway config file: /server/railway.json
+       (it sets the Dockerfile builder, 1 replica, health check
+       /api/health and restart on failure; keep 1 replica: runs and the
+       WebSocket hub live in memory, decision D8)
+3. In the project canvas: + Create -> Database -> PostgreSQL.
+4. Service -> Variables -> add:
+     DATABASE_URL        ${{Postgres.DATABASE_URL}}   (a reference: type it
+                         exactly like this, or pick it from "Add reference")
+     FACILITATOR_CODE    <from step 0>
+     TOKEN_SECRET        <from step 0>
+     LOG_LEVEL           info
+     ALLOWED_ORIGINS     (leave for now; set in step 3 below)
+   The app rewrites postgres:// to postgresql+psycopg:// itself.
+5. Service -> Settings -> Networking -> Generate Domain. Note the URL, e.g.
+   https://jevvsllmdemo-production.up.railway.app  (= API_URL below).
+6. Deploy (it may already be running). The deploy log should show
+     Running upgrade  -> 0001, sessions teams graphs
+     Uvicorn running on http://0.0.0.0:<port>
+   and the health check passes. Check from any terminal:
+     curl https://API_URL/api/health          -> {"status":"ok"}
+
+CLI alternative (after `npm i -g @railway/cli` and `railway login`):
+`railway link`, then `railway variables --set "KEY=value"` for step 4 and
+`railway domain` for step 5.
+
+
+2. VERCEL: WEB APP
+------------------
+1. vercel.com -> Add New -> Project -> import the same GitHub repo.
+2. Configure:
+     Root Directory: web           (web/vercel.json supplies build/output)
+     Framework Preset: Vite
+     Node.js version (Settings -> Build and Deployment): 22.x, as in CI
+     "Include files outside the root directory in the Build Step": ON.
+       The build imports ../shared/schema; it is on by default, but a
+       build error "Could not resolve ../../../shared/..." means it is off.
+3. Environment Variables (Production and Preview):
+     VITE_API_BASE_URL   https://API_URL      (no trailing slash)
+   It is baked in at build time: after changing it, redeploy.
+4. Deploy. Note the production URL, e.g. https://jev-vs-llm-demo.vercel.app
+   (= WEB_URL below), and the project's preview URL pattern.
+
+
+3. CONNECT THEM (CORS)
+----------------------
+Back in Railway -> service -> Variables:
+     ALLOWED_ORIGINS       https://WEB_URL           (comma-separate several)
+     ALLOWED_ORIGIN_REGEX  ^https://jev-vs-llm-demo-[a-z0-9-]+\.vercel\.app$
+                           (optional: lets Vercel preview builds call the API;
+                           adjust to your preview host names, or leave empty)
+Railway redeploys on save.
+
+
+4. POST-DEPLOY CHECKS
+---------------------
+From a terminal:
+  curl -s https://API_URL/api/health
+      {"status":"ok"}
+  curl -s -o /dev/null -D - -X OPTIONS https://API_URL/api/sessions \
+       -H "Origin: https://WEB_URL" -H "Access-Control-Request-Method: POST"
+      HTTP 200 and access-control-allow-origin: https://WEB_URL
+
+In browsers (the M3 exit criteria):
+  [ ] https://WEB_URL/facilitator: enter FACILITATOR_CODE -> a session code.
+  [ ] Browser A (normal window) and browser B (private window, or another
+      browser): open https://WEB_URL/join?code=<code>, join as "Red" and
+      "Blue". Both see the starter graph.
+  [ ] Each adds a different node; the header says "Saved".
+  [ ] Refresh both: each still has its own node, not the other team's.
+  [ ] Open https://WEB_URL/team directly in a new tab of A: it loads (no
+      404), so the rewrite works.
+  [ ] Facilitator page lists Red and Blue. Press "Pencils down": within
+      10 seconds both teams show the lock banner, a disabled palette and
+      "Locked", without touching anything.
+  [ ] "Unlock graphs": within 10 seconds both are back to "Saved" and can
+      edit again.
+
+If all boxes are ticked, M3 is done on the deployed URLs.
+
+
+5. TROUBLESHOOTING
+------------------
+  Browser console: "blocked by CORS policy"
+      ALLOWED_ORIGINS does not contain the exact origin (scheme, host, no
+      trailing slash, no path). Fix it in Railway and wait for the redeploy.
+  "Could not reach the server" on every page
+      VITE_API_BASE_URL is missing or wrong in Vercel; fix it and redeploy
+      (it is read at build time).
+  Facilitator page: "The server has no FACILITATOR_CODE or TOKEN_SECRET set"
+      Set both in Railway variables.
+  A refresh of /team or /join gives Vercel's 404
+      Root Directory is not web/, so web/vercel.json is not used.
+  Railway deploy fails at "alembic upgrade head" / connection refused
+      DATABASE_URL is not the ${{Postgres.DATABASE_URL}} reference, or the
+      PostgreSQL service is still starting; redeploy.
+  Railway build uses Nixpacks/Railpack instead of the Dockerfile
+      The config file path (/server/railway.json) is not set.
+
+
+6. WORKSHOP DAY
+---------------
+  - Open https://API_URL/api/health a few minutes before (wakes the service).
+  - Rotate FACILITATOR_CODE if it was shared before; TOKEN_SECRET stays.
+  - Keep 1 replica.
+  - A team that loses its browser storage rejoins with the same team name.

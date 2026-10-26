@@ -1472,6 +1472,33 @@ T17. Deployment and M3 exit                               [depends on: T15, T16]
       refresh, confirm each keeps its own graph; facilitator lock gives
       read-only in both.
     Done when: M3's exit criteria hold on the deployed URLs.
+    As built (2026-10-26): server/Dockerfile (python:3.12-slim, deps
+    layer first, uid 10001, CMD runs `alembic upgrade head` then uvicorn
+    on $PORT with proxy headers and $LOG_LEVEL), server/.dockerignore,
+    server/railway.json (Dockerfile builder, numReplicas 1, health check
+    /api/health, restart ON_FAILURE; the start command lives in the
+    Dockerfile only), web/vercel.json (vite, dist, rewrite to
+    /index.html), vite proxy ws: true. specs-and-plans/deploy-runbook.txt
+    is the account-side checklist (Railway config path /server/railway.json,
+    DATABASE_URL as a ${{Postgres.DATABASE_URL}} reference, Vercel root
+    web/ with files outside the root included because the build imports
+    ../shared, Node 22, CORS, post-deploy checks). The admin and player
+    guides now describe the M3 flow.
+    Change found by the exit check: an idle team never saw "pencils
+    down" (T15 learned of a lock only from a 423). saveStore now polls
+    GET /api/teams/{id}/graph every SYNC_POLL_MS (10 s) while autosave
+    runs: it applies lock and unlock, and loads a newer version when the
+    tab is idle (never over unsaved edits). M4's WebSocket replaces it.
+    Exit checks, automated: test_teams.py::test_teams_are_isolated (API)
+    and saveStore.test.ts "a reload restores the saved graph (M3 exit)".
+    Production-like run (all passed): the image against postgres:16 with a
+    postgres:// URL (migration ran, non-root, CORS for the web origin);
+    the web built with VITE_API_BASE_URL served by vite preview; headless
+    Chromium joined Red and Blue in separate browsers, edited, refreshed
+    (each kept its own graph), and the lock turned both read-only within
+    one poll without an edit, then unlock restored both. Remaining: the
+    runbook on real accounts, then the same browser checks on the
+    deployed URLs.
 
 Next after T17: live runs over WebSockets (M4).
 

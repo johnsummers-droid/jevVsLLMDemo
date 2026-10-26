@@ -187,6 +187,14 @@ cd server && .venv/bin/uvicorn app.main:app --reload --port 8000
 cd web && npm run dev -- --host
 ```
 
+Teams, sessions and saved graphs need two server settings. Put them in
+`server/.env` (copy `server/.env.example`) before starting the API:
+
+```bash
+FACILITATOR_CODE=pick-a-passphrase
+TOKEN_SECRET=<output of: python -c "import secrets; print(secrets.token_urlsafe(32))">
+```
+
 Open `http://localhost:5173`. In a Codespace, open the **Ports** tab and
 click the globe icon next to 5173. The web dev server forwards `/api` calls
 to port 8000, so only 5173 needs to be reachable from the browser. Quick
@@ -194,21 +202,30 @@ check: `curl localhost:8000/api/health` returns `{"status":"ok"}`.
 
 Stop both with Ctrl-C.
 
-> Deployed hosting (web on Vercel, server and PostgreSQL on Railway) is part
-> of M3. Until then, every player browser must reach your dev server, for
-> example through Codespace port forwarding with the port set to
-> **Public** visibility, or by running a copy per team.
+> For a real workshop, deploy it: web on Vercel, server and PostgreSQL on
+> Railway. `specs-and-plans/deploy-runbook.txt` walks through it (about 20
+> minutes, once). Without a deployment, every player browser must reach your
+> dev server, for example through Codespace port forwarding with port 5173
+> set to **Public** visibility.
 
 ---
 
-## 4. Running a session today (M2 build)
+## 4. Running a session today (M3 build)
 
-Until saving and live runs exist, run the workshop like this:
+Teams and saved graphs work; live runs in the browser arrive with M4. Run the
+workshop like this:
 
-1. **Each team opens the web app** in its own browser and builds from the
-   starter graph. Remind them that **a page refresh resets the graph**, and
-   that each browser has its own copy.
-2. **Teams use validation as feedback.** The Pipeline check shows errors and
+1. **Create a session.** Open `/facilitator`, enter the `FACILITATOR_CODE`,
+   and put the page on the shared screen: it shows the 6-character session
+   code large, the join link (`/join?code=…`) and the teams as they join
+   (refreshed every 5 seconds).
+2. **Teams join** at `/join` with the session code and a team name, and
+   start from the starter graph. Their graph is saved on the server one
+   second after each change (the header says "Saved"), so a refresh or a
+   closed tab loses nothing. A team that loses its browser storage rejoins
+   with the same name. Keep **one laptop per team editing**: if two edit at
+   once, the later save is refused and that laptop reloads the other's graph.
+3. **Teams use validation as feedback.** The Pipeline check shows errors and
    warnings live. That's enough to fix structural problems (unconnected
    branches, no human fallback, no safety coverage).
 3. **You score the graphs headless.** Have each team describe or show you its
@@ -225,7 +242,11 @@ Until saving and live runs exist, run the workshop like this:
    The browser has no export button yet, so the JSON has to be written by
    hand; copying `strong.json` or `default.json` and editing it is the
    quickest way.
-4. **Show the reference graphs** for discussion:
+4. **Freeze with "Pencils down"** on the facilitator page. Within 10
+   seconds every team's workbench turns read-only with a banner; "Unlock
+   graphs" undoes it. A team that joins after the freeze starts unlocked,
+   so freeze once everyone is in.
+5. **Show the reference graphs** for discussion:
 
    ```bash
    .venv/bin/python scripts/run_headless.py default official --seeds 10
@@ -247,10 +268,10 @@ Adjust the times to your room.
 | Time | Step | Admin actions |
 |------|------|---------------|
 | 0–10 | **Intro** | Explain the scenario and the four component types. Show the scoring formula and the 400-point penalty for unsafe releases. Hand out `player-guide.md`. |
-| 10–15 | **Setup** | Teams open the app *(coming soon: join with the session code and a team name)*. Check every team sees the starter graph. |
+| 10–15 | **Setup** | Create the session on `/facilitator` and show the code. Teams join at `/join`; check every team appears in the list and sees the starter graph. |
 | 15–25 | **Baseline** | Run the starter graph on the practice pack and show its metrics: 23% dropped, 17% unsafe, p95 ≈ 3.8 s. Ask "why?" and let teams read the warnings. |
 | 25–60 | **Build** | Teams improve their graphs, using validation and practice runs. Walk the room; nudge with the guiding questions in the player guide rather than the answer key. |
-| 60–65 | **Freeze** | Announce the freeze; no more edits *(coming soon: the official run locks graphs automatically)*. |
+| 60–65 | **Freeze** | Press **Pencils down** on the facilitator page; every graph turns read-only *(coming soon: the official run locks graphs automatically)*. |
 | 65–75 | **Official run** | Run every team's graph on the official pack with the same seed and show the leaderboard. |
 | 75–90 | **Debrief** | Compare the top graph with `strong` and `escalate_all`. Discuss where Jev beat the LLM, where human review earned its cost, and why `weak` (more LLM) scored worst. |
 
@@ -269,30 +290,23 @@ Debrief points that tend to land:
 
 ## 6. Planned admin flow *(coming soon)*
 
-When M3 and M4 land, the flow becomes:
+Sessions, joining and saved graphs (M3) work today, see section 4. When M4
+and M5 land, the flow adds:
 
-1. **Create a session.** On the facilitator page, enter the
-   `FACILITATOR_CODE` (set in the server environment, never in the web
-   app). You get a 6-character **session code** and a facilitator token for
-   that session.
-2. **Teams join** at `/join` with the session code and a team name. Each team
-   gets its own server-saved graph, autosaved one second after the last
-   change, which survives refreshes. If a team loses its browser storage it
-   can rejoin with the same name; this issues a new token and revokes the
-   old one, and the facilitator page shows the join times.
-3. **Practice runs.** Teams run their own graph on the practice pack from the
+1. **Practice runs.** Teams run their own graph on the practice pack from the
    browser and watch tickets animate along the edges, with live node badges
    and a metrics bar. Results are private to the team.
-4. **Official run.** You set the run seed and traffic (mix, attack rate) and
+2. **Official run.** You set the run seed and traffic (mix, attack rate) and
    start it. Every team graph is **locked** (edits return 423) and
    snapshotted, and all teams run on the official pack with identical
    traffic. Results go to the **leaderboard** on the shared screen.
-5. **Run controls** (M5): stop, reset, prompt-injection wave, traffic spike
+3. **Run controls** (M5): stop, reset, prompt-injection wave, traffic spike
    (up to 3×), human-review capacity limits, and a per-request trace viewer
    for the debrief.
 
-Saving uses last-write-wins with a version number. A save from a stale copy
-of the graph gets a 409, so only one laptop per team should edit.
+Saving uses a version number: a save from a stale copy of the graph is
+refused (409) and that browser reloads the server's graph, so only one
+laptop per team should edit.
 
 ---
 
@@ -315,7 +329,10 @@ of the graph gets a 409, so only one laptop per team should edit.
 |---------|-----|
 | The page shows a catalog or load error | The API isn't running or isn't reachable. Start uvicorn and check `curl localhost:8000/api/health`. |
 | The page loads but validation badges never appear | Same as above. The web app retries the catalog after an error, so refresh once the server is up. |
-| A player's graph disappeared | A refresh resets it in the M2 build. Server-side saving arrives in M3. |
+| A player's graph changed by itself, with "Your graph was changed elsewhere; reloaded." | Two laptops (or tabs) of the same team edited at once; the later save lost. Have one laptop edit. |
+| A team can't get back in after clearing its browser | Rejoin at `/join` with the same session code and team name; the graph is kept. |
+| "The server has no FACILITATOR_CODE or TOKEN_SECRET set" | Set both in `server/.env` (local) or the Railway variables (deployed) and restart the API. |
+| The header says "Offline – retrying" | The browser can't reach the API. Edits are kept and saved once it's back. |
 | Players on other machines can't open the app | In a Codespace, set port 5173's visibility to Public in the Ports tab. Locally, start Vite with `--host` and use your machine's IP. |
 | A link won't connect | The refusal notice gives the reason: type mismatch, a single input that's already connected, more than 4 edges on one output, a duplicate, or a cycle. |
 | Backspace doesn't delete | A text field has focus. Click the canvas first. |

@@ -11,12 +11,17 @@ There is no single right answer. A good pipeline answers most tickets
 automatically, quickly and cheaply, sends the hard or risky ones to a person,
 and never lets an unsafe reply reach a customer.
 
-> **What works today.** The canvas, palette, inspector and live validation
-> are built. Saving your graph on the server, team logins and running your
-> pipeline from the browser (with animated traffic and a metrics bar) are
-> coming next. Until then your graph lives in this browser tab only: a page
-> refresh resets it to the starter graph. Sections marked *(coming soon)*
-> describe how runs will work.
+> **What works today.** Join with the session code from the screen and a
+> team name at `/join`. The canvas, palette, inspector and live validation
+> work, and your graph is saved on the server a second after each change
+> (the header says **Saved**), so a refresh loses nothing. Running your
+> pipeline from the browser (with animated traffic and a metrics bar) comes
+> next; sections marked *(coming soon)* describe how runs will work.
+>
+> Edit on **one laptop per team**: if two edit at once, one of them gets
+> "Your graph was changed elsewhere; reloaded." and loses its last change.
+> When the facilitator calls **pencils down**, the workbench turns read-only
+> with a banner. Lost your browser? Join again with the same team name.
 
 ---
 
@@ -24,6 +29,7 @@ and never lets an unsafe reply reach a customer.
 
 | Area | What it does |
 |------|--------------|
+| **Header** (top) | Your team and session, the save status (Saved / Saving… / Offline – retrying / Locked), **Reset graph** (back to the starter graph, after a confirm) and **Sign out**. |
 | **Palette** (left) | Every node type you can use, grouped by category. Click a card to add that node at the centre of the canvas, or drag it to where you want it. |
 | **Canvas** (middle) | Your pipeline. Drag nodes to move them, scroll to zoom, drag the background to pan. |
 | **Inspector** (right) | With one node selected: its description, settings (params), ports, cost and latency assumptions, problems, and a **Delete node** button. With nothing selected: the **Pipeline check**, a list of every problem in the graph. |

@@ -5,11 +5,11 @@ import type { Graph, StoredGraph } from '../types'
 import { useCatalogStore } from './catalogStore'
 import { useGraphStore } from './graphStore'
 import {
-  LOCK_POLL_MS,
   RELOADED_NOTICE,
   RETRY_BASE_MS,
   SAVE_DEBOUNCE_MS,
   startAutosave,
+  SYNC_POLL_MS,
   useSaveStore,
 } from './saveStore'
 import { useSessionStore } from './sessionStore'
@@ -134,10 +134,10 @@ describe('autosave', () => {
     move(999)
     expect(graph().nodes[0].position).toEqual({ x: 100, y: 0 })
 
-    await vi.advanceTimersByTimeAsync(LOCK_POLL_MS)
+    await vi.advanceTimersByTimeAsync(SYNC_POLL_MS)
     expect(graph().locked).toBe(true)
     locked = false
-    await vi.advanceTimersByTimeAsync(LOCK_POLL_MS)
+    await vi.advanceTimersByTimeAsync(SYNC_POLL_MS)
     expect(graph().locked).toBe(false)
     expect(puts(fetchMock)).toHaveLength(2)
     expect(putBody(puts(fetchMock)[1]).graph.nodes[0].position).toEqual({ x: 100, y: 0 })
@@ -204,5 +204,62 @@ describe('autosave', () => {
     await vi.advanceTimersByTimeAsync(SAVE_DEBOUNCE_MS * 3)
     expect(puts(fetchMock)).toHaveLength(0)
     expect(useSaveStore.getState().status).toBe('saved')
+  })
+
+  it('an idle team sees the lock and the unlock through the sync poll', async () => {
+    let locked = false
+    mockApi({ [`GET ${GRAPH_URL}`]: () => ({ body: stored(0, defaultGraphFixture, locked) }) })
+    locked = true
+    await vi.advanceTimersByTimeAsync(SYNC_POLL_MS)
+    expect(graph().locked).toBe(true)
+    expect(useSaveStore.getState().status).toBe('locked')
+    locked = false
+    await vi.advanceTimersByTimeAsync(SYNC_POLL_MS)
+    expect(graph().locked).toBe(false)
+    expect(useSaveStore.getState().status).toBe('saved')
+  })
+
+  it("an idle tab loads another tab's newer save, but never over unsaved edits", async () => {
+    const theirs: Graph = { ...defaultGraphFixture, nodes: defaultGraphFixture.nodes.slice(0, 2), edges: [] }
+    const fetchMock = mockApi({
+      [`GET ${GRAPH_URL}`]: { body: stored(3, theirs) },
+      [`PUT ${GRAPH_URL}`]: { status: 409, body: stored(3, theirs) },
+    })
+    move(100) // unsaved: the poll leaves it alone, the save's 409 reloads
+    await vi.advanceTimersByTimeAsync(SAVE_DEBOUNCE_MS - 1)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(puts(fetchMock)).toHaveLength(1)
+    expect(graph().version).toBe(3)
+
+    graph().setStoredGraph(stored(2)) // as if this tab were behind and idle
+    graph().setNotice(null)
+    await vi.advanceTimersByTimeAsync(SYNC_POLL_MS)
+    expect(graph().version).toBe(3)
+    expect(graph().nodes).toHaveLength(2)
+    expect(graph().notice).toBe(RELOADED_NOTICE)
+  })
+
+  it('a reload restores the saved graph (M3 exit)', async () => {
+    let server = stored(0)
+    mockApi({
+      [`GET ${GRAPH_URL}`]: () => ({ body: server }),
+      [`PUT ${GRAPH_URL}`]: (init) => {
+        const body = JSON.parse(String(init.body)) as { version: number; graph: Graph }
+        server = stored(body.version + 1, body.graph)
+        return { body: server }
+      },
+    })
+    const id = graph().addNode('knowledge_lookup', { x: 500, y: 500 })
+    move(42)
+    await vi.advanceTimersByTimeAsync(SAVE_DEBOUNCE_MS)
+    const before = graph().toGraph()
+
+    stop()
+    graph().clear()
+    await graph().loadTeamGraph('t1')
+    stop = startAutosave()
+    expect(graph().toGraph()).toEqual(before)
+    expect(graph().nodes.some((n) => n.id === id)).toBe(true)
+    expect(graph().version).toBe(1)
   })
 })
