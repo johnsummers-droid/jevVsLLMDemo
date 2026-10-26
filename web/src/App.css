@@ -34,6 +34,170 @@
   min-width: 0;
 }
 
+.app__team {
+  margin-left: auto;
+  font-size: 0.85rem;
+}
+
+/* buttons */
+
+.button {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled),
+.button:focus-visible {
+  border-color: var(--accent);
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.button--primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.button--small {
+  padding: 2px 8px;
+  font-size: 0.85rem;
+}
+
+/* join and facilitator pages */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  min-height: 100%;
+  padding: 48px 16px;
+}
+
+.page__card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  max-width: 420px;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.page--wide .page__card {
+  max-width: 720px;
+}
+
+.page__card h1,
+.page__card h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.page__card p {
+  margin: 0;
+}
+
+.page__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.page__count {
+  color: var(--muted);
+  font-weight: normal;
+}
+
+.page__hint,
+.page__footer {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.page__hint code {
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+
+.page__error {
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--issue-error-bg);
+  color: var(--issue-error);
+}
+
+.page a {
+  color: var(--accent);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.9rem;
+}
+
+.field__input {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 1rem;
+}
+
+.field__input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.field__input--code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.session-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: clamp(2.5rem, 12vw, 5rem);
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  line-height: 1.1;
+}
+
+.team-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.team-table th,
+.team-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.team-table th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
 /* palette */
 
 .palette {

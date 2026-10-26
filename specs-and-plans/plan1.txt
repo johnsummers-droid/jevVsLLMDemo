@@ -1380,6 +1380,25 @@ T14. Web: join flow, pages and authenticated client       [depends on: T13]
     - Tests: join stores the token and opens /team; 401 returns to /join;
       the facilitator page creates a session and lists teams (fetch mocked).
     Done when: a team can join and see the canvas in the browser.
+    As built (2026-10-26): lib/navigation.ts (PATHS, pageFromPath,
+    navigate = pushState + popstate, usePathname); App.tsx sends "/" and
+    unknown paths to /team (signed-in team) or /join, and /team without a
+    team to /join. store/sessionStore.ts holds both roles under one
+    localStorage key (setTeam, setFacilitator, signOut(role)). The client
+    sends the role's token per call; a 401 on a team call goes to /join,
+    on a facilitator call to /facilitator; a 401 on an unauthenticated
+    call (wrong facilitator code) signs nobody out. TeamPage loads the
+    team's stored graph (graphStore.loadTeamGraph, moved here from T15;
+    saving is still T15) and clears the graph when the team changes.
+    JoinPage takes ?code= (the facilitator page shows that link).
+    FacilitatorPage polls the session every 5 s (REFRESH_MS); the lock
+    button is "Unlock" when every team is locked. pages/Link.tsx for
+    in-app links. Checked in headless Chromium against uvicorn + Vite:
+    facilitator creates a session, a team joins, sees the canvas, a
+    reload stays on /team, the facilitator sees the team and locks.
+    For T17: the Vercel build needs a rewrite of every path to
+    index.html (/join, /team, /facilitator). Open point: a team that
+    joins after "pencils down" starts unlocked (lock is per graph).
 
 T15. Web: autosave, conflicts and lock                    [depends on: T14]
     - graphStore loads GET /api/teams/{id}/graph (not the default graph)

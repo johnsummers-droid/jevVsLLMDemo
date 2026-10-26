@@ -1,8 +1,22 @@
 // Typed fetch wrapper for the FastAPI server. In development Vite proxies /api to port 8000; a
-// deployed build sets VITE_API_URL to the server's origin. The team token arrives with M3.
-import type { CatalogResponse, Graph, ValidationReport } from '../types'
+// deployed build sets VITE_API_BASE_URL to the server's origin. Requests made as a team or as the
+// facilitator carry that role's bearer token; a 401 on one signs the role out and returns to its
+// sign-in page.
+import { navigate, PATHS } from '../lib/navigation'
+import { type Role, useSessionStore } from '../store/sessionStore'
+import type {
+  CatalogResponse,
+  CreateSessionResponse,
+  Graph,
+  JoinTeamResponse,
+  SessionDetail,
+  StoredGraph,
+  ValidationReport,
+} from '../types'
 
-const BASE_URL: string = import.meta.env.VITE_API_URL ?? ''
+const BASE_URL: string = import.meta.env.VITE_API_BASE_URL ?? ''
+
+const SIGN_IN_PAGE: Record<Role, string> = { team: PATHS.join, facilitator: PATHS.facilitator }
 
 export class ApiError extends Error {
   readonly status: number
@@ -16,10 +30,19 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
+function token(role: Role): string | undefined {
+  const state = useSessionStore.getState()
+  return (role === 'team' ? state.team : state.facilitator)?.token
+}
+
+async function request<T>(method: 'GET' | 'POST' | 'PUT', path: string, body?: unknown, role?: Role): Promise<T> {
+  const headers: Record<string, string> = {}
+  if (body !== undefined) headers['Content-Type'] = 'application/json'
+  const bearer = role && token(role)
+  if (bearer) headers.Authorization = `Bearer ${bearer}`
   const response = await fetch(BASE_URL + path, {
     method,
-    headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+    headers: Object.keys(headers).length ? headers : undefined,
     body: body === undefined ? undefined : JSON.stringify(body),
   })
   const text = await response.text()
@@ -32,13 +55,31 @@ async function request<T>(method: 'GET' | 'POST', path: string, body?: unknown):
     }
   }
   if (!response.ok) {
+    if (response.status === 401 && role) {
+      useSessionStore.getState().signOut(role)
+      navigate(SIGN_IN_PAGE[role], { replace: true })
+    }
     throw new ApiError(response.status, data, `${method} ${path} failed with ${response.status}`)
   }
   return data as T
 }
 
+const code = (sessionCode: string) => encodeURIComponent(sessionCode)
+
 export const api = {
   getCatalog: () => request<CatalogResponse>('GET', '/api/catalog'),
   getDefaultGraph: () => request<Graph>('GET', '/api/graphs/default'),
   validateGraph: (graph: Graph) => request<ValidationReport>('POST', '/api/graphs/validate', graph),
+
+  createSession: (facilitatorCode: string) =>
+    request<CreateSessionResponse>('POST', '/api/sessions', { facilitatorCode }),
+  joinTeam: (sessionCode: string, teamName: string) =>
+    request<JoinTeamResponse>('POST', `/api/sessions/${code(sessionCode)}/teams`, { teamName }),
+  getSession: (sessionCode: string) =>
+    request<SessionDetail>('GET', `/api/sessions/${code(sessionCode)}`, undefined, 'facilitator'),
+  lockSession: (sessionCode: string, locked: boolean) =>
+    request<SessionDetail>('POST', `/api/sessions/${code(sessionCode)}/lock`, { locked }, 'facilitator'),
+
+  getTeamGraph: (teamId: string) =>
+    request<StoredGraph>('GET', `/api/teams/${encodeURIComponent(teamId)}/graph`, undefined, 'team'),
 }

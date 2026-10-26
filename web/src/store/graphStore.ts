@@ -1,5 +1,6 @@
-// The team's graph, held in memory as React Flow nodes and edges (no persistence until M3). It
-// starts from GET /api/graphs/default; the catalog must be loaded first.
+// The team's graph, held in memory as React Flow nodes and edges. It is loaded from the team's
+// stored graph (GET /api/teams/{id}/graph; saving arrives with T15) or the server's default graph;
+// the catalog must be loaded first.
 import {
   applyEdgeChanges,
   applyNodeChanges,
@@ -28,6 +29,10 @@ interface GraphState {
   setGraph: (graph: Graph) => void
   /** Replaces the graph with the server's default graph (ignored while a load is running). */
   loadDefault: () => Promise<void>
+  /** Replaces the graph with the team's stored graph (ignored while a load is running). */
+  loadTeamGraph: (teamId: string) => Promise<void>
+  /** Back to the empty state, e.g. when the team signs out. */
+  clear: () => void
   /** Adds a node with the catalog's default params (nudged off any node at that spot); returns its id. */
   addNode: (nodeType: string, position: XYPosition) => string
   moveNode: (id: string, position: XYPosition) => void
@@ -73,113 +78,121 @@ export function defaultParams(definition: NodeDefinition): Record<string, unknow
   return Object.fromEntries(definition.params.map((spec) => [spec.key, structuredClone(spec.default)]))
 }
 
-export const useGraphStore = create<GraphState>()((set, get) => ({
-  status: 'empty',
-  error: null,
-  nodes: [],
-  edges: [],
-  notice: null,
-
-  setNotice: (notice) => set({ notice }),
-
-  setGraph: (graph) => {
-    const { nodes, edges } = graphToFlow(graph, catalog())
-    set({ status: 'ready', error: null, nodes, edges })
-  },
-
-  loadDefault: async () => {
+export const useGraphStore = create<GraphState>()((set, get) => {
+  const load = async (fetchGraph: () => Promise<Graph>) => {
     if (get().status === 'loading') return
     set({ status: 'loading', error: null })
     try {
-      get().setGraph(await api.getDefaultGraph())
+      get().setGraph(await fetchGraph())
     } catch (error) {
       set({ status: 'error', error: error instanceof Error ? error.message : String(error) })
     }
-  },
+  }
 
-  addNode: (nodeType, position) => {
-    const definition = catalog()[nodeType]
-    if (!definition) throw new Error(`unknown node type ${nodeType}`)
-    const id = uniqueNodeId(nodeType, get().nodes)
-    const node: FlowNode = {
-      id,
-      type: flowNodeType(nodeType, catalog()),
-      position: freePosition(position, get().nodes),
-      data: { nodeType, params: defaultParams(definition), label: null },
-    }
-    set({ status: 'ready', nodes: [...get().nodes, node] })
-    return id
-  },
+  return {
+    status: 'empty',
+    error: null,
+    nodes: [],
+    edges: [],
+    notice: null,
 
-  moveNode: (id, position) => {
-    set({ nodes: get().nodes.map((n) => (n.id === id ? { ...n, position } : n)) })
-  },
+    setNotice: (notice) => set({ notice }),
 
-  deleteNode: (id) => {
-    set({
-      nodes: get().nodes.filter((n) => n.id !== id),
-      edges: get().edges.filter((e) => e.source !== id && e.target !== id),
-    })
-  },
+    setGraph: (graph) => {
+      const { nodes, edges } = graphToFlow(graph, catalog())
+      set({ status: 'ready', error: null, nodes, edges })
+    },
 
-  connect: (connection) => {
-    const { nodes, edges } = get()
-    const check = checkConnection(connection, { nodes, edges, catalog: catalog() })
-    if (check.ok) {
-      const { source, sourceHandle, target, targetHandle } = connection
-      const edge: FlowEdge = {
-        id: edgeId(source, sourceHandle ?? '', target, targetHandle ?? ''),
-        source,
-        sourceHandle,
-        target,
-        targetHandle,
+    loadDefault: () => load(api.getDefaultGraph),
+
+    loadTeamGraph: (teamId) => load(async () => (await api.getTeamGraph(teamId)).graph),
+
+    clear: () => set({ status: 'empty', error: null, nodes: [], edges: [], notice: null }),
+
+    addNode: (nodeType, position) => {
+      const definition = catalog()[nodeType]
+      if (!definition) throw new Error(`unknown node type ${nodeType}`)
+      const id = uniqueNodeId(nodeType, get().nodes)
+      const node: FlowNode = {
+        id,
+        type: flowNodeType(nodeType, catalog()),
+        position: freePosition(position, get().nodes),
+        data: { nodeType, params: defaultParams(definition), label: null },
       }
-      set({ edges: [...edges, edge] })
-    }
-    return check
-  },
+      set({ status: 'ready', nodes: [...get().nodes, node] })
+      return id
+    },
 
-  deleteEdge: (id) => {
-    set({ edges: get().edges.filter((e) => e.id !== id) })
-  },
+    moveNode: (id, position) => {
+      set({ nodes: get().nodes.map((n) => (n.id === id ? { ...n, position } : n)) })
+    },
 
-  updateParam: (nodeId, key, value) => {
-    const node = get().nodes.find((n) => n.id === nodeId)
-    if (!node) return []
-    const definition = catalog()[node.data.nodeType]
-    const params = { ...node.data.params, [key]: value }
-    const outputIds = (p: Record<string, unknown> | undefined) =>
-      new Set(definition ? expandOutputs(definition, p).map((port) => port.id) : [])
-    const before = outputIds(node.data.params)
-    const after = outputIds(params)
-    // Only edges that were on a real port lose it; edges the server already flags stay.
-    const dropped = get().edges.filter(
-      (e) => e.source === nodeId && before.has(e.sourceHandle ?? '') && !after.has(e.sourceHandle ?? ''),
-    )
-    const droppedIds = new Set(dropped.map((e) => e.id))
-    set({
-      nodes: get().nodes.map((n) => (n.id === nodeId ? { ...n, data: { ...n.data, params } } : n)),
-      edges: get().edges.filter((e) => !droppedIds.has(e.id)),
-      ...(dropped.length > 0 && {
-        notice:
-          `Removed ${dropped.length} connection${dropped.length > 1 ? 's' : ''} from branches that no longer ` +
-          `exist: ${dropped.map((e) => `${e.sourceHandle} → ${e.target}`).join(', ')}.`,
-      }),
-    })
-    return dropped.map((e) => e.id)
-  },
+    deleteNode: (id) => {
+      set({
+        nodes: get().nodes.filter((n) => n.id !== id),
+        edges: get().edges.filter((e) => e.source !== id && e.target !== id),
+      })
+    },
 
-  onNodesChange: (changes) => {
-    const removed = new Set(changes.flatMap((c) => (c.type === 'remove' ? [c.id] : [])))
-    set({
-      nodes: applyNodeChanges(changes, get().nodes),
-      edges: removed.size ? get().edges.filter((e) => !removed.has(e.source) && !removed.has(e.target)) : get().edges,
-    })
-  },
+    connect: (connection) => {
+      const { nodes, edges } = get()
+      const check = checkConnection(connection, { nodes, edges, catalog: catalog() })
+      if (check.ok) {
+        const { source, sourceHandle, target, targetHandle } = connection
+        const edge: FlowEdge = {
+          id: edgeId(source, sourceHandle ?? '', target, targetHandle ?? ''),
+          source,
+          sourceHandle,
+          target,
+          targetHandle,
+        }
+        set({ edges: [...edges, edge] })
+      }
+      return check
+    },
 
-  onEdgesChange: (changes) => {
-    set({ edges: applyEdgeChanges(changes, get().edges) })
-  },
+    deleteEdge: (id) => {
+      set({ edges: get().edges.filter((e) => e.id !== id) })
+    },
 
-  toGraph: () => flowToGraph(get().nodes, get().edges),
-}))
+    updateParam: (nodeId, key, value) => {
+      const node = get().nodes.find((n) => n.id === nodeId)
+      if (!node) return []
+      const definition = catalog()[node.data.nodeType]
+      const params = { ...node.data.params, [key]: value }
+      const outputIds = (p: Record<string, unknown> | undefined) =>
+        new Set(definition ? expandOutputs(definition, p).map((port) => port.id) : [])
+      const before = outputIds(node.data.params)
+      const after = outputIds(params)
+      // Only edges that were on a real port lose it; edges the server already flags stay.
+      const dropped = get().edges.filter(
+        (e) => e.source === nodeId && before.has(e.sourceHandle ?? '') && !after.has(e.sourceHandle ?? ''),
+      )
+      const droppedIds = new Set(dropped.map((e) => e.id))
+      set({
+        nodes: get().nodes.map((n) => (n.id === nodeId ? { ...n, data: { ...n.data, params } } : n)),
+        edges: get().edges.filter((e) => !droppedIds.has(e.id)),
+        ...(dropped.length > 0 && {
+          notice:
+            `Removed ${dropped.length} connection${dropped.length > 1 ? 's' : ''} from branches that no longer ` +
+            `exist: ${dropped.map((e) => `${e.sourceHandle} → ${e.target}`).join(', ')}.`,
+        }),
+      })
+      return dropped.map((e) => e.id)
+    },
+
+    onNodesChange: (changes) => {
+      const removed = new Set(changes.flatMap((c) => (c.type === 'remove' ? [c.id] : [])))
+      set({
+        nodes: applyNodeChanges(changes, get().nodes),
+        edges: removed.size ? get().edges.filter((e) => !removed.has(e.source) && !removed.has(e.target)) : get().edges,
+      })
+    },
+
+    onEdgesChange: (changes) => {
+      set({ edges: applyEdgeChanges(changes, get().edges) })
+    },
+
+    toGraph: () => flowToGraph(get().nodes, get().edges),
+  }
+})
