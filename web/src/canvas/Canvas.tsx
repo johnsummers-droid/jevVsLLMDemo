@@ -1,5 +1,5 @@
-// The editable pipeline canvas. Must be rendered inside a ReactFlowProvider, and mounted once the
-// graph has loaded so the first fitView frames it.
+// The editable pipeline canvas (read-only while the graph is locked). Must be rendered inside a
+// ReactFlowProvider, and mounted once the graph has loaded so the first fitView frames it.
 import {
   Background,
   Controls,
@@ -34,6 +34,7 @@ export function Canvas() {
   const { fitView, screenToFlowPosition } = useReactFlow()
   const notice = useGraphStore((s) => s.notice)
   const setNotice = useGraphStore((s) => s.setNotice)
+  const locked = useGraphStore((s) => s.locked)
 
   // The fitView prop can run before every node is measured and frame only the first one, so fit
   // once all nodes have their size.
@@ -87,11 +88,11 @@ export function Canvas() {
   const onDrop = useCallback(
     (event: DragEvent) => {
       const nodeType = event.dataTransfer.getData(NODE_DRAG_TYPE)
-      if (!nodeType) return
+      if (!nodeType || locked) return
       event.preventDefault()
       addNode(nodeType, screenToFlowPosition({ x: event.clientX, y: event.clientY }))
     },
-    [addNode, screenToFlowPosition],
+    [addNode, screenToFlowPosition, locked],
   )
 
   return (
@@ -106,6 +107,10 @@ export function Canvas() {
         onConnect={onConnect}
         onConnectEnd={onConnectEnd}
         isValidConnection={isValidConnection}
+        nodesDraggable={!locked}
+        nodesConnectable={!locked}
+        edgesReconnectable={!locked}
+        deleteKeyCode={locked ? null : undefined}
         minZoom={0.2}
         colorMode="system"
       >

@@ -1417,6 +1417,27 @@ T15. Web: autosave, conflicts and lock                    [depends on: T14]
       409 reloads with a notice; 423 makes the store read-only; retry after
       a network error.
     Done when: a refresh keeps the graph, in the browser.
+    As built (2026-10-26): store/saveStore.ts (startAutosave, flush,
+    reset; SAVE_DEBOUNCE_MS 1000, RETRY_BASE_MS 1000 doubling to
+    RETRY_MAX_MS 30000, LOCK_POLL_MS 10000). graphStore keeps teamId,
+    version, locked and `baseline` (graphSignature = the whole Graph JSON,
+    positions included); unsaved = signature != baseline. setStoredGraph
+    sets a new baseline (load, 409, reset); markSaved after a save. Locked:
+    every graphStore edit is refused (connect returns reason 'locked';
+    onNodesChange keeps only select/dimensions), the canvas disables drag,
+    connect and delete, palette cards are disabled, the inspector's params
+    sit in a disabled fieldset and Delete is hidden; a banner explains it.
+    No push channel yet (M4), so the client learns of a lock only from a
+    423 on its next save or at load; while locked it polls GET every 10 s
+    and unlocks (reloading if the version moved, else saving its pending
+    edits). Edits made between the lock and the 423 stay on screen and are
+    saved after unlock. 5xx and network errors retry; other 4xx show "Not
+    saved". Sign-out flushes a pending save first. Header: Saved /
+    Saving... / Offline - retrying / Locked / Not saved, and "Reset graph"
+    with an inline confirm. Checked in headless Chromium: a refresh keeps
+    an added node and a dragged position; two tabs of one team give the
+    second a 409 reload with the notice; lock -> banner and disabled
+    palette; unlock -> back to Saved within one poll.
 
 T16. CI                                                   [depends on: T11]
     - .github/workflows/ci.yml as in section 5: server tests on Python 3.12

@@ -44,6 +44,7 @@ function NodeDetails({ nodeId, definition }: { nodeId: string; definition: NodeD
   const node = useGraphStore((s) => s.nodes.find((n) => n.id === nodeId))
   const updateParam = useGraphStore((s) => s.updateParam)
   const deleteNode = useGraphStore((s) => s.deleteNode)
+  const locked = useGraphStore((s) => s.locked)
   const params = node?.data.params
   const outputs = useMemo(() => expandOutputs(definition, params), [definition, params])
   const index = useValidationStore((s) => s.index)
@@ -76,14 +77,17 @@ function NodeDetails({ nodeId, definition }: { nodeId: string; definition: NodeD
       {definition.params.length > 0 && (
         <section className="inspector__section">
           <h3>Parameters</h3>
-          {definition.params.map((spec) => (
-            <ParamField
-              key={`${node.id}:${spec.key}`}
-              spec={spec}
-              value={params?.[spec.key] ?? spec.default}
-              onChange={(value) => updateParam(node.id, spec.key, value)}
-            />
-          ))}
+          {/* A disabled fieldset disables every control inside it. */}
+          <fieldset className="inspector__params" disabled={locked}>
+            {definition.params.map((spec) => (
+              <ParamField
+                key={`${node.id}:${spec.key}`}
+                spec={spec}
+                value={params?.[spec.key] ?? spec.default}
+                onChange={(value) => updateParam(node.id, spec.key, value)}
+              />
+            ))}
+          </fieldset>
         </section>
       )}
 
@@ -115,9 +119,11 @@ function NodeDetails({ nodeId, definition }: { nodeId: string; definition: NodeD
         </dl>
       </section>
 
-      <button type="button" className="inspector__delete" onClick={() => deleteNode(node.id)}>
-        Delete node
-      </button>
+      {!locked && (
+        <button type="button" className="inspector__delete" onClick={() => deleteNode(node.id)}>
+          Delete node
+        </button>
+      )}
     </>
   )
 }

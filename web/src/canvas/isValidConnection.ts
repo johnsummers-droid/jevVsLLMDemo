@@ -13,6 +13,7 @@ export type Refusal =
   | 'fan_in'
   | 'fan_out'
   | 'cycle'
+  | 'locked'
 
 export type ConnectionCheck =
   | { ok: true; compat: Exclude<Compat, 'blocked'> }

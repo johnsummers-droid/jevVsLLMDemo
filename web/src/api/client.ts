@@ -9,6 +9,7 @@ import type {
   CreateSessionResponse,
   Graph,
   JoinTeamResponse,
+  SaveGraphRequest,
   SessionDetail,
   StoredGraph,
   ValidationReport,
@@ -35,7 +36,13 @@ function token(role: Role): string | undefined {
   return (role === 'team' ? state.team : state.facilitator)?.token
 }
 
-async function request<T>(method: 'GET' | 'POST' | 'PUT', path: string, body?: unknown, role?: Role): Promise<T> {
+async function request<T>(
+  method: 'GET' | 'POST' | 'PUT',
+  path: string,
+  body?: unknown,
+  role?: Role,
+  { keepalive = false }: { keepalive?: boolean } = {},
+): Promise<T> {
   const headers: Record<string, string> = {}
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   const bearer = role && token(role)
@@ -44,6 +51,7 @@ async function request<T>(method: 'GET' | 'POST' | 'PUT', path: string, body?: u
     method,
     headers: Object.keys(headers).length ? headers : undefined,
     body: body === undefined ? undefined : JSON.stringify(body),
+    ...(keepalive && { keepalive }),
   })
   const text = await response.text()
   let data: unknown = undefined
@@ -65,6 +73,7 @@ async function request<T>(method: 'GET' | 'POST' | 'PUT', path: string, body?: u
 }
 
 const code = (sessionCode: string) => encodeURIComponent(sessionCode)
+const teamGraph = (teamId: string) => `/api/teams/${encodeURIComponent(teamId)}/graph`
 
 export const api = {
   getCatalog: () => request<CatalogResponse>('GET', '/api/catalog'),
@@ -80,6 +89,9 @@ export const api = {
   lockSession: (sessionCode: string, locked: boolean) =>
     request<SessionDetail>('POST', `/api/sessions/${code(sessionCode)}/lock`, { locked }, 'facilitator'),
 
-  getTeamGraph: (teamId: string) =>
-    request<StoredGraph>('GET', `/api/teams/${encodeURIComponent(teamId)}/graph`, undefined, 'team'),
+  getTeamGraph: (teamId: string) => request<StoredGraph>('GET', teamGraph(teamId), undefined, 'team'),
+  /** 409 (stale version) carries the current StoredGraph as ApiError.body; 423 when locked. */
+  saveTeamGraph: (teamId: string, version: number, graph: Graph, options?: { keepalive?: boolean }) =>
+    request<StoredGraph>('PUT', teamGraph(teamId), { version, graph } satisfies SaveGraphRequest, 'team', options),
+  resetTeamGraph: (teamId: string) => request<StoredGraph>('POST', `${teamGraph(teamId)}/reset`, undefined, 'team'),
 }

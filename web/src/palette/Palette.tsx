@@ -13,9 +13,11 @@ const GROUPS: { category: NodeCategory; title: string }[] = [
 interface PaletteProps {
   nodes: NodeDefinition[]
   onAdd: (nodeType: string) => void
+  /** Read-only graph: the cards can't be clicked or dragged. */
+  disabled?: boolean
 }
 
-export function Palette({ nodes, onAdd }: PaletteProps) {
+export function Palette({ nodes, onAdd, disabled = false }: PaletteProps) {
   return (
     <aside className="palette" aria-label="Node palette">
       {GROUPS.map(({ category, title }) => {
@@ -25,7 +27,7 @@ export function Palette({ nodes, onAdd }: PaletteProps) {
           <section key={category} className="palette__group">
             <h2 className="palette__heading">{title}</h2>
             {members.map((definition) => (
-              <NodeCard key={definition.type} definition={definition} onAdd={onAdd} />
+              <NodeCard key={definition.type} definition={definition} onAdd={onAdd} disabled={disabled} />
             ))}
           </section>
         )

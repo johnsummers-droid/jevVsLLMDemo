@@ -1,6 +1,7 @@
 // The team's graph, held in memory as React Flow nodes and edges. It is loaded from the team's
-// stored graph (GET /api/teams/{id}/graph; saving arrives with T15) or the server's default graph;
-// the catalog must be loaded first.
+// stored graph (GET /api/teams/{id}/graph) or the server's default graph; the catalog must be
+// loaded first. saveStore saves it back; `baseline` is the signature of the last saved graph.
+// While `locked`, every edit below is refused (the facilitator's "pencils down").
 import {
   applyEdgeChanges,
   applyNodeChanges,
@@ -13,7 +14,7 @@ import { create } from 'zustand'
 import { api } from '../api/client'
 import { checkConnection, type ConnectionCheck } from '../canvas/isValidConnection'
 import { edgeId, expandOutputs, flowNodeType, flowToGraph, graphToFlow } from '../lib/graphMapping'
-import type { FlowEdge, FlowNode, Graph, NodeDefinition } from '../types'
+import type { FlowEdge, FlowNode, Graph, NodeDefinition, StoredGraph } from '../types'
 import { useCatalogStore } from './catalogStore'
 
 type GraphStatus = 'empty' | 'loading' | 'ready' | 'error'
@@ -25,15 +26,26 @@ interface GraphState {
   edges: FlowEdge[]
   /** A short message for the canvas (refused connection, pruned edges); null when none. */
   notice: string | null
+  /** The team whose stored graph is loaded, its version and lock; null/0/false for the default graph. */
+  teamId: string | null
+  version: number
+  locked: boolean
+  /** graphSignature of the graph as last loaded or saved; the graph has unsaved changes when it differs. */
+  baseline: string | null
   setNotice: (notice: string | null) => void
   setGraph: (graph: Graph) => void
+  /** Loads a stored graph (initial load, a 409 reload, a reset) as the new baseline. */
+  setStoredGraph: (stored: StoredGraph) => void
+  /** Records a successful save of the graph with that signature. */
+  markSaved: (version: number, signature: string) => void
+  setLocked: (locked: boolean) => void
   /** Replaces the graph with the server's default graph (ignored while a load is running). */
   loadDefault: () => Promise<void>
   /** Replaces the graph with the team's stored graph (ignored while a load is running). */
   loadTeamGraph: (teamId: string) => Promise<void>
   /** Back to the empty state, e.g. when the team signs out. */
   clear: () => void
-  /** Adds a node with the catalog's default params (nudged off any node at that spot); returns its id. */
+  /** Adds a node with the catalog's default params (nudged off any node at that spot); returns its id, or '' when locked. */
   addNode: (nodeType: string, position: XYPosition) => string
   moveNode: (id: string, position: XYPosition) => void
   /** Removes the node and every edge attached to it. */
@@ -52,6 +64,13 @@ interface GraphState {
 }
 
 const catalog = () => useCatalogStore.getState().byType
+
+/** Everything that is saved, positions included (unlike validationSignature). */
+export function graphSignature(graph: Graph): string {
+  return JSON.stringify(graph)
+}
+
+const LOCKED: ConnectionCheck = { ok: false, reason: 'locked', message: 'The graph is locked.' }
 
 /** "<base>", then "<base>_2", "<base>_3", ... whichever is free. */
 export function uniqueNodeId(base: string, nodes: FlowNode[]): string {
@@ -79,15 +98,17 @@ export function defaultParams(definition: NodeDefinition): Record<string, unknow
 }
 
 export const useGraphStore = create<GraphState>()((set, get) => {
-  const load = async (fetchGraph: () => Promise<Graph>) => {
+  const load = async <T>(request: () => Promise<T>, apply: (value: T) => void) => {
     if (get().status === 'loading') return
     set({ status: 'loading', error: null })
     try {
-      get().setGraph(await fetchGraph())
+      apply(await request())
     } catch (error) {
       set({ status: 'error', error: error instanceof Error ? error.message : String(error) })
     }
   }
+
+  const editable = () => !get().locked
 
   return {
     status: 'empty',
@@ -95,21 +116,46 @@ export const useGraphStore = create<GraphState>()((set, get) => {
     nodes: [],
     edges: [],
     notice: null,
+    teamId: null,
+    version: 0,
+    locked: false,
+    baseline: null,
 
     setNotice: (notice) => set({ notice }),
 
     setGraph: (graph) => {
       const { nodes, edges } = graphToFlow(graph, catalog())
-      set({ status: 'ready', error: null, nodes, edges })
+      set({ status: 'ready', error: null, nodes, edges, baseline: graphSignature(flowToGraph(nodes, edges)) })
     },
 
-    loadDefault: () => load(api.getDefaultGraph),
+    setStoredGraph: (stored) => {
+      get().setGraph(stored.graph)
+      set({ teamId: stored.teamId, version: stored.version, locked: stored.locked })
+    },
 
-    loadTeamGraph: (teamId) => load(async () => (await api.getTeamGraph(teamId)).graph),
+    markSaved: (version, signature) => set({ version, baseline: signature }),
 
-    clear: () => set({ status: 'empty', error: null, nodes: [], edges: [], notice: null }),
+    setLocked: (locked) => set({ locked }),
+
+    loadDefault: () => load(api.getDefaultGraph, get().setGraph),
+
+    loadTeamGraph: (teamId) => load(() => api.getTeamGraph(teamId), get().setStoredGraph),
+
+    clear: () =>
+      set({
+        status: 'empty',
+        error: null,
+        nodes: [],
+        edges: [],
+        notice: null,
+        teamId: null,
+        version: 0,
+        locked: false,
+        baseline: null,
+      }),
 
     addNode: (nodeType, position) => {
+      if (!editable()) return ''
       const definition = catalog()[nodeType]
       if (!definition) throw new Error(`unknown node type ${nodeType}`)
       const id = uniqueNodeId(nodeType, get().nodes)
@@ -124,10 +170,12 @@ export const useGraphStore = create<GraphState>()((set, get) => {
     },
 
     moveNode: (id, position) => {
+      if (!editable()) return
       set({ nodes: get().nodes.map((n) => (n.id === id ? { ...n, position } : n)) })
     },
 
     deleteNode: (id) => {
+      if (!editable()) return
       set({
         nodes: get().nodes.filter((n) => n.id !== id),
         edges: get().edges.filter((e) => e.source !== id && e.target !== id),
@@ -135,6 +183,7 @@ export const useGraphStore = create<GraphState>()((set, get) => {
     },
 
     connect: (connection) => {
+      if (!editable()) return LOCKED
       const { nodes, edges } = get()
       const check = checkConnection(connection, { nodes, edges, catalog: catalog() })
       if (check.ok) {
@@ -152,10 +201,12 @@ export const useGraphStore = create<GraphState>()((set, get) => {
     },
 
     deleteEdge: (id) => {
+      if (!editable()) return
       set({ edges: get().edges.filter((e) => e.id !== id) })
     },
 
     updateParam: (nodeId, key, value) => {
+      if (!editable()) return []
       const node = get().nodes.find((n) => n.id === nodeId)
       if (!node) return []
       const definition = catalog()[node.data.nodeType]
@@ -182,6 +233,8 @@ export const useGraphStore = create<GraphState>()((set, get) => {
     },
 
     onNodesChange: (changes) => {
+      // Locked: selection and measuring still apply; moves and removals do not.
+      if (!editable()) changes = changes.filter((c) => c.type === 'select' || c.type === 'dimensions')
       const removed = new Set(changes.flatMap((c) => (c.type === 'remove' ? [c.id] : [])))
       set({
         nodes: applyNodeChanges(changes, get().nodes),
@@ -190,6 +243,7 @@ export const useGraphStore = create<GraphState>()((set, get) => {
     },
 
     onEdgesChange: (changes) => {
+      if (!editable()) changes = changes.filter((c) => c.type === 'select')
       set({ edges: applyEdgeChanges(changes, get().edges) })
     },
 

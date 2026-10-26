@@ -7,9 +7,10 @@ export const NODE_DRAG_TYPE = 'application/x-pipeline-node'
 interface NodeCardProps {
   definition: NodeDefinition
   onAdd: (nodeType: string) => void
+  disabled?: boolean
 }
 
-export function NodeCard({ definition, onAdd }: NodeCardProps) {
+export function NodeCard({ definition, onAdd, disabled = false }: NodeCardProps) {
   const onDragStart = (event: DragEvent) => {
     event.dataTransfer.setData(NODE_DRAG_TYPE, definition.type)
     event.dataTransfer.effectAllowed = 'move'
@@ -18,7 +19,8 @@ export function NodeCard({ definition, onAdd }: NodeCardProps) {
     <button
       type="button"
       className={`node-card node-card--${definition.category}`}
-      draggable
+      draggable={!disabled}
+      disabled={disabled}
       onDragStart={onDragStart}
       onClick={() => onAdd(definition.type)}
       title={`${definition.description}\nClick or drag onto the canvas to add.`}
