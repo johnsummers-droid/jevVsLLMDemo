@@ -1446,6 +1446,17 @@ T16. CI                                                   [depends on: T11]
       upgrade on SQLite. Optional job: the server suite against a
       PostgreSQL service container.
     Done when: the workflow passes on the open-terminal branch.
+    As built (2026-10-26): four jobs on every push and PR: server
+    (Python 3.12, pytest, alembic upgrade head on SQLite), server-postgres
+    (postgres:16-alpine service; TEST_DATABASE_URL makes the `db` and
+    `empty_db_url` fixtures use it, wiping the public schema per test;
+    then alembic upgrade head on it), web (Node 22: npm ci, lint, build,
+    vitest) and drift (regenerates shared/schema, the web fixtures,
+    default/weak/strong graph fixtures and generated.ts, then git diff
+    --exit-code). The Postgres job is required, not optional: it is
+    cheap and passed locally against postgres:16. Checked locally before
+    pushing: the full suite on python:3.12-slim (882 passed), the DB tests
+    on PostgreSQL 16, the drift generators leave no diff.
 
 T17. Deployment and M3 exit                               [depends on: T15, T16]
     - server/Dockerfile (python:3.12-slim, non-root, pip install .,

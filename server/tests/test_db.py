@@ -25,8 +25,8 @@ def alembic_config(url: str) -> Config:
     return config
 
 
-def test_upgrade_head_creates_tables_and_matches_models(tmp_path: Path) -> None:
-    url = f"sqlite:///{tmp_path / 'migrated.db'}"
+def test_upgrade_head_creates_tables_and_matches_models(empty_db_url: str) -> None:
+    url = empty_db_url
     command.upgrade(alembic_config(url), "head")
     engine = make_engine(url)
     try:
@@ -37,8 +37,8 @@ def test_upgrade_head_creates_tables_and_matches_models(tmp_path: Path) -> None:
         engine.dispose()
 
 
-def test_downgrade_base_drops_tables(tmp_path: Path) -> None:
-    url = f"sqlite:///{tmp_path / 'migrated.db'}"
+def test_downgrade_base_drops_tables(empty_db_url: str) -> None:
+    url = empty_db_url
     config = alembic_config(url)
     command.upgrade(config, "head")
     command.downgrade(config, "base")
