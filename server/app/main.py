@@ -2,12 +2,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import catalog, graphs
+from app.config import get_settings
 
+settings = get_settings()
 app = FastAPI(title="Pipeline Simulator")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=settings.allowed_origins,
+    allow_origin_regex=settings.allowed_origin_regex,
     allow_methods=["*"],
     allow_headers=["*"],
 )

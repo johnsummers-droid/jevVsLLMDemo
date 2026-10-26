@@ -1307,6 +1307,14 @@ T11. Settings, database and migrations                    [depends on: T10]
       settings parsing (URL rewrite, comma lists); a tmp SQLite DB per test
       through a dependency override.
     Done when: pytest passes and `alembic upgrade head` creates the tables.
+    As built (2026-10-26): facilitator_code and token_secret default to
+    None (T12 refuses to issue tokens while unset). Timestamps use a
+    UTCDateTime TypeDecorator (SQLite drops offsets); the migration itself
+    uses plain sa.DateTime so it never imports app code. Repo write
+    functions commit. tests/conftest.py has `db` (tmp SQLite, create_all)
+    and `db_client` (get_db override); test_db.py checks the migrated
+    schema equals Base.metadata (compare_metadata), so create_all in tests
+    cannot drift from Alembic.
 
 T12. Sessions, teams and auth                             [depends on: T11]
     - POST /api/sessions {facilitatorCode} -> {sessionCode, facilitatorToken}.
