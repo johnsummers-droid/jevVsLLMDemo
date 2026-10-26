@@ -22,11 +22,16 @@ from pydantic.json_schema import GenerateJsonSchema, models_json_schema
 
 from app.api.catalog import CatalogResponse
 from app.models import (
+    CreateSessionRequest,
+    CreateSessionResponse,
     Distribution,
     Docs,
     Graph,
     IssueCode,
+    JoinTeamRequest,
+    JoinTeamResponse,
     LeaderboardRow,
+    LockRequest,
     NodeCategory,
     NodeDefinition,
     NodeStats,
@@ -42,7 +47,9 @@ from app.models import (
     RunStatus,
     RunSummary,
     Severity,
+    SessionDetail,
     StoredGraph,
+    TeamSummary,
     TicketMeta,
     ValidationReport,
 )
@@ -76,6 +83,19 @@ GROUPS: dict[str, tuple[list[type[BaseModel]], list[str]]] = {
     "events": ([], ["ServerEvent", "ClientMessage"]),
     # json port payloads, named by Port.jsonSchemaRef (the inspector's schema preview)
     "payloads": ([TicketMeta, Docs, PolicyReport, Distribution], []),
+    # sessions, teams and facilitator actions (T12)
+    "sessions": (
+        [
+            CreateSessionRequest,
+            CreateSessionResponse,
+            JoinTeamRequest,
+            JoinTeamResponse,
+            SessionDetail,
+            TeamSummary,
+            LockRequest,
+        ],
+        [],
+    ),
 }
 
 

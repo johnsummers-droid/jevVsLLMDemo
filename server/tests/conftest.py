@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.config import Settings, get_settings
 from app.db.base import Base
 from app.db.session import get_db, make_engine
 from app.main import app
@@ -21,10 +22,18 @@ def db(tmp_path: Path) -> Iterator[Session]:
 
 
 @pytest.fixture
-def db_client(db: Session) -> Iterator[TestClient]:
-    """A TestClient whose endpoints use the `db` session."""
+def settings() -> Settings:
+    """Test secrets, independent of the environment and server/.env."""
+    return Settings(_env_file=None, facilitator_code="open-sesame", token_secret="test-token-secret")
+
+
+@pytest.fixture
+def db_client(db: Session, settings: Settings) -> Iterator[TestClient]:
+    """A TestClient whose endpoints use the `db` session and the `settings` fixture."""
     app.dependency_overrides[get_db] = lambda: db
+    app.dependency_overrides[get_settings] = lambda: settings
     try:
         yield TestClient(app)
     finally:
         app.dependency_overrides.pop(get_db, None)
+        app.dependency_overrides.pop(get_settings, None)

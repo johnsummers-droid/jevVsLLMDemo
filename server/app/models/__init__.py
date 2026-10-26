@@ -32,6 +32,15 @@ from app.models.scenarios import (
     Ticket,
     TicketCategory,
 )
+from app.models.sessions import (
+    CreateSessionRequest,
+    CreateSessionResponse,
+    JoinTeamRequest,
+    JoinTeamResponse,
+    LockRequest,
+    SessionDetail,
+    TeamSummary,
+)
 from app.models.validation import IssueCode, Severity, ValidationIssue, ValidationReport
 from app.models.values import Distribution, PortValue, Taint
 
@@ -39,6 +48,8 @@ __all__ = [
     "PORT_TYPES",
     "BoolParam",
     "CostModel",
+    "CreateSessionRequest",
+    "CreateSessionResponse",
     "Distribution",
     "Doc",
     "Docs",
@@ -48,7 +59,10 @@ __all__ = [
     "GraphNode",
     "IntParam",
     "IssueCode",
+    "JoinTeamRequest",
+    "JoinTeamResponse",
     "LeaderboardRow",
+    "LockRequest",
     "MultiEnumParam",
     "NodeCategory",
     "NodeDefinition",
@@ -76,10 +90,12 @@ __all__ = [
     "RunSummary",
     "ScenarioPack",
     "ScoringConfig",
+    "SessionDetail",
     "Severity",
     "StoredGraph",
     "StringListParam",
     "Taint",
+    "TeamSummary",
     "TextParam",
     "Ticket",
     "TicketCategory",

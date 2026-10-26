@@ -1,6 +1,6 @@
 """Queries. Write functions commit; callers pass the request's Session from get_db."""
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
 from app.db.base import utcnow
@@ -59,6 +59,25 @@ def replace_team_token(db: Session, team: TeamRow, token_hash: str) -> TeamRow:
     team.joined_at = utcnow()
     db.commit()
     return team
+
+
+def get_session_by_facilitator_hash(db: Session, token_hash: str) -> SessionRow | None:
+    return db.scalar(select(SessionRow).where(SessionRow.facilitator_token_hash == token_hash))
+
+
+def count_teams(db: Session, session_id: str) -> int:
+    return db.scalar(select(func.count()).select_from(TeamRow).where(TeamRow.session_id == session_id)) or 0
+
+
+def list_team_graphs(db: Session, session_id: str) -> list[tuple[TeamRow, int, bool]]:
+    """Each team in join order with its graph's version and lock flag."""
+    rows = db.execute(
+        select(TeamRow, GraphRow.version, GraphRow.locked)
+        .join(GraphRow, GraphRow.team_id == TeamRow.id)
+        .where(TeamRow.session_id == session_id)
+        .order_by(TeamRow.joined_at)
+    )
+    return [(team, version, locked) for team, version, locked in rows]
 
 
 def get_graph(db: Session, team_id: str) -> StoredGraph | None:

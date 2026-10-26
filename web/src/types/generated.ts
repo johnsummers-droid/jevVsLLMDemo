@@ -161,6 +161,13 @@ export interface Subscribe {
 export interface Ping {
   type: 'ping'
 }
+export interface CreateSessionRequest {
+  facilitatorCode: string
+}
+export interface CreateSessionResponse {
+  sessionCode: string
+  facilitatorToken: string
+}
 export interface Distribution {
   probs: {
     [k: string]: number
@@ -227,6 +234,14 @@ export interface GraphLocked {
   type: 'graph_locked'
   locked: boolean
 }
+export interface JoinTeamRequest {
+  teamName: string
+}
+export interface JoinTeamResponse {
+  teamId: string
+  teamName: string
+  token: string
+}
 export interface LeaderboardRow {
   teamId: string
   teamName: string
@@ -254,6 +269,9 @@ export interface LeaderboardUpdated {
   simMs: number
   type: 'leaderboard_updated'
   rows: LeaderboardRow[]
+}
+export interface LockRequest {
+  locked: boolean
 }
 export interface MetricsSnapshot {
   runId?: string | null
@@ -419,6 +437,18 @@ export interface StateSync {
   metrics?: RunMetrics | null
   nodeStats?: NodeStats[]
   locked?: boolean
+}
+export interface SessionDetail {
+  sessionCode: string
+  createdAt: string
+  teams: TeamSummary[]
+}
+export interface TeamSummary {
+  teamId: string
+  name: string
+  joinedAt: string
+  graphVersion: number
+  locked: boolean
 }
 export interface StoredGraph {
   teamId: string

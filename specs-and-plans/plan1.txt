@@ -1336,6 +1336,17 @@ T12. Sessions, teams and auth                             [depends on: T11]
       facilitator token from another session 403; tokens never stored in
       plain text.
     Done when: the flow works through TestClient end to end.
+    As built (2026-10-26): wire models in app/models/sessions.py, exported
+    as shared/schema/sessions.schema.json (TS types for T14). app/auth.py
+    (codes, tokens, HMAC); session codes are matched case-insensitively.
+    Status codes: 401 missing/unknown/revoked token (WWW-Authenticate:
+    Bearer); 403 a real token of the wrong kind or session; 404 unknown
+    session code; 409 session full (rejoining still works when full); 422
+    bad team name; 503 while FACILITATOR_CODE or TOKEN_SECRET is unset.
+    POST /api/sessions and /teams return 201; /lock returns the updated
+    SessionDetail. A concurrent join with the same name falls back to a
+    rejoin. conftest's db_client also overrides get_settings with test
+    secrets (`settings` fixture).
 
 T13. Team graph API                                       [depends on: T12]
     - GET /api/teams/{id}/graph -> StoredGraph (403 for another team).
