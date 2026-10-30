@@ -1,35 +1,24 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import '@xyflow/react/dist/style.css'
+import { useEffect } from 'react'
 import './App.css'
+import { navigate, pageFromPath, PATHS, usePathname } from './lib/navigation'
+import { FacilitatorPage } from './pages/FacilitatorPage'
+import { JoinPage } from './pages/JoinPage'
+import { TeamPage } from './pages/TeamPage'
+import { useSessionStore } from './store/sessionStore'
 
-function App() {
-  const [count, setCount] = useState(0)
+export default function App() {
+  const page = pageFromPath(usePathname())
+  const team = useSessionStore((s) => s.team)
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+  // "/" and unknown paths go to the team's workbench or the join page; /team needs a team.
+  const redirect = page === null || (page === 'team' && !team) ? (team ? PATHS.team : PATHS.join) : null
+  useEffect(() => {
+    if (redirect) navigate(redirect, { replace: true })
+  }, [redirect])
+
+  if (redirect) return null
+  if (page === 'facilitator') return <FacilitatorPage />
+  if (page === 'team' && team) return <TeamPage team={team} />
+  return <JoinPage />
 }
-
-export default App

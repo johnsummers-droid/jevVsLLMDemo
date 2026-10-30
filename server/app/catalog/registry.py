@@ -1,29 +1,27 @@
 """Maps node type -> (NodeDefinition, NodeRunner) and expands dynamic branch ports."""
 
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any
 
 from app.catalog.definitions import ALL_DEFINITIONS
-from app.models import NodeDefinition, NodeResult, Port, PortValue
+from app.models import NodeDefinition, Port
+from app.runners.base import NodeRunner
+from app.runners.human import HumanReviewRunner
+from app.runners.io import CustomerMessageRunner, CustomerResponseRunner
+from app.runners.jev import IntentRouterRunner, SafetyCheckRunner
+from app.runners.llm import AnswerGeneratorRunner
+from app.runners.tool import KnowledgeLookupRunner, PolicyEngineRunner
 
-
-class NodeRunner(Protocol):
-    # ctx becomes a typed RunContext when the executor lands (T5).
-    async def run(
-        self, inputs: dict[str, PortValue], params: dict[str, Any], ctx: Any
-    ) -> NodeResult: ...
-
-
-class StubRunner:
-    """Placeholder until the real runners land (T4)."""
-
-    def __init__(self, node_type: str) -> None:
-        self.node_type = node_type
-
-    async def run(
-        self, inputs: dict[str, PortValue], params: dict[str, Any], ctx: Any
-    ) -> NodeResult:
-        raise NotImplementedError(f"no runner for {self.node_type!r} yet")
+RUNNERS: dict[str, NodeRunner] = {
+    "customer_message": CustomerMessageRunner(),
+    "jev_intent_router": IntentRouterRunner(),
+    "jev_safety_check": SafetyCheckRunner(),
+    "llm_answer_generator": AnswerGeneratorRunner(),
+    "policy_engine": PolicyEngineRunner(),
+    "knowledge_lookup": KnowledgeLookupRunner(),
+    "human_review_queue": HumanReviewRunner(),
+    "customer_response": CustomerResponseRunner(),
+}
 
 
 @dataclass(frozen=True)
@@ -33,10 +31,12 @@ class RegistryEntry:
 
 
 REGISTRY: dict[str, RegistryEntry] = {
-    d.type: RegistryEntry(definition=d, runner=StubRunner(d.type)) for d in ALL_DEFINITIONS
+    d.type: RegistryEntry(definition=d, runner=RUNNERS[d.type]) for d in ALL_DEFINITIONS
 }
 if len(REGISTRY) != len(ALL_DEFINITIONS):
     raise RuntimeError("duplicate node types in the catalog")
+if set(RUNNERS) != set(REGISTRY):
+    raise RuntimeError(f"runners and definitions differ: {sorted(set(RUNNERS) ^ set(REGISTRY))}")
 
 
 def catalog() -> list[NodeDefinition]:
