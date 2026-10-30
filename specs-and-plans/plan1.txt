@@ -1535,6 +1535,176 @@ starts unlocked (the lock is per team graph; needs a session-level lock
 flag and a migration).
 
 
+M4 tasks (T18-T24). Exit (section 4): the full spec section 11 list works
+end to end on mocks, on the deployed URLs: a team presses Run traffic and
+watches edges animate, node counters and the four metrics (p95 latency,
+cost per 1k, automation rate, unsafe-release rate) update live; the
+facilitator starts an official run for every team and the leaderboard
+shows on the shared screen.
+
+Planned 2026-10-30 from the code as it stands after M3. Measured on the
+mocks: a whole official run computes in 30-110 ms (default and strong
+graphs, with and without spike 3x + injection wave) and yields 380-1,800
+events whose sim_ms span ~45-51 s of wall clock at the default speed 20.
+
+M4 decisions, PROPOSED 2026-10-30 (not yet accepted by the owner):
+  Q1. Compute first, pace second (refines D5). A run is computed in full
+      by the existing run_simulation (T5) the moment it starts, off the
+      event loop (asyncio.to_thread), then a pacer task replays its
+      numbered events at sim_ms / speed wall-clock time into the hub. No
+      second executor; event order and determinism are the T5 ones. Stop
+      cancels the pacer and emits run_completed(status="stopped") with
+      metrics over the requests completed so far; nothing after it.
+  Q2. One WebSocket per browser at /api/ws, authenticated by its FIRST
+      message {"type": "auth", "token": ...} (team or facilitator token),
+      not by ?token= in the URL: uvicorn and Render log full URLs, and the
+      token is a bearer credential. No auth within 5 s, or a bad token ->
+      close 4401. A new ClientMessage variant (AuthMessage); ping stays.
+  Q3. Channels are implied by the token, no free subscription: a team
+      socket gets its own team's run events plus graph_locked; a
+      facilitator socket gets, for its session, every team's run_started,
+      metrics_snapshot, run_completed, plus leaderboard_updated (never the
+      per-node event firehose). The client "subscribe" message is kept in
+      the model but unused in M4.
+  Q4. state_sync is the first event on every (re)connect: the team's
+      active or last run (RunSummary), its latest metrics and node stats,
+      and locked. The web client drops events with seq <= the last applied
+      one for that run, so a reconnect never double-counts.
+  Q5. Session-level lock (fixes the M3 open point). Migration 0002 adds
+      sessions.locked; a graph is locked if its row OR its session is
+      locked, so a team joining after "pencils down" starts locked.
+      POST /api/sessions/{code}/lock sets the session flag (graph rows'
+      flags are kept in step for the existing 423 path) and publishes
+      graph_locked to every team socket. With the socket, saveStore's
+      10 s sync poll runs only while the socket is disconnected.
+  Q6. Practice runs: POST /api/teams/{id}/runs runs the team's current
+      stored graph on the PRACTICE pack with a server-chosen seed. 422 with
+      the ValidationReport if the graph has errors; 409 if the team already
+      has a run in progress; 423 while locked (pencils down means no
+      practice runs). The run uses a snapshot, and the web canvas is
+      read-only while its own run plays (client-side only), so the
+      animation always matches the graph on screen.
+  Q7. Official runs: POST /api/sessions/{code}/runs (facilitator) locks
+      the session, snapshots every team graph, and starts one run per
+      team on the OFFICIAL pack with ONE seed and one RunConfig (D9). A
+      team whose graph has validation errors gets a run with status
+      "failed" and is ranked last. Any team practice run in progress is
+      stopped first. Traffic spike / injection wave controls stay M5; the
+      RunConfig fields exist already.
+  Q8. Persistence (P4 follow-up): migration 0002 adds a runs table (id,
+      session_id, team_id, mode, status, config JSON, graph snapshot JSON,
+      graph_version, metrics JSON, started_at, finished_at). Request
+      traces and per-request results stay in memory until M5's trace
+      viewer. On startup, runs left "running" by a restart are marked
+      "failed" (single instance, D8). The leaderboard is computed from the
+      latest completed official run per team, ordered by score.
+  Q9. The WebSocket URL is derived from VITE_API_BASE_URL (https -> wss,
+      + /api/ws); locally it is relative through the Vite proxy (ws: true
+      is already set). No separate VITE_WS_URL (section 6 had one): one
+      fewer setting to get wrong on Vercel.
+  Q10. Shared screen: a /screen page (fifth page, P6) signed in with the
+      facilitator's stored credentials, showing the leaderboard plus one
+      metrics tile per team, large type. Live canvases of every team stay
+      out of scope (closes the open item in section 8 for M4).
+  No new dependencies: uvicorn[standard] already installs websockets
+  (17.3 in the venv); the browser's WebSocket needs no library.
+
+T18. Session lock and run tables                          [depends on: T17]
+    - Migration 0002: sessions.locked (default false) and the runs table
+      (Q8). Tables/repo: create_run, finish_run, latest_runs_for_session,
+      fail_stale_runs; set_session_locked also sets sessions.locked;
+      save_graph refuses (423) when the session is locked; join returns a
+      locked graph after pencils down.
+    - Startup hook marks stale "running" runs as failed.
+    - Tests: upgrade/downgrade, compare_metadata, late join after lock is
+      locked (the M3 open point), stale-run cleanup.
+    Done when: pytest (SQLite and PostgreSQL) passes; the open point is
+      fixed.
+
+T19. Event hub, pacer and WebSocket endpoint              [depends on: T18]
+    - realtime/hub.py: connections keyed by team and by session; publish
+      to a team or to a session's facilitators; slow consumers get a
+      bounded per-socket queue (drop the socket rather than block the
+      run, it will resync via state_sync).
+    - engine/pacer.py: replays a numbered event list at sim_ms / speed
+      (Q1); cancellable; an EventSink that forwards to the hub.
+    - api/ws.py: GET /api/ws, first-message auth (Q2), state_sync first
+      (Q4), ping handling, close codes (4401 auth, 4403 revoked token).
+    - models/events.py: AuthMessage in ClientMessage; schema re-export
+      and TS types regenerated.
+    - Tests (TestClient.websocket_connect, section 5): no token -> 4401;
+      state_sync first; a team only receives its own events; the client
+      stream keeps the executor's order invariants; stop -> stopped and
+      silence after; reconnect mid-run gets matching counts. The pacer
+      is tested with a fake clock (speed high), not with sleeps.
+    Done when: a scripted client receives a whole practice run in order.
+
+T20. Practice runs API and run manager                    [depends on: T19]
+    - app/simulation/manager.py: in-memory registry of active runs (one
+      per team), start -> compute in a thread -> persist -> pace -> finish
+      (status, metrics) -> persist; stop.
+    - POST /api/teams/{id}/runs (Q6; 201 with RunSummary), POST
+      /api/runs/{id}/stop (own team or the facilitator), GET
+      /api/teams/{id}/runs/latest.
+    - Lock endpoint publishes graph_locked (Q5).
+    - Tests: 422/409/423 rules, isolation (403 for another team's run),
+      determinism (same seed -> same metrics as run_headless), stop.
+    Done when: practice runs work end to end over the API and socket.
+
+T21. Official runs and leaderboard                        [depends on: T20]
+    - POST /api/sessions/{code}/runs (Q7), GET /api/sessions/{code}/
+      leaderboard; leaderboard_updated published to the session as each
+      team's run finishes; LeaderboardRow ranks by score (ties: lower
+      unsafe rate, then lower p95).
+    - Tests: every team gets the same seed and config; an invalid graph
+      ranks last as failed; a practice run in progress is stopped; the
+      official pack is never sent to clients (events carry ids, not
+      ticket text); ordering.
+    Done when: three test teams (default, weak, strong graphs) finish in
+      the golden order on the leaderboard.
+
+T22. Web realtime client and runStore                     [depends on: T19]
+    - api/ws.ts: one reconnecting socket (backoff 1-15 s), auth message,
+      ping every 25 s (Render/Cloudflare idle timeouts), URL per Q9.
+    - store/runStore.ts: pure reducer over ServerEvent (state_sync
+      replaces state; seq dedupe; per-node stats; per-edge pulse queue;
+      metrics), plus the socket wiring. saveStore: graph_locked from the
+      socket; sync poll only while disconnected (Q5).
+    - Tests: a recorded event stream (exported from the server as a
+      fixture, like the T7 fixtures) reduces to the server's final node
+      stats and metrics; duplicates and old seqs ignored; state_sync
+      replaces; lock via socket.
+    Done when: the reducer matches the server's numbers on the fixture.
+
+T23. Team run UI                                          [depends on: T20, T22]
+    - run/RunControls.tsx: Run traffic (disabled while invalid, locked or
+      running; shows why), Stop; progress (requests done / total).
+    - canvas/PulseEdge.tsx: request dots along edges for edge_transferred,
+      batched per animation frame and capped per edge so a spike stays
+      smooth; replaces PipelineEdge's stroke only while a run plays.
+    - run/NodeStatsBadge.tsx on BaseNode: requests, avg latency, cost,
+      decisions or tokens, errors, escalations.
+    - run/MetricsBar.tsx: the four MVP metrics with the mission targets
+      (p95 <= 800 ms, cost <= budget) colored pass/fail; final score.
+    - Tests: controls' enabled states; badge values from the store;
+      metrics coloring.
+    Done when: a practice run is watchable on the team page.
+
+T24. Facilitator controls, shared screen, M4 exit         [depends on: T21, T23]
+    - FacilitatorPage: "Start official run" (confirm; locks), per-team
+      run status live from the socket, Stop all, leaderboard.
+    - pages/ScreenPage.tsx at /screen (Q10) and leaderboard/
+      Leaderboard.tsx; App.tsx gains the route; vercel.json already
+      rewrites every path.
+    - Docs: admin and player guides, deploy runbook (WebSocket check),
+      BEFORE-WORKSHOP.txt rehearsal step.
+    - Exit checks, automated: an API+WS test runs an official run for
+      three teams and checks the leaderboard order. Manual on the deployed
+      URLs: two teams run practice traffic and see animation and metrics;
+      the facilitator's official run fills the leaderboard on /screen;
+      kill a team's network mid-run and reconnect (state_sync).
+    Done when: M4's exit holds on the deployed URLs.
+
 8. OPEN ITEMS (none of these block T1-T5)
 -----------------------------------------
   - The real Jev API wire format, auth, latency and pricing (affects only
