@@ -760,3 +760,143 @@ button.issue-list__button:focus-visible {
   margin: 4px 0;
   color: var(--muted);
 }
+
+/* run bar (T23) */
+
+.run-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 24px;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.run-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.85rem;
+}
+
+.run-controls__progress {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.run-controls__official {
+  margin-right: 6px;
+  color: var(--accent);
+}
+
+.run-controls__hint {
+  color: var(--muted);
+}
+
+.run-controls__error {
+  color: var(--issue-error);
+}
+
+.metrics-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.metric {
+  display: grid;
+  min-width: 108px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  line-height: 1.25;
+}
+
+.metric__label,
+.metric__target {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.metric__value {
+  font-size: 1.05rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.metric--pass {
+  border-color: var(--ok);
+  background: var(--ok-bg);
+}
+
+.metric--pass .metric__value {
+  color: var(--ok);
+}
+
+.metric--fail {
+  border-color: var(--issue-error);
+  background: var(--issue-error-bg);
+}
+
+.metric--fail .metric__value {
+  color: var(--issue-error);
+}
+
+/* node telemetry */
+
+.node-stats {
+  display: grid;
+  /* As wide as the node, never wider: a long decisions line wraps instead of widening the node
+     into its neighbours mid-run. */
+  width: 0;
+  min-width: 100%;
+  gap: 2px;
+  padding: 4px 8px 6px;
+  border-top: 1px dashed var(--border);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.node-stats__main,
+.node-stats__extra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+}
+
+.node-stats__main {
+  font-weight: 600;
+}
+
+.node-stats__extra,
+.node-stats--idle {
+  color: var(--muted);
+}
+
+.node-stats__escalated {
+  color: var(--cat-human);
+}
+
+.node-stats__error {
+  color: var(--issue-error);
+}
+
+/* request dots along edges */
+
+.pulse-track {
+  fill: none;
+  stroke: none;
+  pointer-events: none;
+}
+
+.pulse-dot {
+  fill: var(--pulse);
+  pointer-events: none;
+}
+
+.react-flow__edge-path.pipeline-edge--active {
+  stroke: var(--pulse);
+  stroke-opacity: 0.55;
+}

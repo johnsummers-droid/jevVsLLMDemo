@@ -71,3 +71,4 @@ class PackSummary(CamelModel):
     version: int
     ticket_count: int
     category_counts: dict[str, int] | None  # None for the hidden official pack
+    scoring: ScoringConfig  # the mission targets and score weights are public (spec section 2)

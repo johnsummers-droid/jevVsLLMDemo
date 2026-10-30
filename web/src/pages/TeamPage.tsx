@@ -1,15 +1,19 @@
 // /team: the workbench (palette, canvas, inspector) on the signed-in team's stored graph, saved
-// automatically (saveStore). While the facilitator has locked graphs it is read-only.
+// automatically (saveStore), with Run traffic, live telemetry and the run's metrics (T23). While the
+// facilitator has locked graphs, or a run plays, it is read-only.
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Canvas } from '../canvas/Canvas'
 import { Inspector } from '../inspector/Inspector'
 import { navigate, PATHS } from '../lib/navigation'
 import { Palette } from '../palette/Palette'
+import { MetricsBar } from '../run/MetricsBar'
+import { RunControls } from '../run/RunControls'
 import { useCatalogStore } from '../store/catalogStore'
 import { useGraphStore } from '../store/graphStore'
 import { type SaveStatus, startAutosave, useSaveStore } from '../store/saveStore'
 import { type TeamCredentials, useSessionStore } from '../store/sessionStore'
+import { startLive, useReadOnly } from '../store/runStore'
 import { startAutoValidation } from '../store/validationStore'
 
 const SAVE_LABELS: Record<SaveStatus, string> = {
@@ -68,6 +72,7 @@ function Workbench({ team }: { team: TeamCredentials }) {
   const loadTeamGraph = useGraphStore((s) => s.loadTeamGraph)
   const addNode = useGraphStore((s) => s.addNode)
   const locked = useGraphStore((s) => s.locked)
+  const readOnly = useReadOnly()
   const signOut = useSessionStore((s) => s.signOut)
   const { screenToFlowPosition } = useReactFlow()
   const canvasRef = useRef<HTMLDivElement>(null)
@@ -81,6 +86,9 @@ function Workbench({ team }: { team: TeamCredentials }) {
   useEffect(() => startAutoValidation(), [])
 
   useEffect(() => startAutosave(), [])
+
+  // The live event stream: locks now, run events from T23 on.
+  useEffect(() => startLive('team'), [teamId])
 
   // Never show another team's graph: start empty whenever the team changes.
   useEffect(() => {
@@ -129,8 +137,14 @@ function Workbench({ team }: { team: TeamCredentials }) {
           Pencils down: the facilitator has locked the graphs. You can look around, but not edit.
         </div>
       )}
+      {graphStatus === 'ready' && (
+        <div className="run-bar">
+          <RunControls teamId={teamId} />
+          <MetricsBar />
+        </div>
+      )}
       <main className="app__body">
-        <Palette nodes={catalog.nodes} onAdd={addAtCenter} disabled={locked} />
+        <Palette nodes={catalog.nodes} onAdd={addAtCenter} disabled={readOnly} />
         <div className="app__canvas" ref={canvasRef}>
           {graphStatus === 'ready' && <Canvas />}
         </div>

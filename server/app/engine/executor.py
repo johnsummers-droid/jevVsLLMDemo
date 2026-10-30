@@ -165,7 +165,8 @@ async def execute_request(plan: ExecutionPlan, ctx: RunContext,
         if result.error is not None:
             state.failed = True
             state.events.append(NodeFailed(seq=0, sim_ms=end, request_id=request_id,
-                                           node_id=pn.id, error=result.error))
+                                           node_id=pn.id, error=result.error,
+                                           latency_ms=result.latency_ms, cost_usd=result.cost_usd))
             continue
         if result.decision is not None:
             ctx.envelope.decisions[pn.id] = result.decision

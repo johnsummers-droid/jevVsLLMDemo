@@ -35,6 +35,9 @@
   --issue-error-bg: #fde8e7;
   --issue-warning: #b25e09;
   --issue-warning-bg: #fef3e2;
+  --ok: #157a3c;
+  --ok-bg: #e3f4e9;
+  --pulse: #3b6fd8;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -51,6 +54,9 @@
     --issue-error-bg: #3d1d1b;
     --issue-warning: #fdb022;
     --issue-warning-bg: #3a2a12;
+    --ok: #4ade80;
+    --ok-bg: #16301f;
+    --pulse: #8fb4ff;
   }
 }
 

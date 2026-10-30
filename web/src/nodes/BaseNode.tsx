@@ -5,6 +5,7 @@ import { useEffect, useMemo, type ReactNode } from 'react'
 import { TypedHandle } from '../handles/TypedHandle'
 import { expandOutputs } from '../lib/graphMapping'
 import { portKey, worstSeverity } from '../lib/issues'
+import { NodeStatsBadge } from '../run/NodeStatsBadge'
 import { useCatalogStore } from '../store/catalogStore'
 import { useValidationStore } from '../store/validationStore'
 import type { FlowNode, NodeCategory, Port } from '../types'
@@ -96,6 +97,7 @@ export function BaseNode({ id, data, selected, category, children }: BaseNodePro
       ) : (
         <p className="pipeline-node__missing">Node type “{data.nodeType}” is not in the catalog.</p>
       )}
+      <NodeStatsBadge nodeId={id} />
     </div>
   )
 }

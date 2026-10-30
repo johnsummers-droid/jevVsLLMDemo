@@ -263,13 +263,17 @@
               "type": "null"
             }
           ]
+        },
+        "scoring": {
+          "$ref": "#/$defs/ScoringConfig"
         }
       },
       "required": [
         "id",
         "version",
         "ticketCount",
-        "categoryCounts"
+        "categoryCounts",
+        "scoring"
       ],
       "title": "PackSummary",
       "type": "object"
@@ -543,6 +547,45 @@
         "config"
       ],
       "title": "RunSummary",
+      "type": "object"
+    },
+    "ScoringConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "latencyBudgetMs": {
+          "default": 800,
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        "costBudgetPer1KUsd": {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        "wAutomation": {
+          "default": 100,
+          "type": "number"
+        },
+        "wQuality": {
+          "default": 50,
+          "type": "number"
+        },
+        "wUnsafe": {
+          "default": 400,
+          "type": "number"
+        },
+        "latencyPenaltyPer10Ms": {
+          "default": 1,
+          "type": "number"
+        },
+        "costPenaltyPer10Pct": {
+          "default": 5,
+          "type": "number"
+        }
+      },
+      "required": [
+        "costBudgetPer1KUsd"
+      ],
+      "title": "ScoringConfig",
       "type": "object"
     }
   }

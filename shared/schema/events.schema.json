@@ -522,6 +522,14 @@
         },
         "error": {
           "$ref": "#/$defs/NodeError"
+        },
+        "latencyMs": {
+          "default": 0.0,
+          "type": "number"
+        },
+        "costUsd": {
+          "default": 0.0,
+          "type": "number"
         }
       },
       "required": [

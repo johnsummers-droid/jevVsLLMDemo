@@ -1785,6 +1785,33 @@ T22. Web realtime client and runStore                     [depends on: T19]
       stats and metrics; duplicates and old seqs ignored; state_sync
       replaces; lock via socket.
     Done when: the reducer matches the server's numbers on the fixture.
+    As built (2026-10-30): web/src/api/ws.ts openLive() (auth as the first
+    message; ping every PING_MS 25 s, silence check every CHECK_MS 5 s,
+    reconnect after SILENCE_MS 40 s; backoff 1-15 s, reset on state_sync;
+    `closing` 4401/4403 -> stop and onAuthRejected, other codes ->
+    reconnect; `pong` swallowed) and liveUrl() (Q9). store/runStore.ts:
+    pure reduceRun (per-node stats rebuilt from node_completed/node_failed,
+    metrics and skipped counts from metrics_snapshot, seq dedupe per run,
+    state_sync replaces: mid-run empty + replay, finished = totals;
+    edgeCounts, requestsDone, pulses capped at MAX_PULSES 500) and
+    useRunStore (apply, drainPulses, connection, leaderboard; graph_locked
+    and state_sync.locked go to graphStore for the loaded team only);
+    startLive(role) (a refused token signs the role out via the client's
+    new signOutTo). saveStore polls only while runStore.connection is not
+    'live' (Q5); TeamPage opens the socket. While live, another tab's save
+    is no longer picked up when idle: a later edit meets the 409 reload.
+    Server: node_failed carries latency_ms and cost_usd (NodeStats counts a
+    failed call's time and cost). Web fixture shared/fixtures/run-events.json
+    (strong graph, practice pack, seed 0: events + final node stats and
+    metrics) from export_web_fixtures.py. Web tests: src/test/setup.ts
+    (vite setupFiles) installs src/test/fakeSocket.ts as WebSocket before
+    every test.
+    Checked: 265 web tests (ws.test.ts, runStore.test.ts new; saveStore
+    poll pause), build and lint; 936 server tests; drift; production
+    after PR #9: `closing` 4401/4403 and `pong` reach a client through
+    Render; headless Chromium against local servers: the lock banner shows
+    61 ms after pencils down and clears 112 ms after unlock, no graph polls
+    while live.
 
 T23. Team run UI                                          [depends on: T20, T22]
     - run/RunControls.tsx: Run traffic (disabled while invalid, locked or
@@ -1799,6 +1826,32 @@ T23. Team run UI                                          [depends on: T20, T22]
     - Tests: controls' enabled states; badge values from the store;
       metrics coloring.
     Done when: a practice run is watchable on the team page.
+    As built (2026-10-30): web/src/run/RunControls.tsx (Run traffic flushes
+    the save, then POST /api/teams/{id}/runs; disabled with the reason
+    shown while locked, not live, or the pipeline check has errors; 422 /
+    409 / 423 messages; Stop while playing, none for an official run;
+    "Running · done / total requests"), run/MetricsBar.tsx (p95, cost per
+    1k, automation, unsafe releases; pass/fail against the pack's scoring,
+    neutral until requests completed; score once finished),
+    run/NodeStatsBadge.tsx under every node (requests, avg latency, cost,
+    top three decisions, tokens, escalations, errors, skips).
+    canvas/pulses.ts: one requestAnimationFrame loop for the canvas; it
+    drains runStore pulses, caps MAX_DOTS_PER_EDGE 6 dots per edge, moves
+    SVG circles with getPointAtLength (no React renders) and stops when
+    idle; PipelineEdge registers its path and a dot layer and marks edges
+    that carried traffic (unless they have issues). useReadOnly() (locked
+    or own run playing, Q6) drives Canvas, Inspector and Palette. Server:
+    PackSummary gains `scoring` (public targets), GET /api/packs/{id}.
+    Found in the browser, not by unit tests: MetricsBar crashed (and
+    blanked the page) when the pack loaded before the run's first metrics;
+    and a long decisions line widened a node into its neighbour (the
+    badge is now width 0 / min-width 100%). Both fixed; a test covers the
+    first.
+    Checked: 285 web tests (run.test.tsx, pulses.test.ts new), build,
+    lint; 937 server tests; drift; headless Chromium against local
+    servers: a practice run of the default graph animates dots, fills five
+    node badges, counts 15/15 requests and colours the metrics; no page or
+    server errors (screenshots reviewed).
 
 T24. Facilitator controls, shared screen, M4 exit         [depends on: T21, T23]
     - FacilitatorPage: "Start official run" (confirm; locks), per-team

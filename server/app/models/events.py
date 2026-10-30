@@ -47,6 +47,10 @@ class NodeFailed(EventBase):
     request_id: str
     node_id: str
     error: NodeError
+    # A failed call still took time and may have cost money (NodeStats counts both), so clients
+    # can rebuild the per-node numbers from events alone.
+    latency_ms: float = 0.0
+    cost_usd: float = 0.0
 
 
 class EdgeTransferred(EventBase):

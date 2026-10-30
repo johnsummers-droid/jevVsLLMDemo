@@ -29,4 +29,4 @@ def pack_summary(pack_id: str) -> PackSummary:
     pack = load_pack(pack_id)
     counts = None if pack_id in HIDDEN_PACKS else dict(Counter(t.category for t in pack.tickets))
     return PackSummary(id=pack.id, version=pack.version, ticket_count=len(pack.tickets),
-                       category_counts=counts)
+                       category_counts=counts, scoring=pack.scoring)

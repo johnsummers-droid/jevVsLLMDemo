@@ -9,6 +9,8 @@ import type {
   CreateSessionResponse,
   Graph,
   JoinTeamResponse,
+  PackSummary,
+  RunRecord,
   SaveGraphRequest,
   SessionDetail,
   StoredGraph,
@@ -29,6 +31,12 @@ export class ApiError extends Error {
     this.status = status
     this.body = body
   }
+}
+
+/** Forgets the role's credentials and goes to its sign-in page (a 401, or a refused live socket). */
+export function signOutTo(role: Role): void {
+  useSessionStore.getState().signOut(role)
+  navigate(SIGN_IN_PAGE[role], { replace: true })
 }
 
 function token(role: Role): string | undefined {
@@ -63,10 +71,7 @@ async function request<T>(
     }
   }
   if (!response.ok) {
-    if (response.status === 401 && role) {
-      useSessionStore.getState().signOut(role)
-      navigate(SIGN_IN_PAGE[role], { replace: true })
-    }
+    if (response.status === 401 && role) signOutTo(role)
     throw new ApiError(response.status, data, `${method} ${path} failed with ${response.status}`)
   }
   return data as T
@@ -94,4 +99,11 @@ export const api = {
   saveTeamGraph: (teamId: string, version: number, graph: Graph, options?: { keepalive?: boolean }) =>
     request<StoredGraph>('PUT', teamGraph(teamId), { version, graph } satisfies SaveGraphRequest, 'team', options),
   resetTeamGraph: (teamId: string) => request<StoredGraph>('POST', `${teamGraph(teamId)}/reset`, undefined, 'team'),
+
+  getPack: (packId: string) => request<PackSummary>('GET', `/api/packs/${encodeURIComponent(packId)}`),
+  /** Runs the team's stored graph on the practice pack: 422 carries the ValidationReport, 409 a run is playing, 423 locked. */
+  startPracticeRun: (teamId: string) =>
+    request<RunRecord>('POST', `/api/teams/${encodeURIComponent(teamId)}/runs`, undefined, 'team'),
+  stopRun: (runId: string, role: Role) =>
+    request<RunRecord>('POST', `/api/runs/${encodeURIComponent(runId)}/stop`, undefined, role),
 }
