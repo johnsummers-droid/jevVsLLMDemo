@@ -57,8 +57,10 @@ def test_unknown_pack() -> None:
 
 def test_summary_hides_official_details() -> None:
     official = pack_summary("official").model_dump(by_alias=True)
+    scoring = official.pop("scoring")  # the public mission targets (T23)
     assert official == {"id": "official", "version": 1, "ticketCount": 30,
                         "categoryCounts": None}
+    assert scoring == load_pack("official").scoring.model_dump(by_alias=True)
     practice = pack_summary("practice")
     assert practice.category_counts == EXPECTED_COUNTS["practice"]
     # No ticket text or labels in either summary.
@@ -91,3 +93,21 @@ def test_pack_rejects_duplicate_ticket_ids() -> None:
     with pytest.raises(ValidationError, match="duplicate ticket ids"):
         ScenarioPack.model_validate({"id": "x", "version": 1, "tickets": [TICKET, TICKET],
                                      "scoring": {"costBudgetPer1KUsd": 5}})
+
+
+def test_pack_endpoint_gives_targets_but_never_ticket_text() -> None:
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    client = TestClient(app)
+    for pack_id in PACK_IDS:
+        res = client.get(f"/api/packs/{pack_id}")
+        assert res.status_code == 200
+        body = res.json()
+        assert body["scoring"]["latencyBudgetMs"] == 800 and body["scoring"]["costBudgetPer1KUsd"] > 0
+        assert body["ticketCount"] == len(load_pack(pack_id).tickets)
+        for ticket in load_pack(pack_id).tickets:
+            assert ticket.text not in res.text
+    assert client.get("/api/packs/official").json()["categoryCounts"] is None
+    assert client.get("/api/packs/secret").status_code == 404

@@ -375,6 +375,8 @@ export interface NodeFailed {
   requestId: string
   nodeId: string
   error: NodeError
+  latencyMs?: number
+  costUsd?: number
 }
 export interface NodeStarted {
   runId?: string | null
@@ -426,6 +428,16 @@ export interface PackSummary {
   categoryCounts: {
     [k: string]: number
   } | null
+  scoring: ScoringConfig
+}
+export interface ScoringConfig {
+  latencyBudgetMs?: number
+  costBudgetPer1KUsd: number
+  wAutomation?: number
+  wQuality?: number
+  wUnsafe?: number
+  latencyPenaltyPer10Ms?: number
+  costPenaltyPer10Pct?: number
 }
 export interface PolicyReport {
   passed: boolean

@@ -6,6 +6,7 @@ import { expandOutputs } from '../lib/graphMapping'
 import { countBySeverity } from '../lib/issues'
 import { useCatalogStore } from '../store/catalogStore'
 import { useGraphStore } from '../store/graphStore'
+import { useReadOnly } from '../store/runStore'
 import { useValidationStore } from '../store/validationStore'
 import type { CostModel, NodeDefinition, Port } from '../types'
 import { IssueList } from './IssueList'
@@ -44,7 +45,7 @@ function NodeDetails({ nodeId, definition }: { nodeId: string; definition: NodeD
   const node = useGraphStore((s) => s.nodes.find((n) => n.id === nodeId))
   const updateParam = useGraphStore((s) => s.updateParam)
   const deleteNode = useGraphStore((s) => s.deleteNode)
-  const locked = useGraphStore((s) => s.locked)
+  const locked = useReadOnly()
   const params = node?.data.params
   const outputs = useMemo(() => expandOutputs(definition, params), [definition, params])
   const index = useValidationStore((s) => s.index)

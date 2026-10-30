@@ -1,4 +1,4 @@
-// The editable pipeline canvas (read-only while the graph is locked). Must be rendered inside a
+// The editable pipeline canvas (read-only while the graph is locked or a run plays). Must be rendered inside a
 // ReactFlowProvider, and mounted once the graph has loaded so the first fitView frames it.
 import {
   Background,
@@ -15,8 +15,10 @@ import { nodeTypes } from '../nodes/nodeTypes'
 import { NODE_DRAG_TYPE } from '../palette/NodeCard'
 import { useCatalogStore } from '../store/catalogStore'
 import { useGraphStore } from '../store/graphStore'
+import { useReadOnly } from '../store/runStore'
 import { checkConnection, type Link } from './isValidConnection'
 import { PipelineEdge } from './PipelineEdge'
+import { startPulses } from './pulses'
 
 // Replaces React Flow's default edge, so every edge can carry a validation badge.
 const edgeTypes = { default: PipelineEdge }
@@ -34,7 +36,9 @@ export function Canvas() {
   const { fitView, screenToFlowPosition } = useReactFlow()
   const notice = useGraphStore((s) => s.notice)
   const setNotice = useGraphStore((s) => s.setNotice)
-  const locked = useGraphStore((s) => s.locked)
+  const locked = useReadOnly() // the graph is locked, or the team's run is playing (Q6)
+
+  useEffect(() => startPulses(), [])
 
   // The fitView prop can run before every node is measured and frame only the first one, so fit
   // once all nodes have their size.

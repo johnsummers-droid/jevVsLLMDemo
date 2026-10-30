@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.api import catalog, graphs, official, runs as runs_api, sessions, teams, ws
+from app.api import catalog, graphs, official, packs, runs as runs_api, sessions, teams, ws
 from app.config import get_settings
 from app.db import repo
 from app.db.session import session_scope
@@ -40,6 +40,7 @@ app.add_middleware(
 )
 app.include_router(catalog.router)
 app.include_router(graphs.router)
+app.include_router(packs.router)
 app.include_router(sessions.router)
 app.include_router(teams.router)
 app.include_router(runs_api.router)

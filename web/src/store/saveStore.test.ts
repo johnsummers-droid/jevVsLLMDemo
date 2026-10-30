@@ -4,6 +4,7 @@ import { mockApi } from '../test/mockApi'
 import type { Graph, StoredGraph } from '../types'
 import { useCatalogStore } from './catalogStore'
 import { useGraphStore } from './graphStore'
+import { useRunStore } from './runStore'
 import {
   RELOADED_NOTICE,
   RETRY_BASE_MS,
@@ -31,6 +32,7 @@ let stop: () => void
 
 beforeEach(() => {
   vi.useFakeTimers()
+  useRunStore.setState({ connection: 'offline' })
   useCatalogStore.setState({ status: 'ready', nodes: catalogNodes, byType: catalogByType, error: null })
   useSessionStore.setState({ team: { sessionCode: 'ABC234', teamId: 't1', teamName: 'Red', token: 'tok' } })
   graph().clear()
@@ -217,6 +219,21 @@ describe('autosave', () => {
     await vi.advanceTimersByTimeAsync(SYNC_POLL_MS)
     expect(graph().locked).toBe(false)
     expect(useSaveStore.getState().status).toBe('saved')
+  })
+
+  it('the sync poll pauses while the live socket is up, and resumes when it drops (Q5)', async () => {
+    const fetchMock = mockApi({ [`GET ${GRAPH_URL}`]: { body: stored(0) } })
+    const polls = () => fetchMock.mock.calls.filter(([url]) => String(url).endsWith(GRAPH_URL)).length
+    useRunStore.setState({ connection: 'live' })
+    await vi.advanceTimersByTimeAsync(SYNC_POLL_MS * 3)
+    expect(polls()).toBe(0)
+    // While live, the lock arrives over the socket instead.
+    useRunStore.getState().apply({ type: 'graph_locked', seq: 0, simMs: 0, teamId: 't1', locked: true })
+    expect(graph().locked).toBe(true)
+    expect(useSaveStore.getState().status).toBe('locked')
+    useRunStore.setState({ connection: 'offline' })
+    await vi.advanceTimersByTimeAsync(SYNC_POLL_MS)
+    expect(polls()).toBe(1)
   })
 
   it("an idle tab loads another tab's newer save, but never over unsaved edits", async () => {

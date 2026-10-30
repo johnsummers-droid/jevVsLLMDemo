@@ -3,12 +3,14 @@
 // changes made meanwhile are saved after it. 409: the server's graph (the response body) replaces
 // the local one, with a notice. 423: the graph becomes read-only. Network and server errors retry
 // with backoff. A save still pending at pagehide is sent with fetch keepalive.
-// Until M4's WebSocket pushes changes, the graph is also polled every SYNC_POLL_MS: that is how an
-// idle team sees the facilitator lock or unlock, and how a tab picks up another tab's save.
+// While the live socket is down (runStore.connection is not 'live'), the graph is also polled
+// every SYNC_POLL_MS: that is how an idle team still sees the facilitator lock or unlock, and how
+// a tab picks up another tab's save. While it is live, locks arrive over the socket (Q5).
 import { create } from 'zustand'
 import { ApiError, api } from '../api/client'
 import type { StoredGraph } from '../types'
 import { graphSignature, useGraphStore } from './graphStore'
+import { useRunStore } from './runStore'
 
 export const SAVE_DEBOUNCE_MS = 1000
 export const RETRY_BASE_MS = 1000
@@ -187,21 +189,24 @@ export function startAutosave(): () => void {
     }
   })
   window.addEventListener('pagehide', onPageHide)
-  // One sync poll for whichever team's graph is loaded.
+  // One sync poll for whichever team's graph is loaded, only while the live socket is down.
   let polledTeam: string | null = null
-  const followTeam = (teamId: string | null) => {
+  const followTeam = () => {
+    const teamId = useRunStore.getState().connection === 'live' ? null : graph().teamId
     if (teamId === polledTeam) return
     polledTeam = teamId
     clearInterval(pollTimer)
     pollTimer = undefined
     if (teamId !== null) startSyncPoll(teamId)
   }
-  const unsubscribeTeam = useGraphStore.subscribe((state) => followTeam(state.teamId))
-  followTeam(graph().teamId)
+  const unsubscribeTeam = useGraphStore.subscribe(followTeam)
+  const unsubscribeLive = useRunStore.subscribe(followTeam)
+  followTeam()
   onGraphChange()
   return () => {
     unsubscribe()
     unsubscribeTeam()
+    unsubscribeLive()
     window.removeEventListener('pagehide', onPageHide)
     clearTimeout(debounceTimer)
     clearTimeout(retryTimer)
