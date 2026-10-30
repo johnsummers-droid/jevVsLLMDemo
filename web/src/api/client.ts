@@ -9,6 +9,8 @@ import type {
   CreateSessionResponse,
   Graph,
   JoinTeamResponse,
+  LeaderboardRow,
+  OfficialRunResponse,
   PackSummary,
   RunRecord,
   SaveGraphRequest,
@@ -93,6 +95,11 @@ export const api = {
     request<SessionDetail>('GET', `/api/sessions/${code(sessionCode)}`, undefined, 'facilitator'),
   lockSession: (sessionCode: string, locked: boolean) =>
     request<SessionDetail>('POST', `/api/sessions/${code(sessionCode)}/lock`, { locked }, 'facilitator'),
+  /** Locks the session and runs every team on the official pack with one seed; 409 while one plays. */
+  startOfficialRun: (sessionCode: string) =>
+    request<OfficialRunResponse>('POST', `/api/sessions/${code(sessionCode)}/runs`, undefined, 'facilitator'),
+  getLeaderboard: (sessionCode: string) =>
+    request<LeaderboardRow[]>('GET', `/api/sessions/${code(sessionCode)}/leaderboard`, undefined, 'facilitator'),
 
   getTeamGraph: (teamId: string) => request<StoredGraph>('GET', teamGraph(teamId), undefined, 'team'),
   /** 409 (stale version) carries the current StoredGraph as ApiError.body; 423 when locked. */

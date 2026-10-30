@@ -10,6 +10,7 @@ describe('navigation', () => {
     expect(pageFromPath('/join')).toBe('join')
     expect(pageFromPath('/team/')).toBe('team')
     expect(pageFromPath('/facilitator')).toBe('facilitator')
+    expect(pageFromPath('/screen')).toBe('screen')
     expect(pageFromPath('/')).toBeNull()
     expect(pageFromPath('/teams')).toBeNull()
   })
