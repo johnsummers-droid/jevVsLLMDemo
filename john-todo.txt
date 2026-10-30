@@ -11,11 +11,11 @@ the workshop-day checklist: specs-and-plans/deploy-runbook.txt.
          open-terminal into main, review it, merge it.
        - open-terminal: quicker; it is exactly what CI just tested.
 
-[ ] 1. Make two secrets (keep them in a password manager, never in git)
+[x] 1. Make two secrets (keep them in a password manager, never in git)
        TOKEN_SECRET:      python -c "import secrets; print(secrets.token_urlsafe(32))"
        FACILITATOR_CODE:  a passphrase you'll type on the facilitator page
 
-[ ] 2. Render (API + database)   [Railway paused sign-ups; Render replaces it]
+[x] 2. Render (API + database)   DONE 2026-10-30: https://pipeline-sim-api.onrender.com
        - render.com: sign up with GitHub, give it access to jevVsLLMDemo
        - Only after render.yaml is pushed to main (ask Claude to commit it):
          New -> Blueprint -> pick the repo, branch main
@@ -27,7 +27,8 @@ the workshop-day checklist: specs-and-plans/deploy-runbook.txt.
          switch both to paid (free sleeps after 15 min; free DB expires
          after 30 days)
 
-[ ] 3. Vercel (web app)
+[x] 3. Vercel (web app)   DONE 2026-10-30: https://jev-vs-llm-demo-delta.vercel.app
+       (Git-linked: deploys on every push to main)
        - Add New -> Project -> import jevVsLLMDemo
        - Root Directory = web, Framework = Vite, Node.js 22.x
        - Leave "Include files outside the root directory" ON  <- easy to miss
@@ -35,22 +36,22 @@ the workshop-day checklist: specs-and-plans/deploy-runbook.txt.
            VITE_API_BASE_URL = https://API_URL   (no trailing slash)
        - Deploy  => the production URL is WEB_URL
 
-[ ] 4. Connect them (Render -> pipeline-sim-api -> Environment)
+[x] 4. Connect them (Render -> pipeline-sim-api -> Environment)   DONE, CORS checked
        ALLOWED_ORIGINS = https://WEB_URL
        (optional) ALLOWED_ORIGIN_REGEX for Vercel preview URLs; see the runbook
 
-[ ] 5. Check on the deployed site (this is what marks M3 done)
-       [ ] WEB_URL/facilitator: enter FACILITATOR_CODE -> you get a session code
-       [ ] Two browsers (one private window): join at WEB_URL/join?code=<code>
+[x] 5. Check on the deployed site (this is what marks M3 done)
+       [x] https://jev-vs-llm-demo-delta.vercel.app/facilitator: enter FACILITATOR_CODE -> you get a session code
+       [x] Two browsers (one private window): join at https://jev-vs-llm-demo-delta.vercel.app/join?code=<code>
            as "Red" and "Blue"; both see the starter graph
-       [ ] Each adds a different node; the header says "Saved"
-       [ ] Refresh both: each still has its own node, not the other's
-       [ ] Open WEB_URL/team directly in a new tab: it loads (no 404)
-       [ ] Facilitator: "Pencils down" -> within 10 s both teams show the lock
+       [x] Each adds a different node; the header says "Saved"
+       [x] Refresh both: each still has its own node, not the other's
+       [x] Open https://jev-vs-llm-demo-delta.vercel.app/team directly in a new tab: it loads (no 404)
+       [x] Facilitator: "Pencils down" -> within 10 s both teams show the lock
            banner and "Locked", without touching anything
-       [ ] "Unlock graphs" -> within 10 s both are back to "Saved"
+       [x] "Unlock graphs" -> within 10 s both are back to "Saved"
 
-[ ] 6. Tell Claude how it went (paste any errors). Claude then marks M3 done
+[x] 6. Tell Claude how it went (paste any errors). Claude then marks M3 done
        in plan1.txt and CLAUDE.md, and M4 (live runs over WebSockets) is next.
 
 

@@ -1516,8 +1516,23 @@ T17. Deployment and M3 exit                               [depends on: T15, T16]
     15 min, free databases expire after 30 days). ALLOWED_ORIGINS is set
     in the dashboard; Blueprint syncs keep unlisted variables. The runbook
     leads with Render and keeps Railway as section 7.
+    Deployed 2026-10-30: API https://pipeline-sim-api.onrender.com (Render,
+    Frankfurt, free plans; the database expires 2026-11-29 unless
+    upgraded), web https://jev-vs-llm-demo-delta.vercel.app (Vercel project
+    jev-vs-llm-demo, root web, Node 22, VITE_API_BASE_URL set for
+    production and preview; the plain name was taken, hence -delta).
+    ALLOWED_ORIGINS on Render = the web URL. The first deploy was a CLI
+    upload of a clean `git archive` of main (the Vercel GitHub app was not
+    installed yet); the project is now Git-linked, production branch main.
+    Checked: health, catalog, CORS preflight, all SPA routes 200, and a
+    headless browser on /facilitator got the API's 401 for a wrong code
+    across origins. The owner ran the manual two-team checks on the
+    deployed URLs on 2026-10-30 and all passed: M3 is done.
 
-Next after T17: live runs over WebSockets (M4).
+M3 done 2026-10-30. Next: live runs over WebSockets (M4). Open point to
+fix before M4's official run: a team that joins after "pencils down"
+starts unlocked (the lock is per team graph; needs a session-level lock
+flag and a migration).
 
 
 8. OPEN ITEMS (none of these block T1-T5)

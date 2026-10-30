@@ -1,0 +1,87 @@
+BEFORE THE WORKSHOP: Pipeline Simulator (Warsaw)
+================================================
+Written 2026-10-30, after M3 was deployed and checked. Do these before the
+workshop day. Full detail and troubleshooting: specs-and-plans/deploy-runbook.txt.
+
+  Web app   https://jev-vs-llm-demo-delta.vercel.app
+  API       https://pipeline-sim-api.onrender.com   (health: /api/health)
+  Hosting   Vercel (web) and Render, region Frankfurt (API + PostgreSQL)
+
+
+WEEKS BEFORE
+------------
+[ ] 1. Move Render off the free plans. HARD DEADLINE: the free database
+       EXPIRES ON 2026-11-29 (then 14 days to upgrade before it is deleted,
+       with every session, team and graph in it).
+       - Ask Claude to change `plan:` in render.yaml to paid plans (web
+         service and database), then merge the PR. Render applies it on
+         the Blueprint sync.
+       - Change it in render.yaml, not only in the Render dashboard: a
+         later Blueprint sync applies whatever render.yaml says, which
+         would put the service back on `free`.
+       - Why: a free service sleeps after 15 minutes without traffic (about
+         a minute to wake, and it loses any run in progress); a free
+         database expires.
+       - Check the current prices on render.com/pricing first.
+
+[ ] 2. Fix the late-join lock (code change, ask Claude; planned for early M4).
+       Today a team that joins AFTER "Pencils down" starts unlocked, because
+       the lock is stored per team graph. Fix: a lock flag on the session
+       plus a small migration. Until it is fixed: press "Pencils down" only
+       once every team has joined.
+
+[ ] 3. Finish and deploy the features the workshop uses (M4 onwards: live
+       runs over WebSockets, leaderboard, shared screen). Each merge to
+       main redeploys both apps; check CI is green before merging.
+
+[ ] 4. Rehearse once on the deployed URLs, ideally on the venue's network
+       or a similar one: facilitator creates a session, 2-3 browsers join
+       as teams, edit, run, "Pencils down", "Unlock graphs".
+
+
+THE WEEK BEFORE
+---------------
+[ ] 5. Rotate FACILITATOR_CODE if it was ever shown or shared:
+       Render -> pipeline-sim-api -> Environment -> FACILITATOR_CODE ->
+       new passphrase (generate it in Dashlane) -> Save and deploy.
+       Do NOT change TOKEN_SECRET from now on: changing it signs everyone
+       out (graphs are kept, but teams must rejoin).
+
+[ ] 6. Check the deployments match main:
+       - Render: the latest deploy is "live" and shows the newest commit.
+       - Vercel: the production deployment shows the newest commit.
+       - curl https://pipeline-sim-api.onrender.com/api/health -> {"status":"ok"}
+
+[ ] 7. Check the Render instance count is still 1. Runs and the live
+       updates live in the server's memory; more instances would split them.
+
+[ ] 8. Make sure you can sign in to Render, Vercel, GitHub and Dashlane from
+       the laptop you will use on the day (2FA devices at hand).
+
+
+ON THE DAY (30 minutes before)
+------------------------------
+[ ] 9. Open https://pipeline-sim-api.onrender.com/api/health (wakes the
+       service if it ever slept) and the web app once.
+
+[ ] 10. https://jev-vs-llm-demo-delta.vercel.app/facilitator -> enter
+        FACILITATOR_CODE -> create the session. Put the join link
+        (/join?code=<code>) on the screen or a slide.
+
+[ ] 11. Smoke test: join as a test team in a private window, check the
+        starter graph loads and the header says "Saved", then close it.
+
+[ ] 12. Keep the Render dashboard open (service -> Logs) to spot errors live.
+
+
+IF SOMETHING GOES WRONG
+-----------------------
+  - Every page says "Could not reach the server": open /api/health; if it
+    does not answer, check the Render service status and logs.
+  - "blocked by CORS policy" in the browser console: ALLOWED_ORIGINS on
+    Render must be exactly https://jev-vs-llm-demo-delta.vercel.app
+    (no trailing slash).
+  - A team lost its browser storage: it rejoins with the SAME team name and
+    gets its graph back.
+  - A bad deploy: Render -> Deploys -> roll back to the previous one;
+    Vercel -> Deployments -> "Instant Rollback".
