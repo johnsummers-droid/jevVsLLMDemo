@@ -791,6 +791,9 @@ M5  Full catalog and run controls          (spec phases 2 and 5, remainder)
       (mock only, rate-limited).
     - All spec metrics (adds escalation rate, p50, decision quality); a
       per-request trace viewer after a run; runs persisted for review.
+    - Pencils down also stops practice runs in progress (today it only
+      blocks new ones; the official run stops them). Found in the M4 exit
+      check.
 
 M6  Real providers                         (spec phase 4)
     - JevHttpProvider (httpx) and AnthropicLLMProvider (anthropic SDK)
@@ -1892,7 +1895,14 @@ T24. Facilitator controls, shared screen, M4 exit         [depends on: T21, T23]
     /screen): both teams ran locked with no Stop button, the leaderboard
     on /facilitator and /screen matched (strong graph first), no page or
     server errors; screenshots reviewed (fixed: /screen grid gaps).
-    Remaining for M4: the "Live runs" checklist on the deployed URLs.
+    M4 exit (2026-10-30): the user ran the deploy-runbook "Live runs"
+    checklist on the deployed URLs and every item passed (practice runs,
+    pencils down banner at once, official run with /screen and the
+    leaderboard, offline reconnect, facilitator live dot). M4 is done.
+    Follow-up: the facilitator live dot is 20 px and uses its own
+    brighter --live colour token. Observed during the check: pencils down
+    blocks new practice runs (423) but lets one already playing finish
+    (Q6); only the official run stops them (Q7). Moved to M5.
 
 8. OPEN ITEMS (none of these block T1-T5)
 -----------------------------------------

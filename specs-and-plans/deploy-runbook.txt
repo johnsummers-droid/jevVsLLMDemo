@@ -17,6 +17,47 @@ Deploy from main (open-terminal was merged in PR #3). Both Render and
 Vercel redeploy on every push to main, so make sure CI is green on it.
 
 
+IMPORTANT URLS
+--------------
+Every URL is complete: copy a line and paste it into the browser. Lines
+marked (not in a browser) need a POST, a token or a WebSocket client;
+they are listed so you know what the app calls. {code} is a session code,
+{team_id} and {run_id} are ids.
+
+Web app (Vercel). Any other path redirects to /join (or /team once joined).
+  https://jev-vs-llm-demo-delta.vercel.app/join          players join a session
+  https://jev-vs-llm-demo-delta.vercel.app/team          a team's workbench (after joining)
+  https://jev-vs-llm-demo-delta.vercel.app/facilitator   facilitator: create session, lock, official run
+  https://jev-vs-llm-demo-delta.vercel.app/screen        projector view: join info, leaderboard
+
+API (Render). The API root itself has no page (404); start from these.
+  https://pipeline-sim-api.onrender.com/api/health          -> {"status":"ok"}; wakes the service
+  https://pipeline-sim-api.onrender.com/docs                interactive API docs (Swagger)
+  https://pipeline-sim-api.onrender.com/openapi.json        machine-readable API description
+  https://pipeline-sim-api.onrender.com/api/catalog         node catalog
+  https://pipeline-sim-api.onrender.com/api/graphs/default  default starter graph
+  https://pipeline-sim-api.onrender.com/api/packs/practice  practice pack summary
+  https://pipeline-sim-api.onrender.com/api/sessions                         (not in a browser) POST: create a session
+  https://pipeline-sim-api.onrender.com/api/sessions/{code}                  (not in a browser) facilitator token: session detail
+  https://pipeline-sim-api.onrender.com/api/sessions/{code}/teams            (not in a browser) POST: join a team
+  https://pipeline-sim-api.onrender.com/api/sessions/{code}/lock             (not in a browser) POST: pencils down
+  https://pipeline-sim-api.onrender.com/api/sessions/{code}/runs             (not in a browser) POST: official run
+  https://pipeline-sim-api.onrender.com/api/sessions/{code}/leaderboard      (not in a browser) facilitator token
+  https://pipeline-sim-api.onrender.com/api/teams/{team_id}/graph            (not in a browser) team token: get/put graph
+  https://pipeline-sim-api.onrender.com/api/teams/{team_id}/graph/reset      (not in a browser) POST
+  https://pipeline-sim-api.onrender.com/api/teams/{team_id}/runs             (not in a browser) POST: practice run
+  https://pipeline-sim-api.onrender.com/api/teams/{team_id}/runs/latest      (not in a browser) team token
+  https://pipeline-sim-api.onrender.com/api/runs/{run_id}/stop               (not in a browser) POST
+  https://pipeline-sim-api.onrender.com/api/graphs/validate                  (not in a browser) POST a graph
+  wss://pipeline-sim-api.onrender.com/api/ws                                 (not in a browser) live run socket
+
+Dashboards and repo
+  https://dashboard.render.com/web/srv-dbi8qmm7bikc73affemg   Render: API service (logs, env, deploys)
+  https://vercel.com/team1-35ed/jev-vs-llm-demo               Vercel: web project (deployments, env)
+  https://github.com/johnsummers-droid/jevVsLLMDemo           GitHub repo
+  https://github.com/johnsummers-droid/jevVsLLMDemo/actions   CI runs
+
+
 0. SECRETS (keep them out of git)
 ---------------------------------
 Generate two values and keep them in a password manager:
