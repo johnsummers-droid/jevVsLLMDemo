@@ -14,9 +14,8 @@ and never lets an unsafe reply reach a customer.
 > **What works today.** Join with the session code from the screen and a
 > team name at `/join`. The canvas, palette, inspector and live validation
 > work, and your graph is saved on the server a second after each change
-> (the header says **Saved**), so a refresh loses nothing. Running your
-> pipeline from the browser (with animated traffic and a metrics bar) comes
-> next; sections marked *(coming soon)* describe how runs will work.
+> (the header says **Saved**), so a refresh loses nothing. **Run traffic**
+> runs your pipeline on practice tickets and shows the results live.
 >
 > Edit on **one laptop per team**: if two edit at once, one of them gets
 > "Your graph was changed elsewhere; reloaded." and loses its last change.
@@ -297,11 +296,18 @@ the benefit of automating several tickets.** Escalating everything is
 perfectly safe, but it scores poorly because nothing is automated and the
 cost runs over budget.
 
-### Practice and official runs *(coming soon)*
+### Practice and official runs
 
-- **Practice runs:** your team runs its graph on the 15-ticket practice pack
-  whenever it likes. Only your team sees the results, and they don't go on
-  the leaderboard.
+- **Practice runs:** press **Run traffic** (above the canvas) to run your
+  saved graph on the 15-ticket practice pack. It takes about 45 seconds:
+  dots move along the edges as tickets flow, each node shows what it did
+  (requests, average latency, cost, routing decisions, tokens, escalations,
+  failures, skips), and the metrics bar shows p95 latency, cost per 1,000,
+  automation and unsafe releases, green when a target is met and red when
+  it isn't, plus your score at the end. The graph is read-only while it
+  runs; **Stop** ends it early. The button is greyed out, with the reason
+  shown, while your graph has errors or is locked. Only your team sees the
+  results, and they don't go on the leaderboard.
 - **Official runs:** the admin starts these for every team at once. All
   graphs are **locked** (no edits) and run on a hidden 30-ticket pack, with
   the same random seed and traffic for everyone. These results make the

@@ -6,6 +6,7 @@ export const PATHS = {
   join: '/join',
   team: '/team',
   facilitator: '/facilitator',
+  screen: '/screen',
 } as const
 
 export type Page = keyof typeof PATHS

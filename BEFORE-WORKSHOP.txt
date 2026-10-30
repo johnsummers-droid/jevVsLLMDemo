@@ -34,8 +34,12 @@ WEEKS BEFORE
        main redeploys both apps; check CI is green before merging.
 
 [ ] 4. Rehearse once on the deployed URLs, ideally on the venue's network
-       or a similar one: facilitator creates a session, 2-3 browsers join
-       as teams, edit, run, "Pencils down", "Unlock graphs".
+       or a similar one (WebSockets must get through it): facilitator
+       creates a session and opens /screen in a second tab, 2-3 browsers
+       join as teams, edit, "Run traffic" (dots, badges, metrics), "Pencils
+       down", "Start official run", watch the leaderboard fill in, "Unlock
+       graphs". The checklist is in specs-and-plans/deploy-runbook.txt
+       ("Live runs").
 
 
 THE WEEK BEFORE

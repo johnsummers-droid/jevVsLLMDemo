@@ -1,12 +1,28 @@
 // /facilitator: the facilitator code creates a session (decision P2); then the session code is
-// shown large for the room, the team list refreshes every few seconds, and one button locks or
-// unlocks every team graph ("pencils down").
+// shown large for the room, the team list refreshes every few seconds, one button locks or
+// unlocks every team graph ("pencils down"), and the official run, each team's run and the
+// leaderboard follow the live stream (T24).
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { ApiError, api } from '../api/client'
+import { ErrorBoundary } from '../components/ErrorBoundary'
+import { Leaderboard } from '../leaderboard/Leaderboard'
 import { PATHS } from '../lib/navigation'
+import { OfficialRunPanel } from '../run/OfficialRunPanel'
 import { type FacilitatorCredentials, useSessionStore } from '../store/sessionStore'
+import { type TeamRun, useSessionLive, useSessionLiveStore } from '../store/sessionLiveStore'
 import type { SessionDetail } from '../types'
 import { Link } from './Link'
+
+const RUN_LABELS: Record<string, string> = {
+  running: 'running',
+  pending: 'starting',
+  completed: 'finished',
+  stopped: 'stopped',
+  failed: 'failed',
+}
+
+const runLabel = (run: TeamRun | undefined) =>
+  run ? `${run.mode === 'official' ? 'Official' : 'Practice'} · ${RUN_LABELS[run.status] ?? run.status}` : '—'
 
 export const REFRESH_MS = 5000
 
@@ -76,6 +92,9 @@ function SessionView({ facilitator }: { facilitator: FacilitatorCredentials }) {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [confirmSignOut, setConfirmSignOut] = useState(false)
+  const teamRuns = useSessionLiveStore((s) => s.teamRuns)
+  const leaderboard = useSessionLiveStore((s) => s.leaderboard)
+  useSessionLive(sessionCode)
 
   const refresh = useCallback(async () => {
     try {
@@ -122,6 +141,10 @@ function SessionView({ facilitator }: { facilitator: FacilitatorCredentials }) {
         </p>
       </section>
 
+      <ErrorBoundary name="the official run panel">
+        <OfficialRunPanel sessionCode={sessionCode} teamCount={teams.length} onStarted={() => void refresh()} />
+      </ErrorBoundary>
+
       <section className="page__card">
         <div className="page__row">
           <h2>
@@ -151,6 +174,7 @@ function SessionView({ facilitator }: { facilitator: FacilitatorCredentials }) {
                 <th>Joined</th>
                 <th>Saves</th>
                 <th>Graph</th>
+                <th>Run</th>
               </tr>
             </thead>
             <tbody>
@@ -160,11 +184,24 @@ function SessionView({ facilitator }: { facilitator: FacilitatorCredentials }) {
                   <td>{timeFormat.format(new Date(team.joinedAt))}</td>
                   <td>{team.graphVersion}</td>
                   <td>{team.locked ? 'Locked' : 'Editing'}</td>
+                  <td>{runLabel(teamRuns[team.teamId])}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
+      </section>
+
+      <section className="page__card">
+        <div className="page__row">
+          <h2>Leaderboard</h2>
+          <a className="button button--small" href={PATHS.screen} target="_blank" rel="noreferrer">
+            Open shared screen
+          </a>
+        </div>
+        <ErrorBoundary name="the leaderboard">
+          {leaderboard ? <Leaderboard rows={leaderboard} /> : <p className="page__hint">Loading…</p>}
+        </ErrorBoundary>
       </section>
 
       <section className="page__card">

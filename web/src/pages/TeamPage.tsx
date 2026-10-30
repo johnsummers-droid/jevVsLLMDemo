@@ -4,6 +4,7 @@
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Canvas } from '../canvas/Canvas'
+import { ErrorBoundary } from '../components/ErrorBoundary'
 import { Inspector } from '../inspector/Inspector'
 import { navigate, PATHS } from '../lib/navigation'
 import { Palette } from '../palette/Palette'
@@ -138,15 +139,21 @@ function Workbench({ team }: { team: TeamCredentials }) {
         </div>
       )}
       {graphStatus === 'ready' && (
-        <div className="run-bar">
-          <RunControls teamId={teamId} />
-          <MetricsBar />
-        </div>
+        <ErrorBoundary name="the run bar">
+          <div className="run-bar">
+            <RunControls teamId={teamId} />
+            <MetricsBar />
+          </div>
+        </ErrorBoundary>
       )}
       <main className="app__body">
         <Palette nodes={catalog.nodes} onAdd={addAtCenter} disabled={readOnly} />
         <div className="app__canvas" ref={canvasRef}>
-          {graphStatus === 'ready' && <Canvas />}
+          {graphStatus === 'ready' && (
+            <ErrorBoundary name="the canvas">
+              <Canvas />
+            </ErrorBoundary>
+          )}
         </div>
         <Inspector />
       </main>

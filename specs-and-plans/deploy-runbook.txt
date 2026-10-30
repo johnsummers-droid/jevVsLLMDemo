@@ -117,6 +117,28 @@ In browsers (the M3 exit criteria):
 
 If all boxes are ticked, M3 is done on the deployed URLs.
 
+Live runs (the M4 exit criteria; spec section 11 end to end):
+  [ ] Two teams (two browsers) each press "Run traffic": dots move along
+      the edges, node badges count up, the metrics bar fills in and is
+      coloured, the score shows at the end.
+  [ ] Facilitator: "Pencils down" -> both teams show the banner at once
+      (not after a 10 s poll); unlock likewise.
+  [ ] /screen open in the facilitator's browser (second tab). Facilitator:
+      "Start official run" -> confirm: both teams run (their pages say
+      "Official run"), the team list says "Official · running", and the
+      leaderboard on /facilitator and /screen fills in as teams finish.
+  [ ] Reconnect: switch a team's laptop offline (or close the lid) mid-run
+      for ~15 s, then back: within ~40 s the page is live again and the
+      run's numbers catch up.
+  [ ] The facilitator page's green dot (next to "Official run") stays
+      green; amber means it is reconnecting.
+
+WebSocket notes: the browser talks to wss://API_URL/api/ws directly (not
+through Vercel). Render's proxy swallows WebSocket close frames, so the
+server sends a `closing` event before every close and answers pings with
+`pong`; the client reconnects after 40 s of silence. Check from a terminal
+with a bad token: it must answer {"type":"closing","code":4401,...}.
+
 
 5. TROUBLESHOOTING
 ------------------
@@ -135,6 +157,14 @@ If all boxes are ticked, M3 is done on the deployed URLs.
       Blueprint) or the database is still starting; redeploy.
   The first request after a quiet spell takes about a minute
       The free web service was asleep; use a paid instance for workshops.
+  "Run traffic" stays greyed out with "Connecting to live updates…"
+      The live socket cannot connect: check that wss://API_URL/api/ws is
+      reachable (no proxy on the venue network blocking WebSockets) and
+      that VITE_API_BASE_URL is https://API_URL (the socket URL is derived
+      from it).
+  Live views freeze after a deploy
+      Expected for up to ~40 s: the client notices the silent socket and
+      reconnects, then catches up. Don't deploy during a session.
   Blueprint creation: "free database limit reached"
       Only one free PostgreSQL per workspace; delete the old one or pick a
       paid plan.

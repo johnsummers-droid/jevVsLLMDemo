@@ -1867,6 +1867,32 @@ T24. Facilitator controls, shared screen, M4 exit         [depends on: T21, T23]
       the facilitator's official run fills the leaderboard on /screen;
       kill a team's network mid-run and reconnect (state_sync).
     Done when: M4's exit holds on the deployed URLs.
+    As built (2026-10-30, code side): store/sessionLiveStore.ts (pure
+    reduceSession: each team's run from run_started / metrics_snapshot /
+    run_completed, the leaderboard; officialRunning; startSessionLive and
+    useSessionLive, which reloads GET leaderboard whenever the socket goes
+    live). run/OfficialRunPanel.tsx (Start official run behind an inline
+    confirm, seed and failed-graph count shown, 409 message, "Playing...",
+    Stop all = POST stop for each running official run, live dot).
+    FacilitatorPage gains a Run column and the leaderboard with "Open
+    shared screen". pages/ScreenPage.tsx at /screen (PATHS.screen): join
+    instructions, Leaderboard large, one live tile per team; needs the
+    facilitator's stored sign-in. leaderboard/Leaderboard.tsx.
+    components/ErrorBoundary.tsx contains a crash to its panel (run bar,
+    canvas, official panel, leaderboard, tiles) with a retry. Docs: admin
+    and player guides describe the M4 flow; deploy-runbook.txt has the
+    "Live runs" exit checklist, WebSocket notes and troubleshooting;
+    BEFORE-WORKSHOP.txt's rehearsal covers runs and /screen.
+    The automated exit (an official run for three teams in the golden
+    order) is test_official.py::test_teams_finish_in_the_golden_order.
+    Checked: 297 web tests (sessionLiveStore, Leaderboard, ErrorBoundary,
+    officialRun page tests new), build, lint; 937 server tests; drift;
+    headless Chromium rehearsal against local servers (facilitator UI
+    creates the session and starts the official run, two team browsers,
+    /screen): both teams ran locked with no Stop button, the leaderboard
+    on /facilitator and /screen matched (strong graph first), no page or
+    server errors; screenshots reviewed (fixed: /screen grid gaps).
+    Remaining for M4: the "Live runs" checklist on the deployed URLs.
 
 8. OPEN ITEMS (none of these block T1-T5)
 -----------------------------------------

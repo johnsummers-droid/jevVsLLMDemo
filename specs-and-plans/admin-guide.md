@@ -6,14 +6,13 @@ behind the scenes, how to set it up and run it, and what to do before,
 during and after a session. Players get `player-guide.md`. Read that first,
 because this guide assumes you know the screen and the node types.
 
-> **Build status (M2 complete).** Working today: the browser canvas, palette,
-> inspector and live validation; the full simulation engine; and headless
-> runs from the command line. Not built yet: saving graphs on the server,
-> sessions and team logins (M3), live runs in the browser with an
-> official-run button and leaderboard (M4), and run controls such as
-> traffic spikes (M5). Sections marked *(coming soon)* describe the planned
-> flow from `plan1.txt` so you can prepare; the "Running a session today"
-> section says what to do in the meantime.
+> **Build status (M4).** Working today: sessions and team logins, the canvas
+> with live validation and autosave, practice runs in the browser with
+> animated traffic, node badges and a metrics bar, the facilitator's
+> official run with a live leaderboard, and the shared screen (`/screen`).
+> Not built yet (M5): run controls such as traffic spikes and injection
+> waves, human-review capacity, and a per-request trace viewer. Sections
+> marked *(coming soon)* describe those.
 
 ---
 
@@ -210,44 +209,44 @@ Stop both with Ctrl-C.
 
 ---
 
-## 4. Running a session today (M3 build)
+## 4. Running a session (M4 build)
 
-Teams and saved graphs work; live runs in the browser arrive with M4. Run the
-workshop like this:
-
-1. **Create a session.** Open `/facilitator`, enter the `FACILITATOR_CODE`,
-   and put the page on the shared screen: it shows the 6-character session
-   code large, the join link (`/join?code=…`) and the teams as they join
-   (refreshed every 5 seconds).
+1. **Create a session.** Open `/facilitator`, enter the `FACILITATOR_CODE`.
+   The page shows the 6-character session code large, the join link
+   (`/join?code=…`), the teams as they join (refreshed every 5 seconds) with
+   each team's current run, the official-run panel and the leaderboard. A
+   green dot next to "Official run" means the live connection is up.
+   Click **Open shared screen** (or open `/screen` in the same browser) and
+   put that tab on the projector: join instructions, the leaderboard in
+   large type and one live tile per team.
 2. **Teams join** at `/join` with the session code and a team name, and
    start from the starter graph. Their graph is saved on the server one
    second after each change (the header says "Saved"), so a refresh or a
    closed tab loses nothing. A team that loses its browser storage rejoins
    with the same name. Keep **one laptop per team editing**: if two edit at
    once, the later save is refused and that laptop reloads the other's graph.
-3. **Teams use validation as feedback.** The Pipeline check shows errors and
-   warnings live. That's enough to fix structural problems (unconnected
-   branches, no human fallback, no safety coverage).
-3. **You score the graphs headless.** Have each team describe or show you its
-   final graph, then write it as a graph JSON file (same format as
-   `shared/fixtures/graphs/default.json`) and run:
-
-   ```bash
-   cd server
-   .venv/bin/python scripts/run_headless.py path/to/team-a.json official --seeds 10
-   ```
-
-   `--json` prints machine-readable metrics. Use `--seed N` for a single
-   seed. The script validates the graph first and refuses one with errors.
-   The browser has no export button yet, so the JSON has to be written by
-   hand; copying `strong.json` or `default.json` and editing it is the
-   quickest way.
-4. **Freeze with "Pencils down"** on the facilitator page. Within 10
-   seconds every team's workbench turns read-only with a banner; "Unlock
-   graphs" undoes it. The freeze covers the whole session: a team that
-   joins afterwards starts locked too, and you can freeze before anyone
-   has joined.
-5. **Show the reference graphs** for discussion:
+3. **Teams iterate with practice runs.** The Pipeline check shows errors and
+   warnings live; **Run traffic** runs the team's saved graph on the
+   15-ticket practice pack (about 45 seconds): dots move along the edges,
+   every node shows its numbers and the metrics bar colours p95 latency,
+   cost and unsafe releases against the targets. A graph with errors can't
+   run. Only that team sees its practice results; you see each team's run
+   status in the team list.
+4. **Freeze with "Pencils down"** on the facilitator page. Every team's
+   workbench turns read-only with a banner at once (over the live
+   connection). "Unlock graphs" undoes it. The freeze covers the whole
+   session: a team that joins afterwards starts locked too, and you can
+   freeze before anyone has joined.
+5. **Start the official run.** Click **Start official run** and confirm. It
+   locks every graph (if you hadn't already), stops any practice run, and
+   runs every team's saved graph on the hidden 30-ticket official pack with
+   the same seed, about 45-50 seconds. A graph with validation errors is
+   recorded as failed and ranks last. Teams watch their own run; the
+   leaderboard on the facilitator page and on `/screen` fills in as each
+   team finishes. **Stop all** ends every team's official run (they are
+   ranked on what completed, after the finished ones). Ranking: score, then
+   fewer unsafe releases, then lower p95.
+6. **Show the reference graphs** for discussion:
 
    ```bash
    .venv/bin/python scripts/run_headless.py default official --seeds 10
@@ -271,9 +270,9 @@ Adjust the times to your room.
 | 0–10 | **Intro** | Explain the scenario and the four component types. Show the scoring formula and the 400-point penalty for unsafe releases. Hand out `player-guide.md`. |
 | 10–15 | **Setup** | Create the session on `/facilitator` and show the code. Teams join at `/join`; check every team appears in the list and sees the starter graph. |
 | 15–25 | **Baseline** | Run the starter graph on the practice pack and show its metrics: 23% dropped, 17% unsafe, p95 ≈ 3.8 s. Ask "why?" and let teams read the warnings. |
-| 25–60 | **Build** | Teams improve their graphs, using validation and practice runs. Walk the room; nudge with the guiding questions in the player guide rather than the answer key. |
-| 60–65 | **Freeze** | Press **Pencils down** on the facilitator page; every graph turns read-only *(coming soon: the official run locks graphs automatically)*. |
-| 65–75 | **Official run** | Run every team's graph on the official pack with the same seed and show the leaderboard. |
+| 25–60 | **Build** | Teams improve their graphs, using validation and **Run traffic** (practice runs). Walk the room; nudge with the guiding questions in the player guide rather than the answer key. |
+| 60–65 | **Freeze** | Press **Pencils down** on the facilitator page; every graph turns read-only at once. |
+| 65–75 | **Official run** | **Start official run** on the facilitator page (same hidden pack and seed for every team); the leaderboard fills in on `/screen` as teams finish. |
 | 75–90 | **Debrief** | Compare the top graph with `strong` and `escalate_all`. Discuss where Jev beat the LLM, where human review earned its cost, and why `weak` (more LLM) scored worst. |
 
 Debrief points that tend to land:
@@ -291,19 +290,12 @@ Debrief points that tend to land:
 
 ## 6. Planned admin flow *(coming soon)*
 
-Sessions, joining and saved graphs (M3) work today, see section 4. When M4
-and M5 land, the flow adds:
-
-1. **Practice runs.** Teams run their own graph on the practice pack from the
-   browser and watch tickets animate along the edges, with live node badges
-   and a metrics bar. Results are private to the team.
-2. **Official run.** You set the run seed and traffic (mix, attack rate) and
-   start it. Every team graph is **locked** (edits return 423) and
-   snapshotted, and all teams run on the official pack with identical
-   traffic. Results go to the **leaderboard** on the shared screen.
-3. **Run controls** (M5): stop, reset, prompt-injection wave, traffic spike
-   (up to 3×), human-review capacity limits, and a per-request trace viewer
-   for the debrief.
+Practice runs, the official run and the leaderboard (M4) work today, see
+section 4. M5 adds run controls: a prompt-injection wave and a traffic spike
+(up to 3×) for the official run, human-review capacity limits, and a
+per-request trace viewer for the debrief. Until then the official run uses
+the pack's normal traffic, and the seed is picked by the server (shown on
+the facilitator page).
 
 Saving uses a version number: a save from a stale copy of the graph is
 refused (409) and that browser reloads the server's graph, so only one
