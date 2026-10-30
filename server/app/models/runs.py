@@ -64,3 +64,22 @@ class RunRecord(RunSummary):
     metrics: RunMetrics | None = None
     started_at: datetime
     finished_at: datetime | None = None
+
+
+class LeaderboardRow(CamelModel):
+    """One team's latest official run (T21). Finished runs rank first by score (ties: lower
+    unsafe-release rate, then lower p95); stopped, still running and failed runs follow."""
+
+    team_id: str
+    team_name: str
+    run_id: str
+    status: RunStatus
+    metrics: RunMetrics | None = None  # None until the run has finished, and for a failed run
+    rank: int = Field(ge=1)
+
+
+class OfficialRunResponse(CamelModel):
+    """POST /api/sessions/{code}/runs: one seed and config for every team (decision Q7)."""
+
+    seed: int
+    runs: list[RunRecord]

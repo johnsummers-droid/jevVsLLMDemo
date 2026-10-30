@@ -3,7 +3,9 @@
 The client authenticates with its FIRST message, {"type": "auth", "token": ...}, so the bearer
 token never appears in a URL (uvicorn and Render log URLs). The first event it receives is
 state_sync. Close codes: 4401 no or bad auth, 4403 token revoked by a rejoin, 1013 too slow,
-1011 server not configured.
+1011 server not configured. Every server-side close is preceded by a `closing` event carrying the
+same code, because Render's proxy does not pass close frames on to the client. After auth, a
+{"type": "ping"} is answered with {"type": "pong"}: the client's heartbeat (models.events.Pong).
 """
 
 import asyncio
@@ -19,7 +21,7 @@ from app import auth
 from app.config import Settings, get_settings
 from app.db import repo
 from app.db.session import get_db
-from app.models.events import Auth, ClientMessage
+from app.models.events import Auth, ClientMessage, Closing, Ping, Pong
 from app.realtime.hub import Connection, hub
 
 router = APIRouter(tags=["realtime"])
@@ -56,6 +58,15 @@ async def _first_message(websocket: WebSocket) -> Auth | None:
     return message if isinstance(message, Auth) else None
 
 
+async def _close(websocket: WebSocket, code: int, reason: str) -> None:
+    """`closing` first: Render's proxy swallows the close frame (models.events.Closing)."""
+    try:
+        await websocket.send_text(Closing(seq=0, sim_ms=0, code=code, reason=reason).model_dump_json(by_alias=True))
+        await websocket.close(code, reason)
+    except (WebSocketDisconnect, RuntimeError):  # the client went away first
+        pass
+
+
 async def _write(websocket: WebSocket, conn: Connection) -> None:
     """Sends queued events until the hub closes the connection (or the client goes away)."""
     try:
@@ -65,11 +76,18 @@ async def _write(websocket: WebSocket, conn: Connection) -> None:
         pass
 
 
-async def _read(websocket: WebSocket) -> None:
-    """Pings and anything else a client sends after auth are ignored (Q3); returns on disconnect."""
+async def _read(websocket: WebSocket, conn: Connection) -> None:
+    """Answers pings with a pong (through the socket's queue, so it stays in order with events);
+    anything else a client sends after auth is ignored (Q3). Returns on disconnect."""
     try:
         while True:
-            await websocket.receive_text()
+            raw = await websocket.receive_text()
+            try:
+                message = _messages.validate_json(raw)
+            except ValidationError:
+                continue
+            if isinstance(message, Ping):
+                conn.send(Pong(seq=0, sim_ms=0, team_id=conn.team_id))
     except WebSocketDisconnect:
         pass
 
@@ -82,7 +100,7 @@ async def events_socket(
 ) -> None:
     await websocket.accept()
     if not settings.token_secret:
-        await websocket.close(CLOSE_UNCONFIGURED, "TOKEN_SECRET is not configured")
+        await _close(websocket, CLOSE_UNCONFIGURED, "TOKEN_SECRET is not configured")
         return
     try:
         message = await _first_message(websocket)
@@ -90,7 +108,7 @@ async def events_socket(
         return
     found = await run_in_threadpool(_identify, db, settings.token_secret, message.token) if message else None
     if found is None:
-        await websocket.close(CLOSE_AUTH, "authenticate with a valid token first")
+        await _close(websocket, CLOSE_AUTH, "authenticate with a valid token first")
         return
     conn, locked = found
     hub.connect(conn, locked)
@@ -101,7 +119,7 @@ async def events_socket(
                 tasks.cancel_scope.cancel()  # the other half stops too
 
             tasks.start_soon(until_either_ends, _write(websocket, conn))
-            tasks.start_soon(until_either_ends, _read(websocket))
+            tasks.start_soon(until_either_ends, _read(websocket, conn))
     finally:
         hub.disconnect(conn)
     if conn.close_code is not None:

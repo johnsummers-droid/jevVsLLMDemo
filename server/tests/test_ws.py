@@ -69,6 +69,15 @@ def receive_until_completed(ws: WebSocketTestSession) -> list[dict[str, Any]]:
     return received
 
 
+def assert_closes(ws: WebSocketTestSession, code: int) -> None:
+    """A server-side close: the `closing` event first (Render swallows close frames), then the close."""
+    closing = ws.receive_json()
+    assert closing["type"] == "closing" and closing["code"] == code and closing["reason"]
+    with pytest.raises(WebSocketDisconnect) as closed:
+        ws.receive_json()
+    assert closed.value.code == code
+
+
 class Gate:
     """A pacer clock that never moves: every event after time 0 waits for a released token."""
 
@@ -128,17 +137,13 @@ def test_missing_or_bad_auth_closes_4401(client: TestClient, monkeypatch: pytest
             ws.send_json(first)
         elif first is not None:
             ws.send_text(first)
-        with pytest.raises(WebSocketDisconnect) as closed:
-            ws.receive_json()
-    assert closed.value.code == ws_api.CLOSE_AUTH
+        assert_closes(ws, ws_api.CLOSE_AUTH)
 
 
 def test_unconfigured_secret_closes_1011(client: TestClient, settings: Settings) -> None:
     settings.token_secret = None
     with client.websocket_connect("/api/ws") as ws:
-        with pytest.raises(WebSocketDisconnect) as closed:
-            ws.receive_json()
-    assert closed.value.code == ws_api.CLOSE_UNCONFIGURED
+        assert_closes(ws, ws_api.CLOSE_UNCONFIGURED)
 
 
 def test_state_sync_is_first_and_carries_the_lock(client: TestClient) -> None:
@@ -261,9 +266,20 @@ def test_rejoining_closes_the_old_tokens_socket_4403(client: TestClient) -> None
     ws = connect(client, red["token"])
     ws.receive_json()
     join(client, code, "red")  # same team, new token (P3)
-    with pytest.raises(WebSocketDisconnect) as closed:
-        ws.receive_json()
-    assert closed.value.code == hub_module.CLOSE_REVOKED
+    assert_closes(ws, hub_module.CLOSE_REVOKED)
+
+
+def test_a_ping_after_auth_gets_a_pong(client: TestClient) -> None:
+    code, facilitator = new_session(client)
+    red = join(client, code, "Red")
+    for token in (red["token"], facilitator):
+        ws = connect(client, token)
+        assert ws.receive_json()["type"] == "state_sync"
+        ws.send_text("not json")  # ignored, the socket stays open
+        ws.send_json({"type": "subscribe", "channels": []})  # ignored too (Q3)
+        ws.send_json({"type": "ping"})
+        pong = ws.receive_json()
+        assert pong["type"] == "pong" and pong["teamId"] == (red["teamId"] if token == red["token"] else None)
 
 
 def test_a_slow_socket_is_dropped_not_waited_for(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -272,4 +288,6 @@ def test_a_slow_socket_is_dropped_not_waited_for(monkeypatch: pytest.MonkeyPatch
     for seq in range(4):
         conn.send(GraphLocked(seq=seq, sim_ms=0, team_id="t", locked=True))
     assert conn.close_code == hub_module.CLOSE_SLOW
-    assert conn.queue.qsize() == 1 and conn.queue.get_nowait() is None
+    closing = conn.queue.get_nowait()  # what was queued is dropped; only the goodbye remains
+    assert closing.type == "closing" and closing.code == hub_module.CLOSE_SLOW
+    assert conn.queue.get_nowait() is None and conn.queue.empty()

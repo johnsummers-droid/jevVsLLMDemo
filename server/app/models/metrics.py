@@ -27,11 +27,3 @@ class RunMetrics(CamelModel):
     cost_per_1k_usd: float
     decision_quality: float
     score: float = 0.0
-
-
-class LeaderboardRow(CamelModel):
-    team_id: str
-    team_name: str
-    run_id: str
-    metrics: RunMetrics
-    rank: int = Field(ge=1)

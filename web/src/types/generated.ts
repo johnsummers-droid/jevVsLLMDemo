@@ -29,9 +29,9 @@ export type IssueCode =
   | 'NO_HUMAN_FALLBACK'
   | 'ANY_SOURCE'
   | 'MULTI_INPUT_RACE'
-export type Outcome = 'automated' | 'escalated' | 'blocked' | 'dropped' | 'failed'
 export type RunStatus = 'pending' | 'running' | 'completed' | 'stopped' | 'failed'
 export type RunMode = 'practice' | 'official'
+export type Outcome = 'automated' | 'escalated' | 'blocked' | 'dropped' | 'failed'
 export type ServerEvent =
   | RunStarted
   | NodeStarted
@@ -44,6 +44,8 @@ export type ServerEvent =
   | GraphLocked
   | LeaderboardUpdated
   | StateSync
+  | Closing
+  | Pong
 export type Severity = 'error' | 'warning'
 
 /**
@@ -168,8 +170,25 @@ export interface Subscribe {
   type: 'subscribe'
   channels: string[]
 }
+/**
+ * The client's heartbeat; answered with Pong.
+ */
 export interface Ping {
   type: 'ping'
+}
+/**
+ * Sent right before the server closes a socket, with the same code and reason. Render's
+ * proxy swallows WebSocket close frames (it answers them itself and keeps the client's
+ * connection open), so the client closes on this message instead of waiting for the frame.
+ */
+export interface Closing {
+  runId?: string | null
+  teamId?: string | null
+  seq: number
+  simMs: number
+  type: 'closing'
+  code: number
+  reason?: string
 }
 export interface CreateSessionRequest {
   facilitatorCode: string
@@ -252,11 +271,16 @@ export interface JoinTeamResponse {
   teamName: string
   token: string
 }
+/**
+ * One team's latest official run (T21). Finished runs rank first by score (ties: lower
+ * unsafe-release rate, then lower p95); stopped, still running and failed runs follow.
+ */
 export interface LeaderboardRow {
   teamId: string
   teamName: string
   runId: string
-  metrics: RunMetrics
+  status: RunStatus
+  metrics?: RunMetrics | null
   rank: number
 }
 export interface RunMetrics {
@@ -362,6 +386,37 @@ export interface NodeStarted {
   nodeId: string
 }
 /**
+ * POST /api/sessions/{code}/runs: one seed and config for every team (decision Q7).
+ */
+export interface OfficialRunResponse {
+  seed: number
+  runs: RunRecord[]
+}
+/**
+ * A stored run (T20): what POST /api/teams/{id}/runs, POST /api/runs/{id}/stop and
+ * GET /api/teams/{id}/runs/latest return. metrics are set once the run has finished.
+ */
+export interface RunRecord {
+  runId: string
+  teamId?: string | null
+  status: RunStatus
+  config: RunConfig
+  graphVersion?: number
+  metrics?: RunMetrics | null
+  startedAt: string
+  finishedAt?: string | null
+}
+export interface RunConfig {
+  mode: RunMode
+  packId: string
+  seed: number
+  speed?: number
+  durationS?: number
+  trafficSpike?: number
+  injectionWave?: boolean
+  maxConcurrency?: number
+}
+/**
  * What clients may see about a pack: no ticket text and no labels.
  */
 export interface PackSummary {
@@ -379,6 +434,18 @@ export interface PolicyReport {
 export interface PolicyViolation {
   rule: string
   match: string
+}
+/**
+ * The answer to a client's ping. Browsers cannot see protocol-level pings, and Render's proxy
+ * keeps a connection open after the server has gone (see Closing), so the client sends a ping
+ * every 25 s and reconnects when no pong (or other event) arrives for about 40 s.
+ */
+export interface Pong {
+  runId?: string | null
+  teamId?: string | null
+  seq: number
+  simMs: number
+  type: 'pong'
 }
 export interface RequestCompleted {
   runId?: string | null
@@ -410,30 +477,6 @@ export interface RunCompleted {
   type: 'run_completed'
   status: RunStatus
   metrics: RunMetrics
-}
-export interface RunConfig {
-  mode: RunMode
-  packId: string
-  seed: number
-  speed?: number
-  durationS?: number
-  trafficSpike?: number
-  injectionWave?: boolean
-  maxConcurrency?: number
-}
-/**
- * A stored run (T20): what POST /api/teams/{id}/runs, POST /api/runs/{id}/stop and
- * GET /api/teams/{id}/runs/latest return. metrics are set once the run has finished.
- */
-export interface RunRecord {
-  runId: string
-  teamId?: string | null
-  status: RunStatus
-  config: RunConfig
-  graphVersion?: number
-  metrics?: RunMetrics | null
-  startedAt: string
-  finishedAt?: string | null
 }
 export interface RunStarted {
   runId?: string | null
