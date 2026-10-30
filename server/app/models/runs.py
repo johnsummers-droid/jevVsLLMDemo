@@ -1,8 +1,10 @@
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import Field
 
 from app.models.base import CamelModel
+from app.models.metrics import RunMetrics
 from app.models.results import NodeError
 
 RunMode = Literal["practice", "official"]
@@ -53,3 +55,12 @@ class RunSummary(CamelModel):
     status: RunStatus
     config: RunConfig
     graph_version: int = 0
+
+
+class RunRecord(RunSummary):
+    """A stored run (T20): what POST /api/teams/{id}/runs, POST /api/runs/{id}/stop and
+    GET /api/teams/{id}/runs/latest return. metrics are set once the run has finished."""
+
+    metrics: RunMetrics | None = None
+    started_at: datetime
+    finished_at: datetime | None = None

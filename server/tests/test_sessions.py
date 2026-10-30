@@ -188,3 +188,28 @@ def test_current_team_dependency(db_client: TestClient, settings: Settings) -> N
     assert client.get("/whoami", headers=bearer(team["token"])).json() == {"teamId": team["teamId"]}
     assert client.get("/whoami", headers=bearer(facilitator)).status_code == 403
     assert client.get("/whoami").status_code == 401
+
+
+def test_session_detail_reports_the_session_lock(db_client: TestClient) -> None:
+    code, facilitator = create_session(db_client)
+    assert db_client.get(f"/api/sessions/{code}", headers=bearer(facilitator)).json()["locked"] is False
+    res = db_client.post(f"/api/sessions/{code}/lock", json={"locked": True}, headers=bearer(facilitator))
+    assert res.status_code == 200 and res.json()["locked"] is True  # also with no team yet
+    res = db_client.post(f"/api/sessions/{code}/lock", json={"locked": False}, headers=bearer(facilitator))
+    assert res.json()["locked"] is False
+
+
+def test_team_joining_after_pencils_down_is_locked(db_client: TestClient) -> None:
+    """The M3 open point (Q5): a late team used to start unlocked."""
+    code, facilitator = create_session(db_client)
+    join(db_client, code, "Red")
+    db_client.post(f"/api/sessions/{code}/lock", json={"locked": True}, headers=bearer(facilitator))
+    late = join(db_client, code, "Late")
+    headers = bearer(late["token"])
+    graph = db_client.get(f"/api/teams/{late['teamId']}/graph", headers=headers).json()
+    assert graph["locked"] is True
+    res = db_client.put(f"/api/teams/{late['teamId']}/graph",
+                        json={"graph": graph["graph"], "version": graph["version"]}, headers=headers)
+    assert res.status_code == 423
+    detail = db_client.post(f"/api/sessions/{code}/lock", json={"locked": False}, headers=bearer(facilitator)).json()
+    assert not any(t["locked"] for t in detail["teams"])

@@ -93,6 +93,9 @@
           "format": "date-time",
           "type": "string"
         },
+        "locked": {
+          "type": "boolean"
+        },
         "teams": {
           "items": {
             "$ref": "#/$defs/TeamSummary"
@@ -103,6 +106,7 @@
       "required": [
         "sessionCode",
         "createdAt",
+        "locked",
         "teams"
       ],
       "title": "SessionDetail",

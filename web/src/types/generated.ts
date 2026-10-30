@@ -4,7 +4,7 @@
 export type NodeCategory = 'io' | 'jev' | 'llm' | 'tool' | 'human'
 export type PortType = 'text' | 'json' | 'enum' | 'score' | 'boolean' | 'probability' | 'image' | 'any'
 export type ParamSpec = NumberParam | IntParam | EnumParam | MultiEnumParam | StringListParam | TextParam | BoolParam
-export type ClientMessage = Subscribe | Ping
+export type ClientMessage = Auth | Subscribe | Ping
 export type IssueCode =
   | 'UNKNOWN_NODE_TYPE'
   | 'UNKNOWN_PORT'
@@ -46,6 +46,13 @@ export type ServerEvent =
   | StateSync
 export type Severity = 'error' | 'warning'
 
+/**
+ * The first message on /api/ws (decision Q2): a team or facilitator token, never in the URL.
+ */
+export interface Auth {
+  type: 'auth'
+  token: string
+}
 export interface BoolParam {
   key: string
   label: string
@@ -154,6 +161,9 @@ export interface CostModel {
   priceOutPer1KUsd?: number | null
   excludedFromLatency?: boolean
 }
+/**
+ * Unused in M4: the channels follow from the token (Q3).
+ */
 export interface Subscribe {
   type: 'subscribe'
   channels: string[]
@@ -411,6 +421,20 @@ export interface RunConfig {
   injectionWave?: boolean
   maxConcurrency?: number
 }
+/**
+ * A stored run (T20): what POST /api/teams/{id}/runs, POST /api/runs/{id}/stop and
+ * GET /api/teams/{id}/runs/latest return. metrics are set once the run has finished.
+ */
+export interface RunRecord {
+  runId: string
+  teamId?: string | null
+  status: RunStatus
+  config: RunConfig
+  graphVersion?: number
+  metrics?: RunMetrics | null
+  startedAt: string
+  finishedAt?: string | null
+}
 export interface RunStarted {
   runId?: string | null
   teamId?: string | null
@@ -448,6 +472,7 @@ export interface StateSync {
 export interface SessionDetail {
   sessionCode: string
   createdAt: string
+  locked: boolean
   teams: TeamSummary[]
 }
 export interface TeamSummary {

@@ -21,6 +21,7 @@ from app.models.runs import (
     RunConfig,
     RunMode,
     RunStatus,
+    RunRecord,
     RunSummary,
 )
 from app.models.scenarios import (
@@ -87,6 +88,7 @@ __all__ = [
     "RunMetrics",
     "RunMode",
     "RunStatus",
+    "RunRecord",
     "RunSummary",
     "SaveGraphRequest",
     "ScenarioPack",

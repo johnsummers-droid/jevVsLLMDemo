@@ -1,9 +1,10 @@
-"""M3 tables (decision P4): sessions, teams, graphs. Run tables arrive with M4/M5."""
+"""Tables: sessions, teams, graphs (M3, decision P4) and runs (M4, decision Q8). Request traces
+stay in memory until M5."""
 
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, Boolean, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import JSON, Boolean, ForeignKey, Integer, String, UniqueConstraint, false
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base, UTCDateTime, new_id, utcnow
@@ -16,6 +17,9 @@ class SessionRow(Base):
     code: Mapped[str] = mapped_column(String(6), unique=True)
     facilitator_token_hash: Mapped[str] = mapped_column(String(64))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    # Pencils down (Q5). Graph rows keep their own flag in step; this one also locks teams that
+    # join afterwards.
+    locked: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
 
 class TeamRow(Base):
@@ -38,3 +42,21 @@ class GraphRow(Base):
     locked: Mapped[bool] = mapped_column(Boolean, default=False)
     graph: Mapped[dict[str, Any]] = mapped_column(JSON)  # Graph in its wire format (camelCase)
     updated_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+
+
+class RunRow(Base):
+    """One practice or official run of a team's graph snapshot (Q8)."""
+
+    __tablename__ = "runs"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=new_id)
+    session_id: Mapped[str] = mapped_column(ForeignKey("sessions.id", ondelete="CASCADE"), index=True)
+    team_id: Mapped[str] = mapped_column(ForeignKey("teams.id", ondelete="CASCADE"), index=True)
+    mode: Mapped[str] = mapped_column(String(16))  # RunMode
+    status: Mapped[str] = mapped_column(String(16))  # RunStatus
+    config: Mapped[dict[str, Any]] = mapped_column(JSON)  # RunConfig, wire format
+    graph: Mapped[dict[str, Any]] = mapped_column(JSON)  # the snapshot that ran, wire format
+    graph_version: Mapped[int] = mapped_column(Integer)
+    metrics: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)  # RunMetrics once finished
+    started_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utcnow)
+    finished_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)

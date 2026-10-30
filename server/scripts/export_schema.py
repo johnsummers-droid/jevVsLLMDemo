@@ -45,6 +45,7 @@ from app.models import (
     RunMetrics,
     RunMode,
     RunStatus,
+    RunRecord,
     RunSummary,
     SaveGraphRequest,
     Severity,
@@ -78,7 +79,7 @@ GROUPS: dict[str, tuple[list[type[BaseModel]], list[str]]] = {
     "catalog": ([CatalogResponse, NodeDefinition], ["PortType", "NodeCategory", "ParamSpec"]),
     "validation": ([ValidationReport], ["Severity"]),
     "run": (
-        [RunConfig, RunSummary, RequestTrace, RunMetrics, NodeStats, LeaderboardRow, PackSummary],
+        [RunConfig, RunSummary, RunRecord, RequestTrace, RunMetrics, NodeStats, LeaderboardRow, PackSummary],
         ["RunMode", "RunStatus", "Outcome"],
     ),
     "events": ([], ["ServerEvent", "ClientMessage"]),

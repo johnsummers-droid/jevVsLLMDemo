@@ -1,5 +1,6 @@
 """Workshop sessions and teams (T12, decisions P2 and P3)."""
 
+from anyio import from_thread
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -21,6 +22,7 @@ from app.models.sessions import (
     SessionDetail,
     TeamSummary,
 )
+from app.realtime.hub import hub
 
 router = APIRouter(prefix="/api/sessions", tags=["sessions"])
 
@@ -74,8 +76,10 @@ def join_team(
             if team is None:
                 raise
             repo.replace_team_token(db, team, token_hash)
+            from_thread.run_sync(hub.close_team, team.id)
     else:
         repo.replace_team_token(db, team, token_hash)
+        from_thread.run_sync(hub.close_team, team.id)  # sockets on the revoked token (4403)
     return JoinTeamResponse(team_id=team.id, team_name=team.name, token=token)
 
 
@@ -83,6 +87,7 @@ def _detail(db: Session, session: SessionRow) -> SessionDetail:
     return SessionDetail(
         session_code=session.code,
         created_at=session.created_at,
+        locked=session.locked,
         teams=[_summary(team, version, locked) for team, version, locked in repo.list_team_graphs(db, session.id)],
     )
 
@@ -102,6 +107,9 @@ def lock_session(
     session: SessionRow = Depends(session_facilitator),
     db: Session = Depends(get_db),
 ) -> SessionDetail:
-    """Pencils down: locks (or unlocks) every team graph in the session."""
+    """Pencils down: locks (or unlocks) the session and every team graph in it, including the
+    graphs of teams that join while it is locked (Q5)."""
     repo.set_session_locked(db, session.id, body.locked)
-    return _detail(db, session)
+    detail = _detail(db, session)
+    from_thread.run_sync(hub.announce_lock, session.id, [t.team_id for t in detail.teams], body.locked)
+    return detail
