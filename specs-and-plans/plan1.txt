@@ -1505,7 +1505,8 @@ T17. Deployment and M3 exit                               [depends on: T15, T16]
     deployed URLs.
     Hosting change (2026-10-30, P1 revised): render.yaml at the repo root
     (the Blueprint default path) defines pipeline-sim-api (docker, rootDir
-    server, dockerfilePath/dockerContext relative to the repo root, branch
+    server, dockerfilePath ./Dockerfile and dockerContext . (Render resolves
+    them inside rootDir: ./server/... failed as server/server), branch
     main, 1 instance, /api/health, deploy on commit; FACILITATOR_CODE and
     TOKEN_SECRET are sync: false, prompted once) and pipeline-sim-db
     (PostgreSQL 16 as in CI; connectionString -> DATABASE_URL), both in

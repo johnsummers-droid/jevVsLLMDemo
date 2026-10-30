@@ -12,9 +12,10 @@ services:
     name: pipeline-sim-api
     runtime: docker
     rootDir: server
-    # Both paths are relative to the repo root, not to rootDir.
-    dockerfilePath: ./server/Dockerfile
-    dockerContext: ./server
+    # With rootDir set, Render resolves both paths inside rootDir (./server/... failed as
+    # server/server), whatever the Blueprint spec page says.
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     branch: main
     region: frankfurt
     plan: free

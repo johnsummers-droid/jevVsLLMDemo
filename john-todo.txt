@@ -1,0 +1,66 @@
+JOHN'S TODO: deploy the Pipeline Simulator (finishes M3)
+=========================================================
+Written 2026-10-26. All M3 code is committed and pushed on branch
+open-terminal (last commit e0ab670); CI is green. What's left needs your
+Render and Vercel accounts. Full step-by-step detail, troubleshooting and
+the workshop-day checklist: specs-and-plans/deploy-runbook.txt.
+
+
+[x] 0. Decide which branch to deploy  -> main (PR #3 merged 2026-10-30)
+       - main: the usual production branch. Ask Claude to open a PR from
+         open-terminal into main, review it, merge it.
+       - open-terminal: quicker; it is exactly what CI just tested.
+
+[ ] 1. Make two secrets (keep them in a password manager, never in git)
+       TOKEN_SECRET:      python -c "import secrets; print(secrets.token_urlsafe(32))"
+       FACILITATOR_CODE:  a passphrase you'll type on the facilitator page
+
+[ ] 2. Render (API + database)   [Railway paused sign-ups; Render replaces it]
+       - render.com: sign up with GitHub, give it access to jevVsLLMDemo
+       - Only after render.yaml is pushed to main (ask Claude to commit it):
+         New -> Blueprint -> pick the repo, branch main
+       - It prompts for FACILITATOR_CODE and TOKEN_SECRET (step 1); Apply
+       - Wait for pipeline-sim-api to go "Live"; its URL is API_URL
+         (like https://pipeline-sim-api.onrender.com)
+       - Check: curl https://API_URL/api/health  ->  {"status":"ok"}
+       - Starts on FREE plans: fine for this test. Before the workshop
+         switch both to paid (free sleeps after 15 min; free DB expires
+         after 30 days)
+
+[ ] 3. Vercel (web app)
+       - Add New -> Project -> import jevVsLLMDemo
+       - Root Directory = web, Framework = Vite, Node.js 22.x
+       - Leave "Include files outside the root directory" ON  <- easy to miss
+       - Environment variable (Production and Preview):
+           VITE_API_BASE_URL = https://API_URL   (no trailing slash)
+       - Deploy  => the production URL is WEB_URL
+
+[ ] 4. Connect them (Render -> pipeline-sim-api -> Environment)
+       ALLOWED_ORIGINS = https://WEB_URL
+       (optional) ALLOWED_ORIGIN_REGEX for Vercel preview URLs; see the runbook
+
+[ ] 5. Check on the deployed site (this is what marks M3 done)
+       [ ] WEB_URL/facilitator: enter FACILITATOR_CODE -> you get a session code
+       [ ] Two browsers (one private window): join at WEB_URL/join?code=<code>
+           as "Red" and "Blue"; both see the starter graph
+       [ ] Each adds a different node; the header says "Saved"
+       [ ] Refresh both: each still has its own node, not the other's
+       [ ] Open WEB_URL/team directly in a new tab: it loads (no 404)
+       [ ] Facilitator: "Pencils down" -> within 10 s both teams show the lock
+           banner and "Locked", without touching anything
+       [ ] "Unlock graphs" -> within 10 s both are back to "Saved"
+
+[ ] 6. Tell Claude how it went (paste any errors). Claude then marks M3 done
+       in plan1.txt and CLAUDE.md, and M4 (live runs over WebSockets) is next.
+
+
+Prefer Claude to do steps 3-4?
+  Install the CLI:   npm i -g vercel   then type   ! vercel login
+  For Render, create an API key (Account Settings -> API Keys) and set it
+  yourself in the shell; never paste keys or secrets into the chat.
+
+
+Known open point (not blocking deployment)
+  A team that joins AFTER "Pencils down" starts unlocked (the lock is per
+  team graph). Freeze only once every team has joined. Proper fix: a lock
+  flag on the session, a small migration; planned before M4's official run.
