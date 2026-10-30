@@ -94,7 +94,8 @@ function SessionView({ facilitator }: { facilitator: FacilitatorCredentials }) {
   }, [refresh])
 
   const teams = detail?.teams ?? []
-  const locked = teams.length > 0 && teams.every((t) => t.locked)
+  // The session's flag (Q5): it also covers teams that join while graphs are locked.
+  const locked = detail?.locked ?? false
 
   const toggleLock = async () => {
     setBusy(true)
@@ -130,7 +131,7 @@ function SessionView({ facilitator }: { facilitator: FacilitatorCredentials }) {
             type="button"
             className={locked ? 'button' : 'button button--primary'}
             onClick={toggleLock}
-            disabled={busy || teams.length === 0}
+            disabled={busy || detail === null}
           >
             {locked ? 'Unlock graphs' : 'Pencils down (lock graphs)'}
           </button>

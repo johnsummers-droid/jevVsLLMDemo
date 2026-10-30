@@ -1,6 +1,7 @@
 """Engine and request-scoped sessions. Synchronous SQLAlchemy (decision P5)."""
 
 from collections.abc import Iterator
+from contextlib import contextmanager
 from functools import lru_cache
 from typing import Any
 
@@ -37,3 +38,18 @@ def get_db() -> Iterator[Session]:
     """FastAPI dependency; tests override it with a session on a temporary database."""
     with _session_factory()() as db:
         yield db
+
+
+@contextmanager
+def session_scope(app: Any = None) -> Iterator[Session]:
+    """A session outside a request (startup, a run finishing in the background). It goes through
+    get_db, or the app's dependency override of it, so tests reach their own database."""
+    provider = app.dependency_overrides.get(get_db, get_db) if app is not None else get_db
+    provided = provider()
+    if not isinstance(provided, Iterator):  # an override that returns a session directly
+        yield provided
+        return
+    try:
+        yield next(provided)
+    finally:
+        provided.close()

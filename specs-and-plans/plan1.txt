@@ -1529,10 +1529,9 @@ T17. Deployment and M3 exit                               [depends on: T15, T16]
     across origins. The owner ran the manual two-team checks on the
     deployed URLs on 2026-10-30 and all passed: M3 is done.
 
-M3 done 2026-10-30. Next: live runs over WebSockets (M4). Open point to
-fix before M4's official run: a team that joins after "pencils down"
-starts unlocked (the lock is per team graph; needs a session-level lock
-flag and a migration).
+M3 done 2026-10-30. Next: live runs over WebSockets (M4). The open point
+(a team that joined after "pencils down" started unlocked) is fixed in
+T18.
 
 
 M4 tasks (T18-T24). Exit (section 4): the full spec section 11 list works
@@ -1547,7 +1546,7 @@ mocks: a whole official run computes in 30-110 ms (default and strong
 graphs, with and without spike 3x + injection wave) and yields 380-1,800
 events whose sim_ms span ~45-51 s of wall clock at the default speed 20.
 
-M4 decisions, PROPOSED 2026-10-30 (not yet accepted by the owner):
+M4 decisions, accepted 2026-10-30:
   Q1. Compute first, pace second (refines D5). A run is computed in full
       by the existing run_simulation (T5) the moment it starts, off the
       event loop (asyncio.to_thread), then a pacer task replays its
@@ -1620,6 +1619,27 @@ T18. Session lock and run tables                          [depends on: T17]
       locked (the M3 open point), stale-run cleanup.
     Done when: pytest (SQLite and PostgreSQL) passes; the open point is
       fixed.
+    As built (2026-10-30): sessions.locked (server_default false, so
+    existing rows migrate) and RunRow in tables.py; migration 0002 also
+    backfills sessions.locked for sessions whose every graph was already
+    locked. repo: create_team locks the new graph when the session is
+    locked; set_session_locked sets the session flag and keeps the graph
+    rows in step (save_graph's 423 path is unchanged); create_run,
+    finish_run (only from "running"), get_run, latest_run,
+    latest_official_runs (per team, any status), fail_stale_runs,
+    run_summary, run_metrics. SessionDetail gains `locked`; the
+    facilitator page reads it and allows pencils down before any team has
+    joined. main.py's lifespan marks interrupted runs failed (it honours
+    the get_db test override and logs, rather than fails, on an
+    unmigrated database).
+    Bug found and fixed: on SQLite, Alembic batch mode rebuilds a table by
+    dropping it, and with the app engine's PRAGMA foreign_keys=ON the drop
+    cascaded and deleted every team and graph. migrations/env.py now runs
+    SQLite migrations on a plain engine (foreign keys off). PostgreSQL was
+    never affected (a real ALTER TABLE). test_0002_* inserts data under
+    0001, upgrades and downgrades, and checks no row is lost.
+    Checked: 894 server tests on SQLite, the DB/session/team tests on
+    PostgreSQL 16, web lint/build and 238 tests, schema/fixture drift.
 
 T19. Event hub, pacer and WebSocket endpoint              [depends on: T18]
     - realtime/hub.py: connections keyed by team and by session; publish
@@ -1638,6 +1658,35 @@ T19. Event hub, pacer and WebSocket endpoint              [depends on: T18]
       silence after; reconnect mid-run gets matching counts. The pacer
       is tested with a fake clock (speed high), not with sleeps.
     Done when: a scripted client receives a whole practice run in order.
+    As built (2026-10-30): engine/pacer.py (Pacer: start, wait, stop,
+    delivered, finished; deliver is synchronous so a stop never splits a
+    delivery; clock and sleep are injectable). simulation/runner.py
+    stop_events(result, pack, delivered): a metrics_snapshot over the
+    completed requests plus run_completed(stopped), numbered on (and
+    run_started first if nothing went out yet). realtime/hub.py: Hub
+    (connect, disconnect, publish, sync_events, close_team, publisher;
+    module singleton `hub`), TeamView (current or last run; while running
+    it keeps every event for replay, once finished only totals),
+    Connection (bounded queue, QUEUE_LIMIT 4096; overflow closes 1013).
+    Reconnect (Q4): mid-run the client gets state_sync(seq 0, run running,
+    latest snapshot) and then every event after run_started, so it rebuilds
+    exactly what a connected client has; a finished run is synced from its
+    totals with state_sync.seq = the last seq. api/ws.py: first-message
+    Auth (models/events.py), 5 s timeout, close 4401 (auth), 1011 (no
+    TOKEN_SECRET), 4403 (rejoin revokes: join_team calls hub.close_team
+    through anyio.from_thread), 1013 (slow). The token lookup runs in the
+    thread pool and rolls back so the socket holds no DB connection. The
+    two halves (writer, reader) run in an anyio task group: plain asyncio
+    tasks awaited in a finally broke under cancellation.
+    Found while testing: RunConfig.duration_s is the wall-clock arrival
+    window, so a higher speed alone does not shorten a run; the WS tests
+    use speed 1e6 and duration_s 0.05 (or a gated clock). The WS tests give
+    every request its own DB session, as production does (sockets
+    authenticate concurrently in worker threads).
+    Checked: 910 server tests (test_pacer.py, test_ws.py new; 15 repeated
+    runs of test_ws.py green), the WS and DB tests on PostgreSQL 16, a live
+    uvicorn + websockets client (state_sync, 4401; the token never appears
+    in the uvicorn log), web lint/build/tests, drift.
 
 T20. Practice runs API and run manager                    [depends on: T19]
     - app/simulation/manager.py: in-memory registry of active runs (one
@@ -1650,6 +1699,35 @@ T20. Practice runs API and run manager                    [depends on: T19]
     - Tests: 422/409/423 rules, isolation (403 for another team's run),
       determinism (same seed -> same metrics as run_headless), stop.
     Done when: practice runs work end to end over the API and socket.
+    As built (2026-10-30): simulation/manager.py: RunManager (`runs`
+    singleton: reserve/release one slot per team, launch, find, stop, wait,
+    shutdown), compute() (run_simulation via asyncio.to_thread), practice
+    _config() (practice pack, secrets.randbelow seed, PRACTICE_TIMING speed
+    20 / 45 s, which tests shorten). api/runs.py: POST /api/teams/{id}/runs
+    (async: 423 locked, 422 + ValidationReport, 409 slot taken; then
+    compute, create_run with the run id the events already carry, launch;
+    the slot is released if setup fails), GET /api/teams/{id}/runs/latest
+    (RunRecord or null), POST /api/runs/{id}/stop (401 unknown token, 404
+    unknown run, 403 another team's or another session's run; the team or
+    its session facilitator may stop; waits until the end is recorded; an
+    ended run is returned unchanged). models/runs.py RunRecord (RunSummary
+    + metrics, started_at, finished_at; exported in run.schema.json). The
+    lock endpoint calls hub.announce_lock (graph_locked to every team
+    socket, Q5). db/session.py session_scope(app) gives the startup step
+    and finishing runs a session that honours the get_db test override.
+    Lifespan shutdown stops runs still playing (recorded as stopped).
+    Bug found and fixed: Pacer.wait() returned when the replay task was
+    cancelled, before stop() had delivered run_completed(stopped), so the
+    manager recorded stopped runs as failed. The pacer now sets an "ended"
+    event only after the closing events (test_pacer covers a concurrent
+    waiter).
+    tests/conftest.py live_client (entered TestClient, a session per
+    request, hub and runs reset) is shared by test_ws.py and test_runs.py.
+    Checked: 924 server tests (8 repeated runs of the run/pacer/WS tests
+    green), the run/WS/DB tests on PostgreSQL 16, web lint/build/tests,
+    drift, and a live uvicorn run: start 201 in 18 ms, events streamed at
+    practice speed, stop -> stopped (2 of 15 completed) on the socket and
+    in GET latest.
 
 T21. Official runs and leaderboard                        [depends on: T20]
     - POST /api/sessions/{code}/runs (Q7), GET /api/sessions/{code}/

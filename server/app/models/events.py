@@ -100,7 +100,16 @@ ServerEvent = Annotated[
 ]
 
 
+class Auth(CamelModel):
+    """The first message on /api/ws (decision Q2): a team or facilitator token, never in the URL."""
+
+    type: Literal["auth"] = "auth"
+    token: str
+
+
 class Subscribe(CamelModel):
+    """Unused in M4: the channels follow from the token (Q3)."""
+
     type: Literal["subscribe"] = "subscribe"
     channels: list[str]
 
@@ -109,4 +118,4 @@ class Ping(CamelModel):
     type: Literal["ping"] = "ping"
 
 
-ClientMessage = Annotated[Subscribe | Ping, Field(discriminator="type")]
+ClientMessage = Annotated[Auth | Subscribe | Ping, Field(discriminator="type")]

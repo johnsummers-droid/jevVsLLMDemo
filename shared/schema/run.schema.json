@@ -400,6 +400,71 @@
       ],
       "type": "string"
     },
+    "RunRecord": {
+      "additionalProperties": false,
+      "description": "A stored run (T20): what POST /api/teams/{id}/runs, POST /api/runs/{id}/stop and\nGET /api/teams/{id}/runs/latest return. metrics are set once the run has finished.",
+      "properties": {
+        "runId": {
+          "type": "string"
+        },
+        "teamId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        },
+        "config": {
+          "$ref": "#/$defs/RunConfig"
+        },
+        "graphVersion": {
+          "default": 0,
+          "type": "integer"
+        },
+        "metrics": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RunMetrics"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "startedAt": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "finishedAt": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "runId",
+        "status",
+        "config",
+        "startedAt"
+      ],
+      "title": "RunRecord",
+      "type": "object"
+    },
     "RunStatus": {
       "title": "RunStatus",
       "enum": [

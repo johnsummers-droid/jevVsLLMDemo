@@ -1,5 +1,6 @@
 import os
 from collections.abc import Iterator
+from contextlib import ExitStack
 from pathlib import Path
 
 import pytest
@@ -57,3 +58,28 @@ def db_client(db: Session, settings: Settings) -> Iterator[TestClient]:
     finally:
         app.dependency_overrides.pop(get_db, None)
         app.dependency_overrides.pop(get_settings, None)
+
+
+@pytest.fixture
+def live_client(db_client: TestClient, db: Session) -> Iterator[TestClient]:
+    """db_client, entered: websockets, background runs and portal calls share the app's event
+    loop. Every request gets its own session on the test database, as in production (sockets
+    authenticate and runs finish in worker threads, concurrently). Sockets opened through
+    `live_client.sockets` are closed first, or the app would keep waiting for them."""
+    from app.realtime.hub import hub
+    from app.simulation.manager import runs
+
+    factory = sessionmaker(bind=db.get_bind(), expire_on_commit=False)
+
+    def own_session() -> Iterator[Session]:
+        with factory() as session:
+            yield session
+
+    app.dependency_overrides[get_db] = own_session
+    hub.reset()
+    runs.reset()
+    with db_client as entered, ExitStack() as sockets:
+        entered.sockets = sockets  # type: ignore[attr-defined]
+        yield entered
+    hub.reset()
+    runs.reset()

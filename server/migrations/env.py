@@ -1,6 +1,7 @@
 from logging.config import fileConfig
 
 from alembic import context
+from sqlalchemy import create_engine
 
 import app.db.tables  # noqa: F401  (registers the tables on Base.metadata)
 from app.config import get_settings
@@ -23,7 +24,10 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    engine = make_engine(url)
+    # SQLite batch mode rebuilds a table by dropping it; with the app engine's foreign keys on,
+    # that drop cascades and deletes every child row (0002 lost all teams that way). Migrations
+    # therefore run with SQLite's default, foreign keys off.
+    engine = create_engine(url) if url.startswith("sqlite") else make_engine(url)
     with engine.connect() as connection:
         # Batch mode lets later ALTERs work on SQLite.
         context.configure(connection=connection, target_metadata=target_metadata, render_as_batch=True)

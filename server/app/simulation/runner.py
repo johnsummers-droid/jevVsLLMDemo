@@ -105,3 +105,18 @@ def _snapshot(done: list[RequestTrace], total: int, node_ids: list[str], pack: S
     return MetricsSnapshot(seq=0, sim_ms=sim_ms,
                            metrics=with_score(compute_metrics(done, total), pack.scoring),
                            node_stats=compute_node_stats(done, node_ids))
+
+
+def stop_events(result: RunResult, pack: ScenarioPack, delivered: list[EventBase]) -> list[EventBase]:
+    """The closing events of a run stopped after `delivered` (decision Q1): a metrics_snapshot over
+    the requests that completed, then run_completed(status="stopped"), numbered on from there."""
+    head = [] if delivered else result.events[:1]  # stopped before run_started went out
+    last = delivered[-1] if delivered else result.events[0]
+    done_ids = {e.request_id for e in delivered if isinstance(e, RequestCompleted)}
+    done = [t for t in result.traces if t.request_id in done_ids]
+    node_ids = [s.node_id for s in result.node_stats]
+    snapshot = _snapshot(done, len(result.traces), node_ids, pack, last.sim_ms)
+    completed = RunCompleted(seq=0, sim_ms=last.sim_ms, status="stopped", metrics=snapshot.metrics)
+    ids = {"run_id": last.run_id, "team_id": last.team_id}
+    first = last.seq + 1 if delivered else 1
+    return [*head, *(e.model_copy(update={"seq": first + i, **ids}) for i, e in enumerate((snapshot, completed)))]

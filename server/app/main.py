@@ -1,11 +1,35 @@
+import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.exc import SQLAlchemyError
 
-from app.api import catalog, graphs, sessions, teams
+from app.api import catalog, graphs, runs as runs_api, sessions, teams, ws
 from app.config import get_settings
+from app.db import repo
+from app.db.session import session_scope
+from app.simulation.manager import runs
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
-app = FastAPI(title="Pipeline Simulator")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    # Run state lives in memory (D8), so runs a restart cut off can never finish.
+    try:
+        with session_scope(app) as db:
+            if failed := repo.fail_stale_runs(db):
+                logger.warning("marked %d interrupted run(s) as failed", failed)
+    except SQLAlchemyError:
+        logger.exception("could not clean up interrupted runs (database not migrated?)")
+    yield
+    await runs.shutdown()  # runs still playing are recorded as stopped
+
+
+app = FastAPI(title="Pipeline Simulator", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -18,6 +42,8 @@ app.include_router(catalog.router)
 app.include_router(graphs.router)
 app.include_router(sessions.router)
 app.include_router(teams.router)
+app.include_router(runs_api.router)
+app.include_router(ws.router)
 
 
 @app.get("/api/health")

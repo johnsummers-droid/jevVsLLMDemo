@@ -24,11 +24,10 @@ WEEKS BEFORE
          database expires.
        - Check the current prices on render.com/pricing first.
 
-[ ] 2. Fix the late-join lock (code change, ask Claude; planned for early M4).
-       Today a team that joins AFTER "Pencils down" starts unlocked, because
-       the lock is stored per team graph. Fix: a lock flag on the session
-       plus a small migration. Until it is fixed: press "Pencils down" only
-       once every team has joined.
+[x] 2. Fix the late-join lock. Done in T18 (2026-10-30): "Pencils down" now
+       locks the session, so teams that join afterwards start locked too.
+       It is live once T18 is merged to main (Render runs migration 0002
+       on deploy).
 
 [ ] 3. Finish and deploy the features the workshop uses (M4 onwards: live
        runs over WebSockets, leaderboard, shared screen). Each merge to

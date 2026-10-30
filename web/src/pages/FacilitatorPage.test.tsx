@@ -10,8 +10,13 @@ const teams = [
   { teamId: 't2', name: 'Blue', joinedAt: '2026-10-26T09:01:00Z', graphVersion: 0, locked: false },
 ]
 
-function detail(locked: boolean): SessionDetail {
-  return { sessionCode: 'ABC234', createdAt: '2026-10-26T08:59:00Z', teams: teams.map((t) => ({ ...t, locked })) }
+function detail(locked: boolean, sessionTeams = teams): SessionDetail {
+  return {
+    sessionCode: 'ABC234',
+    createdAt: '2026-10-26T08:59:00Z',
+    locked,
+    teams: sessionTeams.map((t) => ({ ...t, locked })),
+  }
 }
 
 beforeEach(() => {
@@ -65,6 +70,19 @@ describe('FacilitatorPage', () => {
     await screen.findByRole('button', { name: /Pencils down/ })
     const lockBodies = fetchMock.mock.calls.filter(([url]) => String(url).endsWith('/lock')).map(([, i]) => i?.body)
     expect(lockBodies).toEqual(['{"locked":true}', '{"locked":false}'])
+  })
+
+  it('can lock before any team joins, and shows the session lock', async () => {
+    useSessionStore.setState({ facilitator: { sessionCode: 'ABC234', token: 'fac' } })
+    mockApi({
+      'GET /api/sessions/ABC234': { body: detail(false, []) },
+      'POST /api/sessions/ABC234/lock': (init) => ({ body: detail(JSON.parse(String(init.body)).locked, []) }),
+    })
+    render(<FacilitatorPage />)
+    const button = await screen.findByRole('button', { name: /Pencils down/ })
+    await waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(false))
+    fireEvent.click(button)
+    await screen.findByRole('button', { name: 'Unlock graphs' })
   })
 
   it('refreshes the team list on a timer', async () => {

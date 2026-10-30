@@ -43,6 +43,7 @@ class TeamSummary(CamelModel):
 class SessionDetail(CamelModel):
     session_code: str
     created_at: datetime
+    locked: bool  # pencils down: every graph, including those of teams that join later
     teams: list[TeamSummary]
 
 

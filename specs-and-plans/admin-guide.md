@@ -244,8 +244,9 @@ workshop like this:
    quickest way.
 4. **Freeze with "Pencils down"** on the facilitator page. Within 10
    seconds every team's workbench turns read-only with a banner; "Unlock
-   graphs" undoes it. A team that joins after the freeze starts unlocked,
-   so freeze once everyone is in.
+   graphs" undoes it. The freeze covers the whole session: a team that
+   joins afterwards starts locked too, and you can freeze before anyone
+   has joined.
 5. **Show the reference graphs** for discussion:
 
    ```bash
