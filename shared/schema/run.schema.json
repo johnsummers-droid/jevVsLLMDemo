@@ -6,6 +6,7 @@
   "$defs": {
     "LeaderboardRow": {
       "additionalProperties": false,
+      "description": "One team's latest official run (T21). Finished runs rank first by score (ties: lower\nunsafe-release rate, then lower p95); stopped, still running and failed runs follow.",
       "properties": {
         "teamId": {
           "type": "string"
@@ -16,8 +17,19 @@
         "runId": {
           "type": "string"
         },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        },
         "metrics": {
-          "$ref": "#/$defs/RunMetrics"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RunMetrics"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "rank": {
           "minimum": 1,
@@ -28,7 +40,7 @@
         "teamId",
         "teamName",
         "runId",
-        "metrics",
+        "status",
         "rank"
       ],
       "title": "LeaderboardRow",
@@ -192,6 +204,27 @@
         "tokensOut"
       ],
       "title": "NodeStats",
+      "type": "object"
+    },
+    "OfficialRunResponse": {
+      "additionalProperties": false,
+      "description": "POST /api/sessions/{code}/runs: one seed and config for every team (decision Q7).",
+      "properties": {
+        "seed": {
+          "type": "integer"
+        },
+        "runs": {
+          "items": {
+            "$ref": "#/$defs/RunRecord"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "seed",
+        "runs"
+      ],
+      "title": "OfficialRunResponse",
       "type": "object"
     },
     "Outcome": {

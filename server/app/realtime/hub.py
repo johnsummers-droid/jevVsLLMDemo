@@ -13,6 +13,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from app.models.events import (
+    Closing,
     EventBase,
     GraphLocked,
     MetricsSnapshot,
@@ -30,6 +31,10 @@ QUEUE_LIMIT = 4096
 
 CLOSE_SLOW = 1013  # "try again later": the client reconnects and resyncs
 CLOSE_REVOKED = 4403  # the team rejoined elsewhere, so this socket's token is no longer valid
+CLOSE_REASONS = {
+    CLOSE_SLOW: "too slow to keep up; reconnect",
+    CLOSE_REVOKED: "this team joined again with a new token",
+}
 
 
 @dataclass
@@ -75,12 +80,15 @@ class Connection:
             self.close(CLOSE_SLOW)  # never block a run for one slow reader
 
     def close(self, code: int) -> None:
-        """Drops what is queued and ends the writer, which then closes the socket with `code`."""
+        """Drops what is queued and ends the writer: it sends `closing` (the close frame itself may
+        never reach the client, see models.events.Closing), then closes the socket with `code`."""
         if self.close_code is not None:
             return
         self.close_code = code
         while not self.queue.empty():
             self.queue.get_nowait()
+        self.queue.put_nowait(Closing(seq=0, sim_ms=0, team_id=self.team_id, code=code,
+                                      reason=CLOSE_REASONS.get(code, "")))
         self.queue.put_nowait(None)
 
 

@@ -1740,6 +1740,38 @@ T21. Official runs and leaderboard                        [depends on: T20]
       ticket text); ordering.
     Done when: three test teams (default, weak, strong graphs) finish in
       the golden order on the leaderboard.
+    As built (2026-10-30): api/official.py: POST /api/sessions/{code}/runs
+    (facilitator; 409 while the session's official run plays) locks the
+    session and announces it, stops practice runs and reserves every
+    team's slot, builds ONE official_config() (seed picked once), records
+    a graph with errors as a failed run, computes the rest concurrently
+    (asyncio.gather) and launches them; responds OfficialRunResponse
+    {seed, runs: [RunRecord]}. GET /api/sessions/{code}/leaderboard.
+    leaderboard_updated goes to the session's facilitators right after the
+    start (all "running") and after each team's run is recorded, so it
+    follows that team's run_completed. scoring.rank(): completed by score
+    (ties: lower unsafe rate, lower p95, name), then stopped, running,
+    failed; ranks are positions. LeaderboardRow moved to models/runs.py
+    and gained `status`; its metrics are optional (failed, running).
+    manager: OFFICIAL_TIMING, official_config(), new_seed(), active(),
+    begin_official/end_official_if_idle/official_in_progress; the end of
+    a run is recorded through anyio.to_thread so the finish callback can
+    publish back on the loop (anyio.from_thread).
+    Production finding (2026-10-30, before T21): Render's proxy answers a
+    server's WebSocket close frame itself and never forwards it, leaving
+    the client connection open (seen with LOG_LEVEL=debug on Render,
+    reverted the same day). Data frames, pings and pongs pass. Fix: every
+    server-initiated close is preceded by a `closing` event (models.events
+    .Closing, same code and reason); T22's client closes on it. Because a
+    server restart is swallowed the same way, the socket also answers a
+    client {"type":"ping"} with a `pong` event (models.events.Pong): T22's
+    client pings every 25 s and reconnects (then resyncs) after ~40 s of
+    silence.
+    Checked: 934 server tests (test_official.py new; 5 repeated runs
+    green), 99 run/WS/DB tests on PostgreSQL 16, web lint/build/tests,
+    drift, and a live uvicorn official run of three teams at real speed:
+    start 201 in 107 ms, leaderboard pushed as teams finished, final
+    Strong > Default > Weak, practice 423 while locked.
 
 T22. Web realtime client and runStore                     [depends on: T19]
     - api/ws.ts: one reconnecting socket (backoff 1-15 s), auth message,

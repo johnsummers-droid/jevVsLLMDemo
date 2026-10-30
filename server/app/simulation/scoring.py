@@ -1,6 +1,8 @@
 """Leaderboard score (plan1.txt 3f). Weights and budgets come from the pack's ScoringConfig."""
 
-from app.models import RunMetrics, ScoringConfig
+from dataclasses import dataclass
+
+from app.models import LeaderboardRow, RunMetrics, RunStatus, ScoringConfig
 
 
 def score(metrics: RunMetrics, config: ScoringConfig) -> float:
@@ -15,3 +17,31 @@ def score(metrics: RunMetrics, config: ScoringConfig) -> float:
 
 def with_score(metrics: RunMetrics, config: ScoringConfig) -> RunMetrics:
     return metrics.model_copy(update={"score": score(metrics, config)})
+
+
+@dataclass
+class Standing:
+    """A team's latest official run, before ranking."""
+
+    team_id: str
+    team_name: str
+    run_id: str
+    status: RunStatus
+    metrics: RunMetrics | None
+
+
+# Finished runs first, then stopped (scored on what completed), still running, failed.
+_STATUS_ORDER: dict[str, int] = {"completed": 0, "stopped": 1, "running": 2, "pending": 2, "failed": 3}
+
+
+def rank(standings: list[Standing]) -> list[LeaderboardRow]:
+    """Leaderboard order (T21): by status group, then higher score, lower unsafe-release rate,
+    lower p95, then name. Ranks are positions, so they are unique."""
+    def key(s: Standing) -> tuple:
+        m = s.metrics
+        scored = (-m.score, m.unsafe_release_rate, m.p95_latency_ms) if m is not None else (0.0, 0.0, 0.0)
+        return (_STATUS_ORDER.get(s.status, 3), *scored, s.team_name.casefold())
+
+    return [LeaderboardRow(team_id=s.team_id, team_name=s.team_name, run_id=s.run_id, status=s.status,
+                           metrics=s.metrics, rank=i)
+            for i, s in enumerate(sorted(standings, key=key), start=1)]

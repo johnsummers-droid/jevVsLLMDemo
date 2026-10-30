@@ -1,6 +1,6 @@
 from app.models.catalog import CostModel, NodeCategory, NodeDefinition
 from app.models.graph import Graph, GraphEdge, GraphNode, Position, SaveGraphRequest, StoredGraph
-from app.models.metrics import LeaderboardRow, NodeStats, RunMetrics
+from app.models.metrics import NodeStats, RunMetrics
 from app.models.params import (
     BoolParam,
     EnumParam,
@@ -15,13 +15,15 @@ from app.models.payloads import Doc, Docs, PolicyReport, PolicyViolation, Ticket
 from app.models.ports import PORT_TYPES, Port, PortType
 from app.models.results import NodeError, NodeResult
 from app.models.runs import (
+    LeaderboardRow,
     NodeExecution,
+    OfficialRunResponse,
     Outcome,
     RequestTrace,
     RunConfig,
     RunMode,
-    RunStatus,
     RunRecord,
+    RunStatus,
     RunSummary,
 )
 from app.models.scenarios import (
@@ -63,6 +65,7 @@ __all__ = [
     "JoinTeamRequest",
     "JoinTeamResponse",
     "LeaderboardRow",
+    "OfficialRunResponse",
     "LockRequest",
     "MultiEnumParam",
     "NodeCategory",

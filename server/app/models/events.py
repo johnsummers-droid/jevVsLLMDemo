@@ -6,9 +6,9 @@ from typing import Annotated, Any, Literal
 from pydantic import Field
 
 from app.models.base import CamelModel
-from app.models.metrics import LeaderboardRow, NodeStats, RunMetrics
+from app.models.metrics import NodeStats, RunMetrics
 from app.models.results import NodeError
-from app.models.runs import Outcome, RunConfig, RunStatus, RunSummary
+from app.models.runs import LeaderboardRow, Outcome, RunConfig, RunStatus, RunSummary
 
 
 class EventBase(CamelModel):
@@ -93,9 +93,27 @@ class StateSync(EventBase):
     locked: bool = False
 
 
+class Closing(EventBase):
+    """Sent right before the server closes a socket, with the same code and reason. Render's
+    proxy swallows WebSocket close frames (it answers them itself and keeps the client's
+    connection open), so the client closes on this message instead of waiting for the frame."""
+
+    type: Literal["closing"] = "closing"
+    code: int
+    reason: str = ""
+
+
+class Pong(EventBase):
+    """The answer to a client's ping. Browsers cannot see protocol-level pings, and Render's proxy
+    keeps a connection open after the server has gone (see Closing), so the client sends a ping
+    every 25 s and reconnects when no pong (or other event) arrives for about 40 s."""
+
+    type: Literal["pong"] = "pong"
+
+
 ServerEvent = Annotated[
     RunStarted | NodeStarted | NodeCompleted | NodeFailed | EdgeTransferred | RequestCompleted
-    | MetricsSnapshot | RunCompleted | GraphLocked | LeaderboardUpdated | StateSync,
+    | MetricsSnapshot | RunCompleted | GraphLocked | LeaderboardUpdated | StateSync | Closing | Pong,
     Field(discriminator="type"),
 ]
 
@@ -115,6 +133,8 @@ class Subscribe(CamelModel):
 
 
 class Ping(CamelModel):
+    """The client's heartbeat; answered with Pong."""
+
     type: Literal["ping"] = "ping"
 
 

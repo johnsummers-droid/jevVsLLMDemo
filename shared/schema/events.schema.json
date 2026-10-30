@@ -45,6 +45,61 @@
         }
       ]
     },
+    "Closing": {
+      "additionalProperties": false,
+      "description": "Sent right before the server closes a socket, with the same code and reason. Render's\nproxy swallows WebSocket close frames (it answers them itself and keeps the client's\nconnection open), so the client closes on this message instead of waiting for the frame.",
+      "properties": {
+        "runId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "teamId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "seq": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "simMs": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "type": {
+          "const": "closing",
+          "type": "string"
+        },
+        "code": {
+          "type": "integer"
+        },
+        "reason": {
+          "default": "",
+          "type": "string"
+        }
+      },
+      "required": [
+        "seq",
+        "simMs",
+        "code",
+        "type"
+      ],
+      "title": "Closing",
+      "type": "object"
+    },
     "EdgeTransferred": {
       "additionalProperties": false,
       "properties": {
@@ -151,6 +206,7 @@
     },
     "LeaderboardRow": {
       "additionalProperties": false,
+      "description": "One team's latest official run (T21). Finished runs rank first by score (ties: lower\nunsafe-release rate, then lower p95); stopped, still running and failed runs follow.",
       "properties": {
         "teamId": {
           "type": "string"
@@ -161,8 +217,19 @@
         "runId": {
           "type": "string"
         },
+        "status": {
+          "$ref": "#/$defs/RunStatus"
+        },
         "metrics": {
-          "$ref": "#/$defs/RunMetrics"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RunMetrics"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "rank": {
           "minimum": 1,
@@ -173,7 +240,7 @@
         "teamId",
         "teamName",
         "runId",
-        "metrics",
+        "status",
         "rank"
       ],
       "title": "LeaderboardRow",
@@ -589,6 +656,7 @@
     },
     "Ping": {
       "additionalProperties": false,
+      "description": "The client's heartbeat; answered with Pong.",
       "properties": {
         "type": {
           "const": "ping",
@@ -600,6 +668,53 @@
       "required": [
         "type"
       ]
+    },
+    "Pong": {
+      "additionalProperties": false,
+      "description": "The answer to a client's ping. Browsers cannot see protocol-level pings, and Render's proxy\nkeeps a connection open after the server has gone (see Closing), so the client sends a ping\nevery 25 s and reconnects when no pong (or other event) arrives for about 40 s.",
+      "properties": {
+        "runId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "teamId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "seq": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "simMs": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "type": {
+          "const": "pong",
+          "type": "string"
+        }
+      },
+      "required": [
+        "seq",
+        "simMs",
+        "type"
+      ],
+      "title": "Pong",
+      "type": "object"
     },
     "RequestCompleted": {
       "additionalProperties": false,
@@ -931,6 +1046,7 @@
       "title": "ServerEvent",
       "discriminator": {
         "mapping": {
+          "closing": "#/$defs/Closing",
           "edge_transferred": "#/$defs/EdgeTransferred",
           "graph_locked": "#/$defs/GraphLocked",
           "leaderboard_updated": "#/$defs/LeaderboardUpdated",
@@ -938,6 +1054,7 @@
           "node_completed": "#/$defs/NodeCompleted",
           "node_failed": "#/$defs/NodeFailed",
           "node_started": "#/$defs/NodeStarted",
+          "pong": "#/$defs/Pong",
           "request_completed": "#/$defs/RequestCompleted",
           "run_completed": "#/$defs/RunCompleted",
           "run_started": "#/$defs/RunStarted",
@@ -978,6 +1095,12 @@
         },
         {
           "$ref": "#/$defs/StateSync"
+        },
+        {
+          "$ref": "#/$defs/Closing"
+        },
+        {
+          "$ref": "#/$defs/Pong"
         }
       ]
     },
