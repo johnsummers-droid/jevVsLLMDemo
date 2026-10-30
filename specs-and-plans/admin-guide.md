@@ -331,7 +331,7 @@ laptop per team should edit.
 | The page loads but validation badges never appear | Same as above. The web app retries the catalog after an error, so refresh once the server is up. |
 | A player's graph changed by itself, with "Your graph was changed elsewhere; reloaded." | Two laptops (or tabs) of the same team edited at once; the later save lost. Have one laptop edit. |
 | A team can't get back in after clearing its browser | Rejoin at `/join` with the same session code and team name; the graph is kept. |
-| "The server has no FACILITATOR_CODE or TOKEN_SECRET set" | Set both in `server/.env` (local) or the Railway variables (deployed) and restart the API. |
+| "The server has no FACILITATOR_CODE or TOKEN_SECRET set" | Set both in `server/.env` (local) or the Render service's Environment (deployed) and restart the API. |
 | The header says "Offline – retrying" | The browser can't reach the API. Edits are kept and saved once it's back. |
 | Players on other machines can't open the app | In a Codespace, set port 5173's visibility to Public in the Ports tab. Locally, start Vite with `--host` and use your machine's IP. |
 | A link won't connect | The refusal notice gives the reason: type mismatch, a single input that's already connected, more than 4 edges on one output, a duplicate, or a cycle. |

@@ -1,17 +1,20 @@
 DEPLOY RUNBOOK: Pipeline Simulator (M3)
 =======================================
 
-Server + PostgreSQL on Railway, web app on Vercel (plan1.txt section 6,
-decision P1). The repo already holds everything code-side:
-  server/Dockerfile, server/railway.json   the API image and its Railway settings
+Server + PostgreSQL on Render, web app on Vercel (plan1.txt section 6,
+decision P1, revised 2026-10-30: Railway had suspended sign-ups after a
+security incident, so Render, the planned alternative, is now primary).
+The repo already holds everything code-side:
+  render.yaml                              Render Blueprint: API service + PostgreSQL
+  server/Dockerfile                        the API image (any Docker host)
+  server/railway.json                      Railway settings, kept as a fallback (7.)
   web/vercel.json                          Vite build + rewrite of every path to index.html
   .github/workflows/ci.yml                 tests on every push
 This runbook is the account-side part: about 20 minutes, done once. Every
 step works in the web dashboards; CLI equivalents are noted where useful.
 
-Pick the branch to deploy first (main after merging open-terminal, or
-open-terminal itself). Both Railway and Vercel redeploy on every push to the
-branch you connect, so make sure CI is green on it.
+Deploy from main (open-terminal was merged in PR #3). Both Render and
+Vercel redeploy on every push to main, so make sure CI is green on it.
 
 
 0. SECRETS (keep them out of git)
@@ -25,37 +28,40 @@ TOKEN_SECRET signs every team and facilitator token. Changing it later signs
 everyone out (teams rejoin with their names; their graphs are kept).
 
 
-1. RAILWAY: API AND DATABASE
-----------------------------
-1. railway.com -> New Project -> Deploy from GitHub repo -> pick
-   johnsummers-droid/jevVsLLMDemo (grant Railway access to it if asked).
-2. Open the new service -> Settings:
-     Source  -> Root Directory: server
-                Branch: the branch you picked
-     Config-as-code -> Railway config file: /server/railway.json
-       (it sets the Dockerfile builder, 1 replica, health check
-       /api/health and restart on failure; keep 1 replica: runs and the
-       WebSocket hub live in memory, decision D8)
-3. In the project canvas: + Create -> Database -> PostgreSQL.
-4. Service -> Variables -> add:
-     DATABASE_URL        ${{Postgres.DATABASE_URL}}   (a reference: type it
-                         exactly like this, or pick it from "Add reference")
+1. RENDER: API AND DATABASE
+---------------------------
+1. render.com -> sign up with GitHub and give Render access to
+   johnsummers-droid/jevVsLLMDemo.
+2. Dashboard -> New -> Blueprint -> pick the repo, branch main. Render
+   reads render.yaml at the repo root (Blueprint Path: leave the default)
+   and shows what it will create:
+     pipeline-sim-api   web service, Docker, rootDir server, 1 instance,
+                        health check /api/health, deploys on every commit
+     pipeline-sim-db    PostgreSQL 16; its internal connection string is
+                        wired into DATABASE_URL automatically
+3. It prompts once for the variables marked sync: false:
      FACILITATOR_CODE    <from step 0>
      TOKEN_SECRET        <from step 0>
-     LOG_LEVEL           info
-     ALLOWED_ORIGINS     (leave for now; set in step 3 below)
-   The app rewrites postgres:// to postgresql+psycopg:// itself.
-5. Service -> Settings -> Networking -> Generate Domain. Note the URL, e.g.
-   https://jevvsllmdemo-production.up.railway.app  (= API_URL below).
-6. Deploy (it may already be running). The deploy log should show
+   LOG_LEVEL is set by the file. ALLOWED_ORIGINS comes in step 3 below.
+   The app rewrites postgresql:// to postgresql+psycopg:// itself.
+4. Apply. The database starts first, then the image builds. The deploy log
+   of pipeline-sim-api should show
      Running upgrade  -> 0001, sessions teams graphs
      Uvicorn running on http://0.0.0.0:<port>
-   and the health check passes. Check from any terminal:
+5. The service page shows its URL, e.g.
+   https://pipeline-sim-api.onrender.com  (= API_URL below). Check:
      curl https://API_URL/api/health          -> {"status":"ok"}
 
-CLI alternative (after `npm i -g @railway/cli` and `railway login`):
-`railway link`, then `railway variables --set "KEY=value"` for step 4 and
-`railway domain` for step 5.
+Plans: render.yaml starts on free plans. A free web service sleeps after
+15 minutes without traffic (about a minute to wake, in-memory state lost);
+a free database expires 30 days after creation (14 more days to upgrade
+before it is deleted). For the workshop switch both to paid plans
+(dashboard -> service/database -> Settings -> Instance Type, or change
+`plan:` in render.yaml and sync). region, postgresMajorVersion,
+databaseName and user cannot change after creation.
+
+Editing render.yaml later: Render syncs it on push. Variables set only in
+the dashboard (secrets, ALLOWED_ORIGINS) are kept by a sync.
 
 
 2. VERCEL: WEB APP
@@ -77,12 +83,12 @@ CLI alternative (after `npm i -g @railway/cli` and `railway login`):
 
 3. CONNECT THEM (CORS)
 ----------------------
-Back in Railway -> service -> Variables:
+Render -> pipeline-sim-api -> Environment -> add:
      ALLOWED_ORIGINS       https://WEB_URL           (comma-separate several)
      ALLOWED_ORIGIN_REGEX  ^https://jev-vs-llm-demo-[a-z0-9-]+\.vercel\.app$
                            (optional: lets Vercel preview builds call the API;
                            adjust to your preview host names, or leave empty)
-Railway redeploys on save.
+Save and deploy (Render redeploys with the new variables).
 
 
 4. POST-DEPLOY CHECKS
@@ -116,24 +122,42 @@ If all boxes are ticked, M3 is done on the deployed URLs.
 ------------------
   Browser console: "blocked by CORS policy"
       ALLOWED_ORIGINS does not contain the exact origin (scheme, host, no
-      trailing slash, no path). Fix it in Railway and wait for the redeploy.
+      trailing slash, no path). Fix it in Render and wait for the redeploy.
   "Could not reach the server" on every page
       VITE_API_BASE_URL is missing or wrong in Vercel; fix it and redeploy
       (it is read at build time).
   Facilitator page: "The server has no FACILITATOR_CODE or TOKEN_SECRET set"
-      Set both in Railway variables.
+      Set both in the Render service's Environment.
   A refresh of /team or /join gives Vercel's 404
       Root Directory is not web/, so web/vercel.json is not used.
-  Railway deploy fails at "alembic upgrade head" / connection refused
-      DATABASE_URL is not the ${{Postgres.DATABASE_URL}} reference, or the
-      PostgreSQL service is still starting; redeploy.
-  Railway build uses Nixpacks/Railpack instead of the Dockerfile
-      The config file path (/server/railway.json) is not set.
+  Render deploy fails at "alembic upgrade head" / connection refused
+      DATABASE_URL is missing (the service was not created from the
+      Blueprint) or the database is still starting; redeploy.
+  The first request after a quiet spell takes about a minute
+      The free web service was asleep; use a paid instance for workshops.
+  Blueprint creation: "free database limit reached"
+      Only one free PostgreSQL per workspace; delete the old one or pick a
+      paid plan.
 
 
 6. WORKSHOP DAY
 ---------------
+  - Paid instances for both the service and the database (free ones sleep
+    and expire).
   - Open https://API_URL/api/health a few minutes before (wakes the service).
   - Rotate FACILITATOR_CODE if it was shared before; TOKEN_SECRET stays.
-  - Keep 1 replica.
+  - Keep 1 instance.
   - A team that loses its browser storage rejoins with the same team name.
+
+
+7. FALLBACK: RAILWAY
+--------------------
+Railway works with the same image once it accepts sign-ups again:
+New Project -> Deploy from GitHub repo; service Settings: Root Directory
+server, Branch main, Railway config file /server/railway.json (sets the
+Dockerfile builder, 1 replica, health check); + Create -> Database ->
+PostgreSQL; variables DATABASE_URL = ${{Postgres.DATABASE_URL}} (typed
+exactly like this), FACILITATOR_CODE, TOKEN_SECRET, LOG_LEVEL info,
+ALLOWED_ORIGINS; Settings -> Networking -> Generate Domain. If the build
+uses Nixpacks/Railpack instead of the Dockerfile, the config file path is
+not set.

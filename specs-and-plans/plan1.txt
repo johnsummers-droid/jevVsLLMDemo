@@ -945,7 +945,7 @@ Frontend - Vercel
   - vite.config.ts: change the proxy to
     { '/api': { target: 'http://localhost:8000', ws: true } }.
 
-Backend - Railway (primary)
+Backend - Railway (was primary; fallback since 2026-10-30, see P1)
   - Service root: server/, built from server/Dockerfile (python:3.12-slim,
     non-root user, pip install ., copy app/ and migrations/).
   - Start: `alembic upgrade head && uvicorn app.main:app --host 0.0.0.0
@@ -966,7 +966,7 @@ Backend - Railway (primary)
   - main.py replaces the hard-coded localhost CORS origin with
     settings.allowed_origins plus allow_origin_regex.
 
-Backend - Render (alternative; same Dockerfile)
+Backend - Render (primary since 2026-10-30, see P1; same Dockerfile)
   - render.yaml: one web service (docker, rootDir server, healthCheckPath
     /api/health, numInstances 1) plus one Render PostgreSQL. WebSockets work
     on web services.
@@ -1261,6 +1261,10 @@ M3 decisions, accepted 2026-10-24:
       creating the projects and setting secrets needs the owner's accounts,
       so T17 ends in a short runbook the owner follows (or does with Claude
       in the terminal once logged in).
+      Revised 2026-10-30: Railway had suspended sign-ups after a security
+      incident, so the server and PostgreSQL go on Render (section 6's
+      alternative) via render.yaml at the repo root; railway.json stays as
+      a fallback. Deploy branch: main (PR #3 merged open-terminal).
   P2. Facilitator auth: FACILITATOR_CODE (env) is only needed to create a
       session. Creating one returns the session code AND a session-scoped
       facilitator token (opaque, stored hashed like team tokens). No
@@ -1499,6 +1503,18 @@ T17. Deployment and M3 exit                               [depends on: T15, T16]
     one poll without an edit, then unlock restored both. Remaining: the
     runbook on real accounts, then the same browser checks on the
     deployed URLs.
+    Hosting change (2026-10-30, P1 revised): render.yaml at the repo root
+    (the Blueprint default path) defines pipeline-sim-api (docker, rootDir
+    server, dockerfilePath/dockerContext relative to the repo root, branch
+    main, 1 instance, /api/health, deploy on commit; FACILITATOR_CODE and
+    TOKEN_SECRET are sync: false, prompted once) and pipeline-sim-db
+    (PostgreSQL 16 as in CI; connectionString -> DATABASE_URL), both in
+    region frankfurt (the workshop is in Warsaw). Both start
+    on free plans so nothing is billed by surprise; the runbook says to
+    switch to paid plans before the workshop (free services sleep after
+    15 min, free databases expire after 30 days). ALLOWED_ORIGINS is set
+    in the dashboard; Blueprint syncs keep unlisted variables. The runbook
+    leads with Render and keeps Railway as section 7.
 
 Next after T17: live runs over WebSockets (M4).
 

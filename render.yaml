@@ -1,0 +1,47 @@
+# Render Blueprint: Pipeline Simulator API + PostgreSQL (plan1.txt section 6; runbook
+# specs-and-plans/deploy-runbook.txt). Render reads this file from the repo root:
+# Dashboard -> New -> Blueprint -> pick the repo. The web app is on Vercel, not here.
+#
+# Plans start free so nothing is billed by surprise. Free web services sleep when idle (and
+# lose in-memory run state); free databases expire. Before the workshop switch to paid plans,
+# e.g. web 0.5c-512mb and database 0.1c-256mb, here (then sync) or in the dashboard.
+# region, postgresMajorVersion, databaseName and user cannot change after creation.
+
+services:
+  - type: web
+    name: pipeline-sim-api
+    runtime: docker
+    rootDir: server
+    # Both paths are relative to the repo root, not to rootDir.
+    dockerfilePath: ./server/Dockerfile
+    dockerContext: ./server
+    branch: main
+    region: frankfurt
+    plan: free
+    # Exactly one instance: runs and the WebSocket hub live in memory (decision D8).
+    numInstances: 1
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: pipeline-sim-db
+          property: connectionString
+      # Prompted once when the Blueprint is created; never stored in git.
+      - key: FACILITATOR_CODE
+        sync: false
+      - key: TOKEN_SECRET
+        sync: false
+      - key: LOG_LEVEL
+        value: info
+      # ALLOWED_ORIGINS (and optional ALLOWED_ORIGIN_REGEX) are set in the dashboard once the
+      # Vercel URL is known; Blueprint syncs leave variables not listed here alone.
+
+databases:
+  - name: pipeline-sim-db
+    region: frankfurt
+    plan: free
+    # Same major version as CI's postgres:16 service.
+    postgresMajorVersion: "16"
+    databaseName: pipeline_sim
+    user: pipeline_sim
