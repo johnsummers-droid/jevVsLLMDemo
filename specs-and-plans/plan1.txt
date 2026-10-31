@@ -2215,6 +2215,38 @@ T32. Node help content on the server                       [depends on: T24]
       (S6); GET /api/catalog carries help.
     Done when: GET /api/catalog returns help for all 8 nodes and the
       example and spoiler tests pass.
+    As built (2026-10-31):
+      - models/catalog.py: NodeHelp and HelpExample; NodeDefinition.help is
+        optional and checked by _check_help (params and outputs must be
+        covered exactly, inputs and example params may only name real
+        ones). Param keys and port ids stay snake_case on the wire; only
+        field names are camelCased.
+      - catalog/help.py holds the 8 texts (one constant per node); the
+        definitions import them. The panel adds defaults, ports and the
+        cost model from the definition, so help.py repeats no numbers.
+      - HelpExample: ticket_id is a practice ticket (pattern ^p-), the
+        input is that ticket's customer message with its taint (or
+        input_text with the same taint), params override the defaults,
+        and outputs list chosen ports. Numbers are rounded to 2 decimals;
+        a JSON object may show only some of its fields (e.g. docs without
+        snippets). customer_response has no outputs, so no example.
+      - Examples: router p-02 (p-01 at seed 0 is low confidence, 0.49),
+        safety p-14 flagged prompt_injection, LLM p-01, policy engine a
+        custom refund-guarantee text, knowledge lookup p-07 with top_k 2,
+        human review p-11, customer message p-01.
+      - Found while writing: customer_message's traffic_mix and
+        attack_rate, human_review_queue's capacity and customer_response's
+        channel change nothing in a run today (capacity arrives with T26).
+        The help says so rather than describe behaviour that isn't there.
+      - tests/test_help.py: help on every node, an example exactly for
+        nodes with outputs, every example re-run and matched (checked by
+        mutating one value), spoiler scan (MARKERS without the final
+        period, every official ticket text), validator cases, the catalog
+        endpoint carries help.
+      - Web: no UI yet (T33). The JSON fixture's inferred type no longer
+        fits CatalogResponse (help maps differ per node), so
+        src/test/fixtures.ts casts through unknown and graphMapping.test
+        and schemaFields.test use its catalogNodes.
 
 T33. Web help panel                                        [depends on: T32]
     - store/helpStore.ts (S2), help/HelpButton.tsx, help/HelpPanel.tsx

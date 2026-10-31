@@ -3,7 +3,9 @@ import catalogFixture from '../../../shared/fixtures/catalog.json'
 import defaultGraph from '../../../shared/fixtures/graphs/default.json'
 import type { CatalogResponse, Graph, NodeDefinition } from '../types'
 
-export const catalogNodes = (catalogFixture as CatalogResponse).nodes
+// Through unknown: TS infers the JSON's per-node help maps as a union with `undefined` keys,
+// which doesn't fit the generated index signatures.
+export const catalogNodes = (catalogFixture as unknown as CatalogResponse).nodes
 export const catalogByType: Record<string, NodeDefinition> = Object.fromEntries(
   catalogNodes.map((d) => [d.type, d]),
 )

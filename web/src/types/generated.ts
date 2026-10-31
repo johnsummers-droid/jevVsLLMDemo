@@ -82,6 +82,7 @@ export interface NodeDefinition {
   isSource?: boolean
   isSink?: boolean
   mvp?: boolean
+  help?: NodeHelp | null
 }
 export interface Port {
   id: string
@@ -162,6 +163,45 @@ export interface CostModel {
   priceInPer1KUsd?: number | null
   priceOutPer1KUsd?: number | null
   excludedFromLatency?: boolean
+}
+/**
+ * Help panel content (plan1.txt S4). Explains how the node works, never the scenario
+ * answers (S6).
+ */
+export interface NodeHelp {
+  summary: string
+  placement: string
+  /**
+   * @minItems 1
+   */
+  howItWorks: string[]
+  inputs?: {
+    [k: string]: string
+  }
+  params?: {
+    [k: string]: string
+  }
+  outputs?: {
+    [k: string]: string
+  }
+  example?: HelpExample | null
+  tips?: string[]
+}
+/**
+ * A worked example for the help panel. A test runs it through the node's runner on the
+ * mock providers (run seed 0) and checks the stated outputs (plan1.txt S5).
+ */
+export interface HelpExample {
+  ticketId: string
+  inputText?: string | null
+  params?: {
+    [k: string]: unknown
+  }
+  firedBranch?: string | null
+  outputs?: {
+    [k: string]: unknown
+  }
+  explanation: string
 }
 /**
  * Unused in M4: the channels follow from the token (Q3).

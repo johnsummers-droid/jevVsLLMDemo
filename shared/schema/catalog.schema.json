@@ -152,6 +152,55 @@
       "title": "EnumParam",
       "type": "object"
     },
+    "HelpExample": {
+      "additionalProperties": false,
+      "description": "A worked example for the help panel. A test runs it through the node's runner on the\nmock providers (run seed 0) and checks the stated outputs (plan1.txt S5).",
+      "properties": {
+        "ticketId": {
+          "pattern": "^p-[0-9]+$",
+          "type": "string"
+        },
+        "inputText": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "params": {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        "firedBranch": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "outputs": {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        "explanation": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ticketId",
+        "explanation"
+      ],
+      "title": "HelpExample",
+      "type": "object"
+    },
     "IntParam": {
       "additionalProperties": false,
       "properties": {
@@ -305,6 +354,17 @@
         "mvp": {
           "default": true,
           "type": "boolean"
+        },
+        "help": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NodeHelp"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -318,6 +378,67 @@
         "costModel"
       ],
       "title": "NodeDefinition",
+      "type": "object"
+    },
+    "NodeHelp": {
+      "additionalProperties": false,
+      "description": "Help panel content (plan1.txt S4). Explains how the node works, never the scenario\nanswers (S6).",
+      "properties": {
+        "summary": {
+          "type": "string"
+        },
+        "placement": {
+          "type": "string"
+        },
+        "howItWorks": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "inputs": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "params": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "outputs": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "example": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/HelpExample"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tips": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "summary",
+        "placement",
+        "howItWorks"
+      ],
+      "title": "NodeHelp",
       "type": "object"
     },
     "NumberParam": {

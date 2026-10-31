@@ -1,3 +1,4 @@
+from app.catalog.help import POLICY_ENGINE_HELP, KNOWLEDGE_LOOKUP_HELP
 from app.models import (
     CostModel,
     EnumParam,
@@ -32,6 +33,7 @@ POLICY_ENGINE = NodeDefinition(
         MultiEnumParam(key="data_classes", label="Data classes", default=[],
                        options=["email", "phone", "card_number", "ssn"], min_selected=0),
     ],
+    help=POLICY_ENGINE_HELP,
     cost_model=CostModel(latency_ms=10, latency_jitter_ms=3),
 )
 
@@ -49,6 +51,7 @@ KNOWLEDGE_LOOKUP = NodeDefinition(
         EnumParam(key="source", label="Source", default="kb", options=["faq", "kb", "tickets"]),
         IntParam(key="top_k", label="Top k", default=3, min=1, max=10),
     ],
+    help=KNOWLEDGE_LOOKUP_HELP,
     cost_model=CostModel(latency_ms=25, latency_jitter_ms=5, cost_per_call_usd=0.00001),
 )
 

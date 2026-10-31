@@ -1,13 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import catalogFixture from '../../../shared/fixtures/catalog.json'
 import expandedFixture from '../../../shared/fixtures/expanded-outputs.json'
 import defaultGraph from '../../../shared/fixtures/graphs/default.json'
 import strongGraph from '../../../shared/fixtures/graphs/strong.json'
 import weakGraph from '../../../shared/fixtures/graphs/weak.json'
-import type { CatalogResponse, Graph, NodeDefinition, Port } from '../types'
+import { catalogNodes as catalog } from '../test/fixtures'
+import type { Graph, NodeDefinition, Port } from '../types'
 import { edgeId, expandOutputs, flowToGraph, graphToFlow } from './graphMapping'
 
-const catalog = (catalogFixture as CatalogResponse).nodes
 const byType: Record<string, NodeDefinition> = Object.fromEntries(catalog.map((d) => [d.type, d]))
 const graphs = {
   default: defaultGraph as Graph,
