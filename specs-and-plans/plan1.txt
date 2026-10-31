@@ -1904,6 +1904,206 @@ T24. Facilitator controls, shared screen, M4 exit         [depends on: T21, T23]
     blocks new practice runs (423) but lets one already playing finish
     (Q6); only the official run stops them (Q7). Moved to M5.
 
+M4 done 2026-10-30 (the "Live runs" checklist passed on the deployed
+URLs). Next: the full catalog and run controls (M5).
+
+
+M5 tasks (T25-T31). Exit (section 4): on the deployed URLs a team builds
+a graph with the new nodes (urgency scorer, escalation gate, summarizer,
+PII redactor), presses Run traffic with a 3x spike and the injection
+wave, sees human review overflow as dropped requests, opens the trace of
+a dropped or unsafe request and sees which node caused it, and tries a
+node with the Inspector's Test button; the facilitator starts an official
+run with a spike and the leaderboard ranks it.
+
+Planned 2026-10-30 from the code as it stands after M4. Already in place:
+knowledge_lookup (promoted in T4); every spec metric is computed
+(escalation rate, dropped rate, p50, decision quality are in RunMetrics,
+only four are shown); traffic_spike and injection_wave exist in
+RunConfig and traffic.py but no one can set them; Stop exists for
+practice runs and "Stop all" for official ones; runs are persisted
+(metrics, graph snapshot) but traces stay in memory and are lost when a
+run ends. Baseline: the strong graph escalates ~36% of the official pack
+(about 11 of 30 requests, ~23 at a 3x spike) to one human node with
+capacity 2 and a 120 s median review.
+
+M5 decisions, accepted 2026-10-30:
+  R1. Four new nodes as specified in section 3b, which brings the catalog
+      to 12: jev_urgency_scorer, jev_escalation_gate, llm_summarizer,
+      pii_redactor. Mocks follow the existing pattern (labels drive
+      behaviour, D6 seeding):
+        - urgency scorer: returns ticket.urgency, off by one with a
+          per-category error rate (routine low, ambiguous high);
+          confidence calibrated like the router's, so the threshold
+          matters.
+        - escalation gate: a rule over its signal inputs (confidence <
+          min_confidence or score > max_auto_urgency -> human, flag ->
+          flag_routes_to); its own confidence is the input confidence.
+          GATE_NEEDS_SIGNAL now fires on the real definition; the
+          test-only definition goes.
+        - summarizer: shortens the text (downstream LLM tokens_in and
+          cost go down, its own cost is small-tier), keeps taint, and
+          raises the chance that a needs_grounding ticket ends up
+          "ungrounded" unless the LLM also gets knowledge context: a
+          trade-off, not a free win.
+        - PII redactor: tools/pii.py (exists); removes the "pii" taint
+          when the ticket's pii_kinds are all in entity_types.
+  R2. The golden tests keep default < weak < strong and gain one
+      reference graph, "gated" (strong plus escalation gate on urgency,
+      PII redactor before the LLM), that must beat strong on the official
+      pack over 10 seeds, so the new nodes are worth using. Mock rates
+      and costs are tuned in T25 until it does; the tuning goes in the
+      as-built notes.
+  R3. Human-review capacity (section 3b's M5 note). Each
+      human_review_queue node has `capacity` reviewers and a new param
+      max_wait_s (int 0..1800, default 300). A request waits FIFO for the
+      first free reviewer; if its wait would exceed max_wait_s it
+      overflows and is dropped (outcome "dropped", reason "overflow" on
+      its trace and a new overflowed count in NodeStats). The wait is
+      added to its review latency (still outside the automated p95). The
+      pool lives in RunContext, shared across one run's requests, keyed
+      by node id. Requests are executed in arrival order, so reviewers
+      are assigned in that order, not strictly in the order requests
+      reach the node: a documented, deterministic approximation that
+      keeps one executor (Q1). capacity and max_wait_s never enter the
+      seed. RunConfig.max_concurrency (accepted, never used) is removed:
+      capacity per human node is the only limit.
+  R4. Run controls.
+        - Practice: POST /api/teams/{id}/runs takes an optional body
+          RunControls {trafficSpike 1..3 (default 1), injectionWave
+          (default false)}; the seed stays server-chosen.
+        - Official: the facilitator sets the same two controls before
+          "Start official run"; one config for every team (D9).
+        - Stop: as in M4. Pencils down now also stops practice runs in
+          progress (they are recorded "stopped"; found in the M4 exit
+          check).
+        - Reset: "Clear results" on the team page hides the finished
+          run's node badges, dots and metrics until the next run. It is
+          client-side and remembered for that run id in sessionStorage,
+          so a reload (state_sync) keeps it cleared; nothing is deleted
+          on the server.
+  R5. Traces persisted (refines Q8; replaces the request_traces table in
+      M3's list): migration 0003 adds runs.traces, one JSON column with
+      the run's RequestTraces, written by finish_run. A run has at most
+      ~90 requests of at most 40 steps and is always read whole, so a
+      separate table buys nothing. A stopped run keeps the traces of its
+      completed requests. Runs from before 0003 have none (null).
+  R6. Trace API and history, own team or its facilitator only:
+        - GET /api/teams/{id}/runs (the last 20 runs: RunSummary list),
+        - GET /api/runs/{id}/traces (one row per request: id, ticket id,
+          outcome, latency, cost, released_unsafe, decision_correct, and
+          the node where it ended),
+        - GET /api/runs/{id}/traces/{request_id} (the full RequestTrace
+          with every step's decision, latency and cost).
+      Practice traces include the ticket text. Official traces never
+      include ticket text or labels (D1: the official pack stays hidden);
+      they show ids, steps and outcomes only. Taint flags stay internal
+      (D4): a trace says "released unsafe" and where, not the taint set.
+  R7. Node test (Inspector "Test"): POST /api/nodes/{type}/test with a
+      team token and {params, ticketId}. The node runs alone on mock
+      providers, with the chosen practice ticket's text as its text input
+      (optional inputs empty), and the response is its NodeResult minus
+      taint: outputs, the branch that fired, decision, latency, cost,
+      tokens. Tickets come from a new GET /api/packs/practice/samples
+      (id and text only, no labels). Free text is not offered: the mocks
+      are driven by ticket labels and would have nothing to go on. Rate
+      limit: 30 tests per team per minute, in-memory sliding window, 429
+      with Retry-After (no new dependency). io and human nodes have no
+      Test button.
+  R8. Metrics on screen: the metrics bar gets a second row with
+      escalation rate, dropped rate, p50 latency and decision quality
+      (no targets: neutral colour); the leaderboard gains decision
+      quality and dropped rate columns. The score formula is unchanged.
+  R9. The web needs no new node components: the five category components
+      already render any catalog node; the new params use existing
+      ParamSpec kinds. Catalog/schema fixtures and TS types are
+      regenerated as usual; player-guide.md and admin-guide.md describe
+      the new nodes and controls; the deploy-runbook gets an "M5"
+      checklist (the exit above).
+  R10. No new dependencies.
+
+T25. New catalog nodes and reference graph                [depends on: T24]
+    - definitions (jev: urgency scorer, escalation gate; llm: summarizer;
+      tool: PII redactor), runners and mock behaviour (R1); registry;
+      validator: GATE_NEEDS_SIGNAL on the real gate (test-only definition
+      removed), NO_SAFETY_COVERAGE unchanged.
+    - reference_graphs.py: "gated" (R2) plus shared/fixtures/graphs/
+      gated.json; golden tests over 10 seeds; tuning notes.
+    - Schema export, catalog and expanded-outputs fixtures, TS types.
+    - Tests: output contracts for every new runner x ticket, determinism,
+      gate truth table, redactor taint removal per pii kind, summarizer
+      lowers downstream cost, gate threshold monotonicity; web: Inspector
+      renders every new node's params, branch handles for the gate.
+    Done when: the catalog lists 12 nodes and gated > strong > weak >
+      default on 10 seeds.
+
+T26. Human-review capacity and overflow                    [depends on: T25]
+    - ReviewerPool in RunContext (R3); max_wait_s param; outcome
+      "dropped" with reason "overflow"; NodeStats.overflowed;
+      RunConfig.max_concurrency removed (schema + TS regenerated).
+    - Tests: FIFO assignment, wait added to review latency, overflow at
+      max_wait_s, capacity never changes the reviewer's verdict or the
+      seed, determinism; golden: escalate_all overflows at a 3x spike and
+      the strong graph does not at 1x.
+    Done when: a 3x spike on escalate_all shows dropped requests from
+      overflow in run_headless.py.
+
+T27. Run controls on the server                            [depends on: T26]
+    - RunControls model (R4); practice POST accepts it (422 out of range);
+      the official POST accepts it; the RunConfig echoes it in
+      run_started.
+    - Pencils down stops practice runs in progress (the lock endpoint
+      calls the run manager's stop for every active practice run).
+    - Tests: spike/wave reach the schedule; same controls -> same official
+      config for every team; lock stops a playing practice run and the
+      team socket gets run_completed(stopped) then graph_locked.
+    Done when: a scripted practice run with spike 3 + wave has more
+      requests than without, and pencils down silences a playing run.
+
+T28. Trace persistence, history and trace API              [depends on: T27]
+    - Migration 0003 (runs.traces JSON, R5); finish_run writes traces,
+      also for stopped runs; repo: list_runs, run_traces.
+    - GET /api/teams/{id}/runs, GET /api/runs/{id}/traces and
+      /traces/{request_id} (R6) with response models exported to the
+      schema.
+    - Tests: upgrade/downgrade keeps data; traces survive a restart;
+      403 for another team; official traces carry no ticket text (scan
+      every string against the official pack, as test_official does);
+      PostgreSQL run.
+    Done when: a finished run's traces can be read back after a server
+      restart.
+
+T29. Node test endpoint                                    [depends on: T25]
+    - POST /api/nodes/{type}/test (R7); GET /api/packs/practice/samples;
+      rate limiter (per team, 30/min).
+    - Tests: every testable node type returns its output contract; the
+      fired branch is reported; taint never appears; 429 after 30;
+      unknown type 404; invalid params 422; io/human types 400.
+    Done when: every jev, llm and tool node can be tested over the API.
+
+T30. Web: run controls and metrics                         [depends on: T27]
+    - RunControls: spike (1x/2x/3x) and injection wave before Run traffic;
+      "Clear results" (R4). OfficialRunPanel: the same two controls.
+    - MetricsBar second row and leaderboard columns (R8); the human
+      node's badge shows overflowed requests.
+    - Tests: controls reach the POST body; clear survives a state_sync for
+      the same run id and resets on a new run; new tiles and columns.
+    Done when: a practice run with a spike shows overflow on the human
+      node and the extra metrics.
+
+T31. Web: trace viewer, Test button and M5 exit            [depends on: T28, T29, T30]
+    - Trace viewer: opens from the run bar after a run (and from the run
+      history list): a table of requests filterable by outcome (dropped,
+      unsafe, incorrect first); one request shows its path step by step
+      and highlights that path on the canvas.
+    - Inspector Test: pick a practice ticket, run, show the result; 429
+      shows "try again in N s"; disabled while read-only.
+    - Guides and deploy-runbook "M5" checklist (R9).
+    - Tests: trace table filters, path highlight, official trace without
+      ticket text, Test result and 429.
+    Done when: the M5 exit above passes on the deployed URLs.
+
+
 8. OPEN ITEMS (none of these block T1-T5)
 -----------------------------------------
   - The real Jev API wire format, auth, latency and pricing (affects only
