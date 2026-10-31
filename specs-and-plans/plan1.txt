@@ -2107,7 +2107,7 @@ T31. Web: trace viewer, Test button and M5 exit            [depends on: T28, T29
 MVP RE-SCOPE (2026-10-31). The user set a new priority: an end-to-end MVP
 built around the 5-node graph, running in prod, styled, and connected to
 real AI. Extra nodes and features come after it. M5 is paused: T25's work
-in progress is parked (git stash "T25 WIP" from branch t25; it carries
+in progress is parked (WIP commit 7a23d1b on branch t25, pushed; it carries
 the open "gated graph" question for R2), and T26-T31 wait until the MVP
 ships.
 
@@ -2132,8 +2132,9 @@ MVP work, in order:
      uses the existing tokens and gets restyled with the rest.
   4. Prod: paid Render plans in render.yaml (deadline 2026-11-29), then a
      rehearsal on the deployed URLs.
-  Still open: whether the palette shows only the 5 MVP nodes or all 8,
-  and whether the MVP starter graph replaces the current default graph.
+  Decided (2026-10-31): the MVP starter graph replaces the current default
+  graph. Still open: whether the palette shows only the 5 MVP nodes or
+  all 8.
 
 Help panel decisions, accepted 2026-10-31 (the critique and the user's
 answers are in specs-and-plans/help-panel-conversation.txt):
