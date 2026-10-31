@@ -50,6 +50,10 @@ THE WEEK BEFORE
        Do NOT change TOKEN_SECRET from now on: changing it signs everyone
        out (graphs are kept, but teams must rejoin).
 
+[ ] 5b. Remove the temporary reference-graph viewer (/team?ref, added
+       2026-10-31) or replace it with T40: anyone who adds ?ref to the
+       team page can see the "strong" graph, the answer key. Ask Claude.
+
 [ ] 6. Check the deployments match main:
        - Render: the latest deploy is "live" and shows the newest commit.
        - Vercel: the production deployment shows the newest commit.
