@@ -1,4 +1,4 @@
-from typing import Literal, Self
+from typing import Any, Literal, Self
 
 from pydantic import Field, model_validator
 
@@ -19,8 +19,57 @@ class CostModel(CamelModel):
     excluded_from_latency: bool = False  # human review
 
 
+class HelpExample(CamelModel):
+    """A worked example for the help panel. A test runs it through the node's runner on the
+    mock providers (run seed 0) and checks the stated outputs (plan1.txt S5)."""
+
+    # A practice ticket: the mocks read its labels. input_text is what arrives on the node's
+    # text input (shown in the panel, which never sees ticket text); it carries the ticket's
+    # taint. Required exactly when the node has inputs.
+    ticket_id: str = Field(pattern=r"^p-[0-9]+$")
+    input_text: str | None = None
+    params: dict[str, Any] = Field(default_factory=dict)  # overrides of the defaults
+    fired_branch: str | None = None
+    # Chosen output values by port id. Numbers are rounded to 2 decimals, and a JSON object
+    # may show only some of its fields.
+    outputs: dict[str, Any] = Field(default_factory=dict)
+    explanation: str
+
+
+class NodeHelp(CamelModel):
+    """Help panel content (plan1.txt S4). Explains how the node works, never the scenario
+    answers (S6)."""
+
+    summary: str
+    placement: str
+    how_it_works: list[str] = Field(min_length=1)
+    inputs: dict[str, str] = Field(default_factory=dict)  # by port id
+    params: dict[str, str] = Field(default_factory=dict)  # by param key; every param
+    outputs: dict[str, str] = Field(default_factory=dict)  # by port id; every output
+    example: HelpExample | None = None
+    tips: list[str] = Field(default_factory=list)
+
+
 def _duplicates(ids: list[str]) -> set[str]:
     return {i for i in ids if ids.count(i) > 1}
+
+
+def _check_help(definition: "NodeDefinition", help: NodeHelp) -> None:
+    def check(what: str, given: set[str], known: set[str], complete: bool) -> None:
+        if unknown := given - known:
+            raise ValueError(f"help {what}: unknown {sorted(unknown)}")
+        if complete and (missing := known - given):
+            raise ValueError(f"help {what}: missing {sorted(missing)}")
+
+    check("inputs", set(help.inputs), {p.id for p in definition.inputs}, complete=False)
+    check("params", set(help.params), {p.key for p in definition.params}, complete=True)
+    check("outputs", set(help.outputs), {p.id for p in definition.outputs}, complete=True)
+    if help.example is not None:
+        check("example params", set(help.example.params), {p.key for p in definition.params},
+              complete=False)
+        if (help.example.input_text is not None) != bool(definition.inputs):
+            raise ValueError("help example: input_text is required exactly when the node has "
+                             "inputs")
 
 
 class NodeDefinition(CamelModel):
@@ -41,6 +90,7 @@ class NodeDefinition(CamelModel):
     is_source: bool = False
     is_sink: bool = False
     mvp: bool = True
+    help: NodeHelp | None = None
 
     @model_validator(mode="after")
     def _check_consistency(self) -> Self:
@@ -74,4 +124,6 @@ class NodeDefinition(CamelModel):
             raise ValueError("sink nodes have no outputs")
         if self.is_source and self.is_sink:
             raise ValueError("a node cannot be both source and sink")
+        if self.help is not None:
+            _check_help(self, self.help)
         return self

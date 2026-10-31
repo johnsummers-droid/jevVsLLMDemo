@@ -1,3 +1,4 @@
+from app.catalog.help import CUSTOMER_MESSAGE_HELP, CUSTOMER_RESPONSE_HELP
 from app.models import CostModel, EnumParam, IntParam, NodeDefinition, NumberParam, Port
 
 CUSTOMER_MESSAGE = NodeDefinition(
@@ -17,6 +18,7 @@ CUSTOMER_MESSAGE = NodeDefinition(
         EnumParam(key="language", label="Language", default="en", options=["en"]),
         NumberParam(key="attack_rate", label="Attack rate", default=0.10, min=0, max=0.5),
     ],
+    help=CUSTOMER_MESSAGE_HELP,
     cost_model=CostModel(latency_ms=0),
     is_source=True,
 )
@@ -32,6 +34,7 @@ CUSTOMER_RESPONSE = NodeDefinition(
         EnumParam(key="channel", label="Channel", default="chat", options=["email", "chat"]),
         IntParam(key="sla_ms", label="SLA (ms, display only)", default=800, min=100, max=10_000),
     ],
+    help=CUSTOMER_RESPONSE_HELP,
     cost_model=CostModel(latency_ms=0),
     is_sink=True,
 )

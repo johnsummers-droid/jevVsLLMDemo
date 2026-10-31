@@ -32,6 +32,7 @@ and never lets an unsafe reply reach a customer.
 | **Palette** (left) | Every node type you can use, grouped by category. Click a card to add that node at the centre of the canvas, or drag it to where you want it. |
 | **Canvas** (middle) | Your pipeline. Drag nodes to move them, scroll to zoom, drag the background to pan. |
 | **Inspector** (right) | With one node selected: its description, settings (params), ports, cost and latency assumptions, problems, and a **Delete node** button. With nothing selected: the **Pipeline check**, a list of every problem in the graph. |
+| **Help panel** (bottom of the canvas) | Click the **?** on any node (in the palette, on the canvas, or in the inspector header) to open its help: what it does, where it goes, every setting and output, a worked example and tips. One panel at a time: another **?** swaps it, the same **?**, **×** or **Esc** closes it. Drag its top edge to resize it. You can keep working while it is open. |
 
 You start with the **starter graph**. It works, but it has deliberate
 weaknesses for you to find and fix (see section 7).
@@ -69,7 +70,7 @@ ticket.
 ## 3. The nodes
 
 Costs and latencies below are the simulator's assumptions; the inspector
-shows them for each node.
+shows them for each node. For the full explanation of any node, click its **?**.
 
 ### Input and output
 

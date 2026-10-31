@@ -1,11 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import catalogFixture from '../../../shared/fixtures/catalog.json'
-import type { CatalogResponse } from '../types'
+import { catalogNodes } from '../test/fixtures'
 import { hasPayloadSchema, schemaFields } from './schemaFields'
 
 describe('schemaFields', () => {
   it('knows every jsonSchemaRef used by the catalog', () => {
-    const refs = (catalogFixture as CatalogResponse).nodes
+    const refs = catalogNodes
       .flatMap((n) => [...n.inputs, ...n.outputs])
       .flatMap((p) => (p.jsonSchemaRef ? [p.jsonSchemaRef] : []))
     expect(refs.length).toBeGreaterThan(0)

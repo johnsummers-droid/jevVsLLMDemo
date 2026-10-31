@@ -3,6 +3,7 @@
 import { useUpdateNodeInternals, type NodeProps } from '@xyflow/react'
 import { useEffect, useMemo, type ReactNode } from 'react'
 import { TypedHandle } from '../handles/TypedHandle'
+import { HelpButton } from '../help/HelpButton'
 import { expandOutputs } from '../lib/graphMapping'
 import { portKey, worstSeverity } from '../lib/issues'
 import { NodeStatsBadge } from '../run/NodeStatsBadge'
@@ -80,6 +81,7 @@ export function BaseNode({ id, data, selected, category, children }: BaseNodePro
         <strong className="pipeline-node__title">{data.label || definition?.title || data.nodeType}</strong>
         <span className="pipeline-node__id">{id}</span>
         {children}
+        {definition?.help && <HelpButton definition={definition} className="pipeline-node__help" />}
       </header>
       {definition ? (
         <div className="pipeline-node__ports">

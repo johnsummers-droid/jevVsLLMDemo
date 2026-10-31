@@ -1,4 +1,4 @@
-from app.models.catalog import CostModel, NodeCategory, NodeDefinition
+from app.models.catalog import CostModel, HelpExample, NodeCategory, NodeDefinition, NodeHelp
 from app.models.graph import Graph, GraphEdge, GraphNode, Position, SaveGraphRequest, StoredGraph
 from app.models.metrics import NodeStats, RunMetrics
 from app.models.params import (
@@ -60,6 +60,7 @@ __all__ = [
     "Graph",
     "GraphEdge",
     "GraphNode",
+    "HelpExample",
     "IntParam",
     "IssueCode",
     "JoinTeamRequest",
@@ -72,6 +73,7 @@ __all__ = [
     "NodeDefinition",
     "NodeError",
     "NodeExecution",
+    "NodeHelp",
     "NodeResult",
     "NodeStats",
     "NumberParam",

@@ -6,6 +6,7 @@ import {
   ReactFlow,
   useNodesInitialized,
   useReactFlow,
+  useStore,
   type Connection,
   type Edge,
   type FinalConnectionState,
@@ -24,6 +25,8 @@ import { startPulses } from './pulses'
 const edgeTypes = { default: PipelineEdge }
 
 const NOTICE_MS = 4000
+// Below this zoom a node's "?" is too small to hit, so it's hidden (S8); palette and Inspector keep theirs.
+export const HELP_MIN_ZOOM = 0.6
 
 export function Canvas() {
   const nodes = useGraphStore((s) => s.nodes)
@@ -37,6 +40,7 @@ export function Canvas() {
   const notice = useGraphStore((s) => s.notice)
   const setNotice = useGraphStore((s) => s.setNotice)
   const locked = useReadOnly() // the graph is locked, or the team's run is playing (Q6)
+  const zoomedOut = useStore((s) => s.transform[2] < HELP_MIN_ZOOM)
 
   useEffect(() => startPulses(), [])
 
@@ -100,7 +104,7 @@ export function Canvas() {
   )
 
   return (
-    <div className="canvas" onDragOver={onDragOver} onDrop={onDrop}>
+    <div className={`canvas${zoomedOut ? ' canvas--zoomed-out' : ''}`} onDragOver={onDragOver} onDrop={onDrop}>
       <ReactFlow
         nodes={nodes}
         edges={edges}

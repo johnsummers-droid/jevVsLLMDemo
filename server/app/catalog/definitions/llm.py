@@ -1,3 +1,4 @@
+from app.catalog.help import LLM_ANSWER_GENERATOR_HELP
 from app.models import CostModel, EnumParam, IntParam, NodeDefinition, NumberParam, Port, TextParam
 
 # Per-tier latency (plan1.txt 3b). The catalog's CostModel shows the default ("large")
@@ -25,6 +26,7 @@ LLM_ANSWER_GENERATOR = NodeDefinition(
         TextParam(key="prompt", label="System prompt",
                   default="You are a helpful support agent.", max_len=500),
     ],
+    help=LLM_ANSWER_GENERATOR_HELP,
     cost_model=CostModel(
         latency_ms=TIER_LATENCY_MS["large"]["ttft_ms"],
         per_token_latency_ms=TIER_LATENCY_MS["large"]["per_token_ms"],

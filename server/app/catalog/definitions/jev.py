@@ -1,3 +1,4 @@
+from app.catalog.help import JEV_INTENT_ROUTER_HELP, JEV_SAFETY_CHECK_HELP
 from app.models import CostModel, MultiEnumParam, NodeDefinition, NumberParam, Port
 
 INTENTS = ["billing", "technical_support", "bug_report", "feature_request", "account", "other"]
@@ -24,6 +25,7 @@ JEV_INTENT_ROUTER = NodeDefinition(
         NumberParam(key="threshold", label="Confidence threshold", default=0.50, min=0, max=1,
                     help="Below this confidence the request takes route.low_confidence."),
     ],
+    help=JEV_INTENT_ROUTER_HELP,
     cost_model=CostModel(latency_ms=40, latency_jitter_ms=15, cost_per_call_usd=0.0002),
 )
 
@@ -48,6 +50,7 @@ JEV_SAFETY_CHECK = NodeDefinition(
                                 "self_harm"]),
         NumberParam(key="threshold", label="Threshold", default=0.50, min=0, max=1),
     ],
+    help=JEV_SAFETY_CHECK_HELP,
     cost_model=CostModel(latency_ms=30, latency_jitter_ms=10, cost_per_call_usd=0.0002),
 )
 
