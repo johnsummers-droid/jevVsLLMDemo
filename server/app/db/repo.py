@@ -1,10 +1,13 @@
 """Queries. Write functions commit; callers pass the request's Session from get_db."""
 
+from datetime import datetime
+
 from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.db.base import new_id, utcnow
-from app.db.tables import GraphRow, RunRow, SessionRow, TeamRow
+from app.db.tables import GraphRow, ProviderCallRow, RunRow, SessionRow, TeamRow
 from app.models.graph import Graph, StoredGraph
 from app.models.metrics import RunMetrics
 from app.models.runs import RunConfig, RunRecord, RunStatus, RunSummary
@@ -218,3 +221,28 @@ def run_record(row: RunRow) -> RunRecord:
         started_at=row.started_at,
         finished_at=row.finished_at,
     )
+
+
+# --- provider calls (U3) -----------------------------------------------------------------------
+
+
+def get_provider_call(db: Session, key: str) -> ProviderCallRow | None:
+    return db.get(ProviderCallRow, key)
+
+
+def put_provider_call(db: Session, row: ProviderCallRow) -> bool:
+    """Stores a real call; False if that key is already stored (another worker got there first)."""
+    db.add(row)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        return False
+    return True
+
+
+def spend_since(db: Session, since: datetime) -> float:
+    """Real spend recorded since `since` (cache hits add no rows, so they cost nothing)."""
+    total = db.scalar(select(func.sum(ProviderCallRow.cost_usd))
+                      .where(ProviderCallRow.created_at >= since))
+    return float(total or 0.0)
