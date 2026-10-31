@@ -40,7 +40,9 @@ let inFlight: Promise<void> | null = null
 
 function isDirty(): boolean {
   const g = graph()
-  return g.status === 'ready' && g.teamId !== null && graphSignature(g.toGraph()) !== g.baseline
+  // A reference graph on view (?ref) is never saved.
+  return g.status === 'ready' && g.teamId !== null && g.reference === null &&
+    graphSignature(g.toGraph()) !== g.baseline
 }
 
 /** The status when nothing is scheduled: saved, or pending when edits are waiting. */
@@ -120,6 +122,7 @@ async function sync(teamId: string): Promise<void> {
     return
   }
   const idle = !inFlight && !debounceTimer && !retryTimer && !isDirty()
+  if (g.reference !== null) return // viewing a reference graph: "User defined" reloads it
   if (stored.version !== g.version && (g.locked || idle)) loadServerGraph(stored)
   else if (g.locked) g.setLocked(false)
   if (isDirty() && !debounceTimer) await save() // edits kept from before the lock

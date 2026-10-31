@@ -9,6 +9,8 @@ import { HelpPanel } from '../help/HelpPanel'
 import { Inspector } from '../inspector/Inspector'
 import { navigate, PATHS } from '../lib/navigation'
 import { Palette } from '../palette/Palette'
+import { REFERENCE_GRAPHS, referenceViewerEnabled } from '../lib/referenceGraphs'
+import { ReferencePicker } from './ReferencePicker'
 import { MetricsBar } from '../run/MetricsBar'
 import { RunControls } from '../run/RunControls'
 import { useCatalogStore } from '../store/catalogStore'
@@ -75,6 +77,8 @@ function Workbench({ team }: { team: TeamCredentials }) {
   const loadTeamGraph = useGraphStore((s) => s.loadTeamGraph)
   const addNode = useGraphStore((s) => s.addNode)
   const locked = useGraphStore((s) => s.locked)
+  const reference = useGraphStore((s) => s.reference)
+  const [showPicker] = useState(() => referenceViewerEnabled())
   const readOnly = useReadOnly()
   const signOut = useSessionStore((s) => s.signOut)
   const { screenToFlowPosition } = useReactFlow()
@@ -132,7 +136,8 @@ function Workbench({ team }: { team: TeamCredentials }) {
         <span className="app__status">
           {error ? `Could not reach the server: ${error}` : graphStatus === 'ready' ? <SaveIndicator /> : 'Loading…'}
         </span>
-        {graphStatus === 'ready' && <ResetButton disabled={locked} />}
+        {graphStatus === 'ready' && <ResetButton disabled={locked || reference !== null} />}
+        {graphStatus === 'ready' && showPicker && <ReferencePicker />}
         <span className="app__team">
           <strong>{team.teamName}</strong> · session {team.sessionCode}
         </span>
@@ -143,6 +148,12 @@ function Workbench({ team }: { team: TeamCredentials }) {
       {locked && (
         <div className="app__banner" role="alert">
           Pencils down: the facilitator has locked the graphs. You can look around, but not edit.
+        </div>
+      )}
+      {reference !== null && (
+        <div className="app__banner app__banner--reference" role="status">
+          Viewing the reference graph “{REFERENCE_GRAPHS[reference]?.label ?? reference}” (read-only, not
+          saved). Pick “User defined” to go back to your graph.
         </div>
       )}
       {graphStatus === 'ready' && (
@@ -162,7 +173,7 @@ function Workbench({ team }: { team: TeamCredentials }) {
         >
           {graphStatus === 'ready' && (
             <ErrorBoundary name="the canvas">
-              <Canvas />
+              <Canvas key={reference ?? 'user'} />
             </ErrorBoundary>
           )}
           <ErrorBoundary name="the help panel">

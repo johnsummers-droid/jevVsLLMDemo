@@ -2511,6 +2511,34 @@ Tasks (in order):
   Gemini, sees real latencies and costs, and the leaderboard orders the
   reference graphs as in mock mode.
 
+  T40 Reference graphs in the app (after T35-T39; user request 2026-10-31).
+      Replaces the temporary ?ref viewer below.
+      A. Facilitator "Show reference graph": a facilitator-only endpoint
+         (GET /api/sessions/{code}/reference-graphs/{name}) and a read-only
+         canvas on the facilitator page and /screen with a picker (starter,
+         weak, strong, escalate_all), for the debrief on the big screen.
+      C. Reveal to teams after the official run: once the session is locked
+         and its official run has finished, teams get "View reference graph"
+         read-only on their own canvas (the server refuses before that).
+      Both read the graphs from the server, so the answer key leaves the web
+      bundle. Remove web/src/lib/referenceGraphs.ts, pages/ReferencePicker.tsx
+      and their test when this lands.
+
+  TEMPORARY ?ref viewer (built 2026-10-31, user request; quick and dirty):
+      /team?ref shows a "Graph" drop-down in the header: "User defined" (the
+      team's graph) plus starter, weak, strong and escalate_all bundled from
+      shared/fixtures/graphs (escalate_all.json is now exported too).
+      Picking a reference flushes the team's graph to the server first (it
+      refuses if that save fails), then shows the reference read-only:
+      graphStore.reference is set, editing is refused, saveStore never saves
+      it (isDirty is false and the sync poll leaves it alone), Run and Reset
+      are disabled, a banner says what is shown. "User defined" reloads the
+      team's saved graph from the server. Anyone who adds ?ref sees the
+      answer key: hide or remove it before the workshop (BEFORE-WORKSHOP).
+      Canvas fix found on the way: the one-time fitView now waits until the
+      nodes React Flow has measured are this graph's (the provider outlives
+      the canvas, so useNodesInitialized could report the previous graph).
+
 Needed from the user before T36/T37 run live: all received 2026-10-31.
 GEMINI_API_KEY is in server/.env and in Render's dashboard,
 TYPESAFE_API_KEY in server/.env and in Render's dashboard (2026-10-31), the

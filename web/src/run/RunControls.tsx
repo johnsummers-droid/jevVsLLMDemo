@@ -37,6 +37,7 @@ export function RunControls({ teamId }: { teamId: string }) {
   const done = useRunStore((s) => s.requestsDone)
   const total = useRunStore((s) => s.metrics?.total)
   const locked = useGraphStore((s) => s.locked)
+  const reference = useGraphStore((s) => s.reference)
   const report = useValidationStore((s) => s.report)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -44,7 +45,9 @@ export function RunControls({ teamId }: { teamId: string }) {
   const errors = report ? countBySeverity(report.issues).error : 0
   const blocked = locked
     ? 'Graphs are locked.'
-    : connection !== 'live'
+    : reference !== null
+      ? 'Viewing a reference graph: pick "User defined" to run your own.'
+      : connection !== 'live'
       ? 'Connecting to live updates…'
       : errors > 0
         ? `Fix ${errors} error${errors === 1 ? '' : 's'} first (see Pipeline check).`
