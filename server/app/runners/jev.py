@@ -1,6 +1,12 @@
 from typing import Any
 
-from app.catalog.definitions.jev import JEV_INTENT_ROUTER, JEV_SAFETY_CHECK
+from app.catalog.definitions.jev import (
+    JEV_ESCALATION_GATE,
+    JEV_INTENT_ROUTER,
+    JEV_SAFETY_CHECK,
+    JEV_URGENCY_SCORER,
+    RUBRIC_LEVELS,
+)
 from app.engine.envelope import RunContext, merged_taint
 from app.models import NodeResult, PortValue
 from app.providers.base import JevQuestion
@@ -82,4 +88,65 @@ class SafetyCheckRunner:
             latency_ms=latency(definition, ctx, seed_params, inputs),
             cost_usd=definition.cost_model.cost_per_call_usd,
             decision={"is_safe": is_safe, "confidence": confidence, "flagged": flagged},
+        )
+
+
+class UrgencyScorerRunner:
+    async def run(self, inputs: dict[str, PortValue], params: dict[str, Any],
+                  ctx: RunContext) -> NodeResult:
+        definition = JEV_URGENCY_SCORER
+        if "text" not in inputs:
+            return missing_input(definition, "text")
+        levels = [str(level) for level in RUBRIC_LEVELS[params["rubric_levels"]]]
+        question = JevQuestion(id="urgency", kind="choice", prompt="How urgent is this?",
+                               options=levels)
+        [answer] = await ctx.jev.ask(inputs["text"].value, [question],
+                                     ctx.provider_call(definition.type, params, inputs))
+        score = int(answer.value)
+        return NodeResult(
+            outputs={
+                "score": PortValue(type="score", value=score),
+                "confidence": PortValue(type="probability", value=answer.confidence),
+            },
+            latency_ms=latency(definition, ctx, params, inputs),
+            cost_usd=definition.cost_model.cost_per_call_usd,
+            decision={"urgency": score, "confidence": answer.confidence},
+        )
+
+
+class EscalationGateRunner:
+    """A fixed rule over the signals that arrived: flag first, then confidence, then urgency.
+
+    With no live signal (each one sat on a branch that did not fire) it takes fallback_route.
+    """
+
+    async def run(self, inputs: dict[str, PortValue], params: dict[str, Any],
+                  ctx: RunContext) -> NodeResult:
+        definition = JEV_ESCALATION_GATE
+        if "text" not in inputs:
+            return missing_input(definition, "text")
+        flag, confidence, score = (inputs[k].value if k in inputs else None
+                                   for k in ("flag", "confidence", "score"))
+        if flag is None and confidence is None and score is None:
+            decision, reason = params["fallback_route"], "no_signal"
+        elif flag:
+            decision, reason = params["flag_routes_to"], "flag"
+        elif confidence is not None and confidence < params["min_confidence"]:
+            decision, reason = "human", "low_confidence"
+        elif score is not None and score > params["max_auto_urgency"]:
+            decision, reason = "human", "urgent"
+        else:
+            decision, reason = "auto", "ok"
+        branch = f"route.{decision}"
+        own_confidence = 1.0 if confidence is None else confidence
+        return NodeResult(
+            outputs={
+                "decision": PortValue(type="enum", value=decision),
+                "confidence": PortValue(type="probability", value=own_confidence),
+                branch: text(inputs["text"].value, inputs["text"].taint),
+            },
+            fired_branch=branch,
+            latency_ms=latency(definition, ctx, params, inputs),
+            cost_usd=definition.cost_model.cost_per_call_usd,
+            decision={"decision": decision, "reason": reason},
         )

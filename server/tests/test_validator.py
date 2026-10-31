@@ -27,8 +27,7 @@ ERROR_CODES = {
 # invalid-<code>.json -> the exact set of error codes it must produce. A graph with no
 # source always leaves some required input unconnected, hence the second code there.
 FIXTURE_ERRORS = {
-    code: {code} for code in ERROR_CODES
-    if code not in {IssueCode.ENUM_VALUES_MISMATCH, IssueCode.GATE_NEEDS_SIGNAL}
+    code: {code} for code in ERROR_CODES if code != IssueCode.ENUM_VALUES_MISMATCH
 }
 FIXTURE_ERRORS[IssueCode.NO_SOURCE] = {IssueCode.NO_SOURCE, IssueCode.MISSING_REQUIRED_INPUT}
 
@@ -156,6 +155,7 @@ def _extra_definitions() -> dict[str, NodeDefinition]:
         outputs=[Port(id="level", label="Level", type="enum", enum_values=["low", "high", "p0"]),
                  Port(id="raw", label="Raw", type="any")],
         params=[], cost_model=cost)
+    # The real gate has no enum input, so ENUM_VALUES_MISMATCH needs a test-only one.
     defs["escalation_gate"] = NodeDefinition(
         type="escalation_gate", title="Gate", category="jev", description="test",
         inputs=[Port(id="text", label="Text", type="text"),
@@ -182,10 +182,19 @@ def test_enum_values_mismatch() -> None:
     assert "p0" in report.issues[0].message
 
 
+def _real_gate_graph(*extra_links: str) -> Graph:
+    nodes = {**MSG_RESP, "urgency": "jev_urgency_scorer", "gate": "jev_escalation_gate"}
+    links = ["msg.text>urgency.text", "msg.text>gate.text", "gate.route.auto>resp.text",
+             "gate.route.human>resp.text", "gate.route.fallback>resp.text", *extra_links]
+    return _graph(nodes, links)
+
+
 def test_gate_needs_signal() -> None:
-    report = validate_graph(_gate_graph(), _extra_definitions())
+    report = validate_graph(_real_gate_graph())
     assert _codes(report, "error") == {IssueCode.GATE_NEEDS_SIGNAL}
     assert _issues(report, IssueCode.GATE_NEEDS_SIGNAL) == [("gate", None, None)]
+    connected = validate_graph(_real_gate_graph("urgency.score>gate.score"))
+    assert _codes(connected, "error") == set()
 
 
 def test_any_source_is_a_warning() -> None:

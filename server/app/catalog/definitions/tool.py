@@ -52,4 +52,21 @@ KNOWLEDGE_LOOKUP = NodeDefinition(
     cost_model=CostModel(latency_ms=25, latency_jitter_ms=5, cost_per_call_usd=0.00001),
 )
 
-DEFINITIONS = [POLICY_ENGINE, KNOWLEDGE_LOOKUP]
+PII_REDACTOR = NodeDefinition(
+    type="pii_redactor",
+    title="PII redactor",
+    category="tool",
+    description="Replaces personal data (emails, phone numbers, ...) in the text with "
+                "placeholders.",
+    inputs=[Port(id="text", label="Text", type="text", multi=True)],
+    outputs=[Port(id="text", label="Text", type="text")],
+    params=[
+        MultiEnumParam(key="entity_types", label="Entity types",
+                       default=["email", "phone", "card_number"],
+                       options=["email", "phone", "card_number", "ssn"], min_selected=0),
+    ],
+    cost_model=CostModel(latency_ms=8),
+    mvp=False,
+)
+
+DEFINITIONS = [POLICY_ENGINE, KNOWLEDGE_LOOKUP, PII_REDACTOR]

@@ -8,17 +8,26 @@ from app.models import NodeDefinition, Port
 from app.runners.base import NodeRunner
 from app.runners.human import HumanReviewRunner
 from app.runners.io import CustomerMessageRunner, CustomerResponseRunner
-from app.runners.jev import IntentRouterRunner, SafetyCheckRunner
-from app.runners.llm import AnswerGeneratorRunner
-from app.runners.tool import KnowledgeLookupRunner, PolicyEngineRunner
+from app.runners.jev import (
+    EscalationGateRunner,
+    IntentRouterRunner,
+    SafetyCheckRunner,
+    UrgencyScorerRunner,
+)
+from app.runners.llm import AnswerGeneratorRunner, SummarizerRunner
+from app.runners.tool import KnowledgeLookupRunner, PiiRedactorRunner, PolicyEngineRunner
 
 RUNNERS: dict[str, NodeRunner] = {
     "customer_message": CustomerMessageRunner(),
     "jev_intent_router": IntentRouterRunner(),
     "jev_safety_check": SafetyCheckRunner(),
+    "jev_urgency_scorer": UrgencyScorerRunner(),
+    "jev_escalation_gate": EscalationGateRunner(),
     "llm_answer_generator": AnswerGeneratorRunner(),
+    "llm_summarizer": SummarizerRunner(),
     "policy_engine": PolicyEngineRunner(),
     "knowledge_lookup": KnowledgeLookupRunner(),
+    "pii_redactor": PiiRedactorRunner(),
     "human_review_queue": HumanReviewRunner(),
     "customer_response": CustomerResponseRunner(),
 }

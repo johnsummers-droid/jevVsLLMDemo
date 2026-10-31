@@ -1,8 +1,9 @@
 """Deterministic, scenario-aware mock of the Jev decision API (plan1.txt 3b).
 
 Answers depend only on the ticket's labels, the input taint and call.rng, so they are
-reproducible. Two questions are understood: "intent" (choice over the allowed intents) and
-"safety" (choice over "safe" plus the enabled categories).
+reproducible. Three questions are understood: "intent" (choice over the allowed intents),
+"safety" (choice over "safe" plus the enabled categories) and "urgency" (choice over the rubric's
+levels, as strings).
 """
 
 import random
@@ -13,6 +14,9 @@ from app.providers.base import JevAnswer, JevQuestion, ProviderCall
 # Chance the router picks the expected intent (when it is allowed), by ticket category.
 INTENT_ACCURACY = {"routine": 0.95, "complex": 0.85, "ambiguous": 0.55,
                    "policy_violation": 0.85, "prompt_injection": 0.85}
+# Chance the urgency scorer gives the ticket's level (else one level off), by category.
+URGENCY_ACCURACY = {"routine": 0.9, "complex": 0.8, "ambiguous": 0.6,
+                    "policy_violation": 0.8, "prompt_injection": 0.8}
 SAFETY_RECALL = 0.92
 SAFETY_FALSE_POSITIVE = 0.03
 # Which safety category a risky ticket belongs to. Injection is detected through the input's
@@ -53,6 +57,8 @@ class MockJevProvider:
                 answers.append(self._intent(question, call))
             elif question.id == "safety":
                 answers.append(self._safety(question, call))
+            elif question.id == "urgency":
+                answers.append(self._urgency(question, call))
             else:
                 raise ValueError(f"mock Jev does not understand question {question.id!r}")
         return answers
@@ -89,3 +95,19 @@ class MockJevProvider:
         return JevAnswer(question_id=question.id, value=value,
                          probabilities=Distribution(probs=probs),
                          confidence=max(p_unsafe, 1 - p_unsafe))
+
+    def _urgency(self, question: JevQuestion, call: ProviderCall) -> JevAnswer:
+        rng, ticket = call.rng, call.ticket
+        levels = sorted(int(o) for o in question.options)
+        # The rubric's level closest to the truth, rounding up (2 -> 3 on a 1/3/5 rubric).
+        truth = min(levels, key=lambda level: (abs(level - ticket.urgency), -level))
+        correct = rng.random() < URGENCY_ACCURACY[ticket.category]
+        index = levels.index(truth)
+        if not correct:
+            neighbours = [i for i in (index - 1, index + 1) if 0 <= i < len(levels)]
+            index = rng.choice(neighbours)
+        value = str(levels[index])
+        confidence = _confidence(rng, correct, ticket.category == "ambiguous")
+        probs = _distribution(rng, question.options, value, confidence)
+        return JevAnswer(question_id=question.id, value=value, probabilities=probs,
+                         confidence=probs.probs[value])

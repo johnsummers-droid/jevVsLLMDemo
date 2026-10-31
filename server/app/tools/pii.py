@@ -19,3 +19,15 @@ def find_pii(text: str, kinds: list[PiiKind] | None = None) -> dict[PiiKind, lis
         if matches := PII_PATTERNS[kind].findall(text):
             found[kind] = matches
     return found
+
+
+# Most specific first, so an SSN is not taken for part of a card or phone number.
+REDACTION_ORDER: tuple[PiiKind, ...] = ("ssn", "card_number", "phone", "email")
+
+
+def redact_pii(text: str, kinds: list[PiiKind]) -> str:
+    """Replaces every match of the given kinds with a placeholder such as "[email]"."""
+    for kind in REDACTION_ORDER:
+        if kind in kinds:
+            text = PII_PATTERNS[kind].sub(f"[{kind}]", text)
+    return text

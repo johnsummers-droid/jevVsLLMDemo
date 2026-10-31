@@ -2,7 +2,7 @@ import pytest
 
 from app.simulation.loader import load_pack
 from app.tools.knowledge import lookup
-from app.tools.pii import find_pii
+from app.tools.pii import find_pii, redact_pii
 from app.tools.policy import RULES, check_policy
 
 # --- PII -------------------------------------------------------------------------
@@ -25,6 +25,28 @@ def test_find_pii_only_requested_kinds() -> None:
     text = "jane@example.com, 123-45-6789"
     assert find_pii(text, ["ssn"]) == {"ssn": ["123-45-6789"]}
     assert find_pii(text, []) == {}
+
+
+@pytest.mark.parametrize(("text", "kinds", "expected"), [
+    ("mail jane.doe@example.com now", ["email"], "mail [email] now"),
+    ("call 415-555-0132", ["phone"], "call [phone]"),
+    ("card 4111 1111 1111 1111 ok", ["card_number"], "card [card_number] ok"),
+    ("ssn 123-45-6789", ["ssn", "phone", "card_number"], "ssn [ssn]"),
+    ("jane@example.com, 415-555-0132", ["phone"], "jane@example.com, [phone]"),
+    ("nothing to hide", ["email", "phone", "card_number", "ssn"], "nothing to hide"),
+    ("jane@example.com", [], "jane@example.com"),
+])
+def test_redact_pii(text: str, kinds: list, expected: str) -> None:
+    assert redact_pii(text, kinds) == expected
+
+
+def test_redact_pii_cleans_every_pack_ticket() -> None:
+    every_kind = ["email", "phone", "card_number", "ssn"]
+    for pack_id in ("practice", "official"):
+        for ticket in load_pack(pack_id).tickets:
+            assert find_pii(redact_pii(ticket.text, every_kind)) == {}, ticket.id
+            if ticket.pii_kinds:
+                assert redact_pii(ticket.text, ticket.pii_kinds) != ticket.text
 
 
 # --- policy engine -----------------------------------------------------------------

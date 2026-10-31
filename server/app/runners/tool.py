@@ -3,12 +3,14 @@ from typing import Any
 from app.catalog.definitions.tool import (
     KNOWLEDGE_LOOKUP,
     KNOWLEDGE_LOOKUP_PER_DOC_MS,
+    PII_REDACTOR,
     POLICY_ENGINE,
 )
 from app.engine.envelope import RunContext, merged_taint
 from app.models import NodeResult, PortValue
 from app.runners.base import latency, missing_input, text
 from app.tools.knowledge import lookup
+from app.tools.pii import find_pii, redact_pii
 from app.tools.policy import check_policy
 
 
@@ -51,4 +53,26 @@ class KnowledgeLookupRunner:
             latency_ms=latency(definition, ctx, params, inputs, median_ms=median),
             cost_usd=definition.cost_model.cost_per_call_usd,
             decision={"docs": [d.id for d in docs.docs]},
+        )
+
+
+class PiiRedactorRunner:
+    """Redacts the selected kinds. The "pii" taint goes only when no PII of any kind is left."""
+
+    async def run(self, inputs: dict[str, PortValue], params: dict[str, Any],
+                  ctx: RunContext) -> NodeResult:
+        definition = PII_REDACTOR
+        if "text" not in inputs:
+            return missing_input(definition, "text")
+        message = inputs["text"]
+        redacted = redact_pii(message.value, params["entity_types"])
+        taint = merged_taint(inputs)
+        if not find_pii(redacted):
+            taint.discard("pii")
+        removed = sorted(k for k in find_pii(message.value, params["entity_types"]))
+        return NodeResult(
+            outputs={"text": text(redacted, taint)},
+            latency_ms=latency(definition, ctx, params, inputs),
+            cost_usd=definition.cost_model.cost_per_call_usd,
+            decision={"redacted": removed},
         )

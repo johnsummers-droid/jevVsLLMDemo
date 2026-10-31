@@ -31,4 +31,22 @@ LLM_ANSWER_GENERATOR = NodeDefinition(
     ),
 )
 
-DEFINITIONS = [LLM_ANSWER_GENERATOR]
+LLM_SUMMARIZER = NodeDefinition(
+    type="llm_summarizer",
+    title="LLM summarizer",
+    category="llm",
+    description="Shortens the message so later LLM calls read less. Details can get lost.",
+    inputs=[Port(id="text", label="Text", type="text", multi=True)],
+    outputs=[Port(id="text", label="Text", type="text")],
+    params=[
+        EnumParam(key="model", label="Model tier", default="small", options=["small", "large"]),
+        IntParam(key="max_tokens", label="Max tokens", default=128, min=32, max=256),
+    ],
+    cost_model=CostModel(
+        latency_ms=TIER_LATENCY_MS["small"]["ttft_ms"],
+        per_token_latency_ms=TIER_LATENCY_MS["small"]["per_token_ms"],
+    ),
+    mvp=False,
+)
+
+DEFINITIONS = [LLM_ANSWER_GENERATOR, LLM_SUMMARIZER]

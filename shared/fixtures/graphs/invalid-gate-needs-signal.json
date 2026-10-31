@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "nodes": [
+    {
+      "id": "msg",
+      "type": "customer_message",
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "params": {
+        "traffic_mix": "realistic",
+        "language": "en",
+        "attack_rate": 0.1
+      }
+    },
+    {
+      "id": "resp",
+      "type": "customer_response",
+      "position": {
+        "x": 300,
+        "y": 0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      }
+    },
+    {
+      "id": "urgency",
+      "type": "jev_urgency_scorer",
+      "position": {
+        "x": 600,
+        "y": 0
+      },
+      "params": {
+        "rubric_levels": "5"
+      }
+    },
+    {
+      "id": "gate",
+      "type": "jev_escalation_gate",
+      "position": {
+        "x": 900,
+        "y": 0
+      },
+      "params": {
+        "min_confidence": 0.7,
+        "max_auto_urgency": 3,
+        "flag_routes_to": "human",
+        "fallback_route": "human"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "msg.text>urgency.text",
+      "source": "msg",
+      "sourcePort": "text",
+      "target": "urgency",
+      "targetPort": "text"
+    },
+    {
+      "id": "msg.text>gate.text",
+      "source": "msg",
+      "sourcePort": "text",
+      "target": "gate",
+      "targetPort": "text"
+    },
+    {
+      "id": "gate.route.auto>resp.text",
+      "source": "gate",
+      "sourcePort": "route.auto",
+      "target": "resp",
+      "targetPort": "text"
+    },
+    {
+      "id": "gate.route.human>resp.text",
+      "source": "gate",
+      "sourcePort": "route.human",
+      "target": "resp",
+      "targetPort": "text"
+    },
+    {
+      "id": "gate.route.fallback>resp.text",
+      "source": "gate",
+      "sourcePort": "route.fallback",
+      "target": "resp",
+      "targetPort": "text"
+    }
+  ]
+}

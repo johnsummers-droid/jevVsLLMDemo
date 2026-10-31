@@ -11,8 +11,9 @@ from app.engine.envelope import make_context
 from app.engine.latency import sample_latency
 from app.engine.seeding import derive_seed
 from app.models import NodeResult, PortValue, Ticket
-from app.providers.mock_llm import MARKERS
+from app.providers.mock_llm import MARKERS, SUMMARY_TAG
 from app.simulation.loader import PACK_IDS, load_pack
+from app.tools.pii import find_pii
 from app.tools.policy import check_policy
 
 TICKETS = {t.id: t for pack_id in PACK_IDS for t in load_pack(pack_id).tickets}
@@ -353,3 +354,129 @@ def test_customer_response_records_delivery() -> None:
     value = PortValue(type="text", value="hi", taint={"pii"})
     result = run("customer_response", ticket, inputs={"text": value})
     assert result.outputs == {} and result.decision == {"delivered": True, "taint": ["pii"]}
+
+
+# --- M5 nodes (T25) --------------------------------------------------------------------
+
+
+def test_urgency_accuracy_follows_ticket_category() -> None:
+    for category, expected in [("routine", 0.9), ("complex", 0.8), ("ambiguous", 0.6)]:
+        tickets = [t for t in TICKETS.values() if t.category == category]
+        scores = [(t, run("jev_urgency_scorer", t, seed=s).outputs["score"].value)
+                  for t in tickets for s in SEEDS]
+        assert rate([score == t.urgency for t, score in scores]) == pytest.approx(expected,
+                                                                                  abs=0.05)
+        assert all(abs(score - t.urgency) <= 1 for t, score in scores)
+
+
+def test_urgency_three_level_rubric() -> None:
+    for ticket in TICKETS.values():
+        for seed in range(20):
+            result = run("jev_urgency_scorer", ticket, params={"rubric_levels": "3"}, seed=seed)
+            assert result.outputs["score"].value in (1, 3, 5)
+            assert 0 <= result.outputs["confidence"].value <= 1
+
+
+def _gate(signals: dict[str, PortValue], **params: Any) -> NodeResult:
+    ticket = TICKETS["p-01"]
+    return run("jev_escalation_gate", ticket, inputs={"text": message(ticket), **signals},
+               params=params)
+
+
+def _p(value: float) -> PortValue:
+    return PortValue(type="probability", value=value)
+
+
+def _score(value: int) -> PortValue:
+    return PortValue(type="score", value=value)
+
+
+def _flag(value: bool) -> PortValue:
+    return PortValue(type="boolean", value=value)
+
+
+@pytest.mark.parametrize(("signals", "params", "branch"), [
+    ({}, {}, "route.human"),
+    ({}, {"fallback_route": "auto"}, "route.auto"),
+    ({"confidence": _p(0.9)}, {}, "route.auto"),
+    ({"confidence": _p(0.69)}, {}, "route.human"),
+    ({"confidence": _p(0.69)}, {"min_confidence": 0.5}, "route.auto"),
+    ({"score": _score(3)}, {}, "route.auto"),
+    ({"score": _score(4)}, {}, "route.human"),
+    ({"score": _score(4)}, {"max_auto_urgency": 4}, "route.auto"),
+    ({"flag": _flag(True)}, {}, "route.human"),
+    ({"flag": _flag(True)}, {"flag_routes_to": "fallback"}, "route.fallback"),
+    ({"flag": _flag(False), "confidence": _p(0.9), "score": _score(2)}, {}, "route.auto"),
+    ({"flag": _flag(True), "confidence": _p(0.9)}, {"flag_routes_to": "fallback"},
+     "route.fallback"),
+    ({"confidence": _p(0.9), "score": _score(5)}, {}, "route.human"),
+])
+def test_escalation_gate_truth_table(signals: dict[str, PortValue], params: dict[str, Any],
+                                     branch: str) -> None:
+    result = _gate(signals, **params)
+    assert result.fired_branch == branch
+    assert result.outputs["decision"].value == branch.removeprefix("route.")
+    assert result.outputs[branch].value == message(TICKETS["p-01"]).value
+
+
+def test_escalation_gate_reports_the_input_confidence_and_keeps_taint() -> None:
+    assert _gate({"confidence": _p(0.8)}).outputs["confidence"].value == 0.8
+    assert _gate({"score": _score(1)}).outputs["confidence"].value == 1.0
+    tainted = PortValue(type="text", value="x", taint={"injection"})
+    result = run("jev_escalation_gate", TICKETS["p-01"], inputs={"text": tainted})
+    assert result.outputs[result.fired_branch].taint == {"injection"}
+
+
+def test_pii_redactor_removes_pii_and_its_taint() -> None:
+    every_kind = ["email", "phone", "card_number", "ssn"]
+    for ticket in (t for t in TICKETS.values() if t.contains_pii):
+        tainted = PortValue(type="text", value=ticket.text, taint={"pii", "misrouted"})
+        out = run("pii_redactor", ticket, inputs={"text": tainted},
+                  params={"entity_types": every_kind}).outputs["text"]
+        assert find_pii(out.value) == {}
+        assert out.taint == {"misrouted"}
+        # Without the ticket's kinds the PII stays, and so does the taint.
+        others = [k for k in every_kind if k not in ticket.pii_kinds]
+        kept = run("pii_redactor", ticket, inputs={"text": tainted},
+                   params={"entity_types": others}).outputs["text"]
+        assert kept.value == ticket.text and "pii" in kept.taint
+
+
+def test_llm_never_echoes_redacted_pii() -> None:
+    every_kind = ["email", "phone", "card_number", "ssn"]
+    for ticket in (t for t in TICKETS.values() if t.contains_pii):
+        redacted = run("pii_redactor", ticket, params={"entity_types": every_kind})
+        for seed in SEEDS:
+            out = run("llm_answer_generator", ticket, inputs=redacted.outputs,
+                      seed=seed).outputs["text"]
+            assert "pii" not in out.taint
+
+
+def test_summarizer_shortens_and_keeps_taint_and_pii() -> None:
+    for ticket in TICKETS.values():
+        tainted = PortValue(type="text", value=ticket.text, taint={"injection"})
+        result = run("llm_summarizer", ticket, inputs={"text": tainted})
+        out = result.outputs["text"]
+        assert out.value.startswith(SUMMARY_TAG)
+        assert out.taint == {"injection"}
+        assert len(out.value.split()) <= max(len(ticket.text.split()), 6) + 1
+        assert find_pii(out.value).keys() >= find_pii(ticket.text, ticket.pii_kinds).keys()
+        assert result.tokens_in and result.tokens_out and result.cost_usd > 0
+
+
+def test_summarized_input_costs_less_but_loses_grounding() -> None:
+    complex_tickets = [t for t in TICKETS.values() if t.needs_grounding]
+
+    def answers(summarize: bool) -> list[NodeResult]:
+        results = []
+        for t in complex_tickets:
+            text = run("llm_summarizer", t).outputs["text"] if summarize else message(t)
+            results += [run("llm_answer_generator", t, inputs={"text": text}, seed=s)
+                        for s in SEEDS]
+        return results
+
+    plain, summarized = answers(False), answers(True)
+    assert statistics.mean(r.tokens_in for r in summarized) < statistics.mean(
+        r.tokens_in for r in plain)
+    assert rate(["ungrounded" in r.outputs["text"].taint for r in summarized]) == pytest.approx(
+        0.65, abs=0.06)

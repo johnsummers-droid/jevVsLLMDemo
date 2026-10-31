@@ -34,13 +34,15 @@ MVP_TYPES = {
     "human_review_queue",
     "customer_response",
 }
+M5_TYPES = {"jev_urgency_scorer", "jev_escalation_gate", "llm_summarizer", "pii_redactor"}
+ALL_TYPES = MVP_TYPES | M5_TYPES
 
 # --- catalog self-consistency --------------------------------------------------
 
 
-def test_catalog_has_the_eight_mvp_nodes() -> None:
-    assert {d.type for d in catalog()} == MVP_TYPES
-    assert all(d.mvp for d in catalog())
+def test_catalog_has_the_mvp_and_m5_nodes() -> None:
+    assert {d.type for d in catalog()} == ALL_TYPES
+    assert {d.type for d in catalog() if d.mvp} == MVP_TYPES
 
 
 @pytest.mark.parametrize("definition", catalog(), ids=lambda d: d.type)
@@ -67,7 +69,7 @@ def test_decision_nodes_have_branches() -> None:
 
 
 def test_every_node_type_has_a_runner() -> None:
-    assert set(REGISTRY) == set(RUNNERS) == MVP_TYPES
+    assert set(REGISTRY) == set(RUNNERS) == ALL_TYPES
     for node_type, entry in REGISTRY.items():
         assert entry.runner is RUNNERS[node_type]
 
@@ -171,7 +173,7 @@ def test_get_catalog() -> None:
     assert response.status_code == 200
     body = response.json()
     assert list(body) == ["nodes"]
-    assert len(body["nodes"]) == len(MVP_TYPES)
+    assert len(body["nodes"]) == len(ALL_TYPES)
     definitions = [NodeDefinition.model_validate(d) for d in body["nodes"]]
     assert definitions == catalog()
     router = next(d for d in body["nodes"] if d["type"] == "jev_intent_router")

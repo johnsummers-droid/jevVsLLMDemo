@@ -24,7 +24,7 @@ class ProviderCall:
 
 
 class JevQuestion(CamelModel):
-    id: str  # "intent" | "safety"
+    id: str  # "intent" | "safety" | "urgency"
     kind: Literal["choice", "boolean"]
     prompt: str
     options: list[str] = Field(default_factory=list)
@@ -48,6 +48,9 @@ class JevProvider(Protocol):
                   call: ProviderCall) -> list[JevAnswer]: ...
 
 
+LLMTask = Literal["answer", "summarize"]
+
+
 @dataclass(frozen=True)
 class LLMRequest:
     model: str  # tier: "small" | "large" (A2)
@@ -56,6 +59,7 @@ class LLMRequest:
     prompt: str
     text: str
     context: Docs | None = None
+    task: LLMTask = "answer"
 
 
 @dataclass(frozen=True)
