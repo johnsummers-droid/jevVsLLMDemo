@@ -4,7 +4,6 @@ import {
   Background,
   Controls,
   ReactFlow,
-  useNodesInitialized,
   useReactFlow,
   useStore,
   type Connection,
@@ -45,15 +44,20 @@ export function Canvas() {
   useEffect(() => startPulses(), [])
 
   // The fitView prop can run before every node is measured and frame only the first one, so fit
-  // once all nodes have their size.
-  const nodesInitialized = useNodesInitialized()
+  // once (per mount) when all nodes have their size. React Flow's store outlives this component
+  // (the provider is on the page), so after a remount with another graph (the ?ref viewer) it can
+  // still report the previous graph as measured: wait until the measured nodes are this graph's.
+  const graphIds = useGraphStore((s) => s.nodes.map((n) => n.id).join('|'))
+  const measured = useStore(
+    (s) => s.nodes.map((n) => n.id).join('|') === graphIds && s.nodes.every((n) => n.measured?.width),
+  )
   const fitted = useRef(false)
   useEffect(() => {
-    if (nodesInitialized && !fitted.current) {
+    if (measured && !fitted.current) {
       fitted.current = true
       void fitView()
     }
-  }, [nodesInitialized, fitView])
+  }, [measured, fitView])
 
   useEffect(() => {
     if (!notice) return
