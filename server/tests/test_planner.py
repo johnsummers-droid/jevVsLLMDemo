@@ -60,25 +60,34 @@ def test_branch_conditions_on_a_router() -> None:
     edges = _edges("src.x>r.in", "r.route.a>x.in", "r.route.b>y.in", "x.out>m.in", "y.out>m.in",
                    "src.x>m.in")
     conds = branch_conditions(["src", "r", "x", "y", "m"], edges, _is_branch)
-    assert conds["r.route.a>x.in"] == {("r", "route.a")}
-    assert conds["x.out>m.in"] == {("r", "route.a")}
-    assert conds["y.out>m.in"] == {("r", "route.b")}
-    assert conds["src.x>m.in"] == frozenset()
+    assert conds["r.route.a>x.in"] == {"r": {"route.a"}}
+    assert conds["x.out>m.in"] == {"r": {"route.a"}}
+    assert conds["y.out>m.in"] == {"r": {"route.b"}}
+    assert conds["src.x>m.in"] == {}
     assert mutually_exclusive(conds["x.out>m.in"], conds["y.out>m.in"])
     assert not mutually_exclusive(conds["x.out>m.in"], conds["src.x>m.in"])
 
 
-def test_merge_forgets_branch_conditions() -> None:
-    # m runs on either branch, so whatever leaves m carries no condition.
-    edges = _edges("r.route.a>m.in", "r.route.b>m.in", "m.out>z.in", "r.route.a>z.in")
+def test_merge_keeps_the_union_of_branches() -> None:
+    # m runs on branch a or b, so it overlaps a but excludes c.
+    edges = _edges("r.route.a>m.in", "r.route.b>m.in", "m.out>z.in", "r.route.a>z.in",
+                   "r.route.c>z.in")
     conds = branch_conditions(["r", "m", "z"], edges, _is_branch)
-    assert conds["m.out>z.in"] == frozenset()
+    assert conds["m.out>z.in"] == {"r": {"route.a", "route.b"}}
     assert not mutually_exclusive(conds["m.out>z.in"], conds["r.route.a>z.in"])
+    assert mutually_exclusive(conds["m.out>z.in"], conds["r.route.c>z.in"])
+
+
+def test_merge_with_an_unconditional_edge_forgets_the_branch() -> None:
+    edges = _edges("src.x>r.in", "r.route.a>m.in", "src.x>m.in", "m.out>z.in", "r.route.b>z.in")
+    conds = branch_conditions(["src", "r", "m", "z"], edges, _is_branch)
+    assert conds["m.out>z.in"] == {}
+    assert not mutually_exclusive(conds["m.out>z.in"], conds["r.route.b>z.in"])
 
 
 def test_nested_branches() -> None:
     edges = _edges("r.route.a>s.in", "s.route.p>x.in", "s.route.q>y.in", "r.route.b>z.in")
     conds = branch_conditions(["r", "s", "x", "y", "z"], edges, _is_branch)
-    assert conds["s.route.p>x.in"] == {("r", "route.a"), ("s", "route.p")}
+    assert conds["s.route.p>x.in"] == {"r": {"route.a"}, "s": {"route.p"}}
     assert mutually_exclusive(conds["s.route.p>x.in"], conds["s.route.q>y.in"])
     assert mutually_exclusive(conds["s.route.p>x.in"], conds["r.route.b>z.in"])
