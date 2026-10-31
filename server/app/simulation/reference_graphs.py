@@ -1,6 +1,6 @@
 """Reference graphs for the golden tests and the facilitator demo (plan1.txt 3c).
 
-  weak     the default graph plus a second LLM pass and no policy engine
+  weak     the default graph without human review, plus a second LLM pass
   strong   safety check -> router -> {knowledge lookup + small LLM -> policy engine};
            unsafe, low-confidence and blocked requests go to human review
   escalate_all   every request goes to a human; checks that the cost penalty bites

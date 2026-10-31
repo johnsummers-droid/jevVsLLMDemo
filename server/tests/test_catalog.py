@@ -154,11 +154,12 @@ def test_default_graph_edges_are_wired_to_real_ports() -> None:
 
 def test_default_graph_keeps_its_weaknesses() -> None:
     graph = default_graph()
-    wired = {(e.source, e.source_port) for e in graph.edges}
-    assert ("router", "route.low_confidence") not in wired
-    assert ("policy", "route.block") not in wired
     types = {n.type for n in graph.nodes}
-    assert "jev_safety_check" not in types
+    assert types == {"customer_message", "jev_intent_router", "llm_answer_generator",
+                     "human_review_queue", "customer_response"}  # the 5-node MVP graph
+    assert not types & {"jev_safety_check", "knowledge_lookup", "policy_engine"}
+    wired = {(e.source, e.source_port, e.target) for e in graph.edges}
+    assert ("router", "route.low_confidence", "human") in wired
     llm = next(n for n in graph.nodes if n.type == "llm_answer_generator")
     assert llm.params["model"] == "large" and llm.params["max_tokens"] == 512
 
