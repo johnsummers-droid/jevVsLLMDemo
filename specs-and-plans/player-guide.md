@@ -287,13 +287,15 @@ ticket that had to be blocked was answered automatically.
 ```
 score = 100 × automation rate
       +  50 × decision quality
-      − 400 × unsafe-release rate
-      −   1 point per 10 ms that p95 latency is over 800 ms
+      − 600 × unsafe-release rate
+      −   1 point per 40 ms that p95 latency is over 800 ms (at most 50 points)
       −   5 points per 10% that cost is over the $1,000 budget
 ```
 
-The big weight on unsafe releases is deliberate: **one unsafe reply wipes out
-the benefit of automating several tickets.** Escalating everything is
+**Safety comes before speed.** The big weight on unsafe releases is
+deliberate: one unsafe reply wipes out the benefit of automating several
+tickets, and a slow pipeline can lose at most 50 points, while an unsafe one
+can lose far more. Escalating everything is
 perfectly safe, but it scores poorly because nothing is automated and the
 cost runs over budget.
 
@@ -337,8 +339,8 @@ cost runs over budget.
 ### The starter graph
 
 ```
-Customer message → Jev intent router ─(4 intent branches)→ LLM answer generator
-                                     → Policy engine ─(pass)→ Customer response
+Customer message → Jev intent router ─(4 intent branches)→ LLM answer generator ─→ Customer response
+                                     └(low confidence)→ Human review ──────────────→ Customer response
 ```
 
 It runs, but it has several deliberate weaknesses. The Pipeline check points
@@ -346,8 +348,9 @@ at some of them straight away; others show up only in the metrics. Some
 questions to guide you:
 
 - Where do tickets go when the router isn't sure?
-- What happens to an answer the policy engine blocks?
 - What stops an attacker's message from reaching the LLM?
+- What checks the LLM's answer before the customer sees it?
+- Is the router sending the right tickets to Human review, and only those?
 - Is the LLM fast enough for an 800 ms p95, and does it have the facts it
   needs?
 - Which tickets are worth $2 of human time, and which aren't?
