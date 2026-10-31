@@ -125,13 +125,12 @@ fraction of a cent.
 - Inputs: `text` (multi) and an optional `context` (json docs from Knowledge
   lookup).
 - Output: `text`, the drafted reply.
-- Params: **Model tier** (small or large), **Temperature**, **Max tokens**,
+- Params: **Model tier** (small or large), **Max tokens**,
   **System prompt** (up to 500 characters).
 - Assumptions:
   - Latency is time-to-first-token (small 150 ms, large 350 ms) plus a
     per-token time (small 4 ms, large 10 ms) for every token written. Long
-    answers from the large model are slow. Max tokens caps the length, and
-    higher temperature makes answers wordier.
+    answers from the large model are slow. Max tokens caps the length.
   - The large model gives better answers on complex tickets.
   - LLMs can be manipulated. If a prompt-injection message reaches the LLM,
     it may follow the attacker's instructions (the small model more often
