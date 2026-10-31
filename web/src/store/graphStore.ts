@@ -30,6 +30,13 @@ interface GraphState {
   teamId: string | null
   version: number
   locked: boolean
+  /**
+   * TEMPORARY (?ref viewer): the reference graph shown instead of the team's graph, or null.
+   * While set, the graph is read-only and never saved; setStoredGraph clears it.
+   */
+  reference: string | null
+  /** Shows a reference graph read-only in place of the team's graph (the caller saves first). */
+  showReference: (name: string, graph: Graph) => void
   /** graphSignature of the graph as last loaded or saved; the graph has unsaved changes when it differs. */
   baseline: string | null
   setNotice: (notice: string | null) => void
@@ -108,7 +115,7 @@ export const useGraphStore = create<GraphState>()((set, get) => {
     }
   }
 
-  const editable = () => !get().locked
+  const editable = () => !get().locked && get().reference === null
 
   return {
     status: 'empty',
@@ -119,6 +126,7 @@ export const useGraphStore = create<GraphState>()((set, get) => {
     teamId: null,
     version: 0,
     locked: false,
+    reference: null,
     baseline: null,
 
     setNotice: (notice) => set({ notice }),
@@ -130,7 +138,13 @@ export const useGraphStore = create<GraphState>()((set, get) => {
 
     setStoredGraph: (stored) => {
       get().setGraph(stored.graph)
-      set({ teamId: stored.teamId, version: stored.version, locked: stored.locked })
+      set({ teamId: stored.teamId, version: stored.version, locked: stored.locked, reference: null })
+    },
+
+    showReference: (name, graph) => {
+      // reference first, so autosave never sees the reference graph as an unsaved edit.
+      set({ reference: name })
+      get().setGraph(graph)
     },
 
     markSaved: (version, signature) => set({ version, baseline: signature }),
@@ -151,6 +165,7 @@ export const useGraphStore = create<GraphState>()((set, get) => {
         teamId: null,
         version: 0,
         locked: false,
+        reference: null,
         baseline: null,
       }),
 

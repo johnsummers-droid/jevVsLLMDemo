@@ -189,8 +189,8 @@ export function useRunPlaying(): boolean {
   return useRunStore((s) => s.run?.status === 'running' || s.run?.status === 'pending')
 }
 
-/** Editing is off while the graph is locked or a run plays. */
+/** Editing is off while the graph is locked, a run plays, or a reference graph is on view. */
 export function useReadOnly(): boolean {
-  const locked = useGraphStore((s) => s.locked)
+  const locked = useGraphStore((s) => s.locked || s.reference !== null)
   return useRunPlaying() || locked
 }

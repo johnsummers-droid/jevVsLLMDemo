@@ -55,6 +55,30 @@
   font-size: 0.9rem;
 }
 
+/* TEMPORARY ?ref reference-graph viewer (pages/ReferencePicker.tsx). */
+.app__banner--reference {
+  border-bottom-color: var(--accent);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.reference-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.reference-picker select {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 4px;
+}
+
 .save-status--offline,
 .save-status--error {
   color: var(--issue-error);

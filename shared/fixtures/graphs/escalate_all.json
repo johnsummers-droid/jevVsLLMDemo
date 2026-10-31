@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "nodes": [
+    {
+      "id": "customer_message",
+      "type": "customer_message",
+      "position": {
+        "x": 0.0,
+        "y": 0.0
+      },
+      "params": {
+        "traffic_mix": "realistic",
+        "language": "en",
+        "attack_rate": 0.1
+      },
+      "label": null
+    },
+    {
+      "id": "human",
+      "type": "human_review_queue",
+      "position": {
+        "x": 280.0,
+        "y": 0.0
+      },
+      "params": {
+        "capacity": 2,
+        "reviewer_latency_s": 120
+      },
+      "label": null
+    },
+    {
+      "id": "response",
+      "type": "customer_response",
+      "position": {
+        "x": 560.0,
+        "y": 0.0
+      },
+      "params": {
+        "channel": "chat",
+        "sla_ms": 800
+      },
+      "label": null
+    }
+  ],
+  "edges": [
+    {
+      "id": "customer_message.text->human.text",
+      "source": "customer_message",
+      "sourcePort": "text",
+      "target": "human",
+      "targetPort": "text"
+    },
+    {
+      "id": "human.text->response.text",
+      "source": "human",
+      "sourcePort": "text",
+      "target": "response",
+      "targetPort": "text"
+    }
+  ]
+}
