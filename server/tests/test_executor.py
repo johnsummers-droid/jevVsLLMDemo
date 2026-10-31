@@ -256,7 +256,7 @@ def test_node_ids_do_not_change_results() -> None:
 
 
 def test_params_change_results() -> None:
-    hot = with_params(strong_graph(), "llm", temperature=0.9)
+    hot = with_params(strong_graph(), "llm", max_tokens=300)
     latencies = [execute(strong_graph(), t)[0].total_latency_ms for t in TICKETS.values()]
     hot_latencies = [execute(hot, t)[0].total_latency_ms for t in TICKETS.values()]
     assert latencies != hot_latencies

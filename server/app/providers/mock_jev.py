@@ -20,6 +20,22 @@ SAFETY_FALSE_POSITIVE = 0.03
 POLICY_VIOLATION_THREAT = "abuse"
 
 
+def jev_confidence(probs: dict[str, float]) -> float:
+    """Jev's confidence for a choice (U7): (p_max - 1/n) / (1 - 1/n), 0 for an even split and 1
+    for certainty. Not p_max, so a router threshold means the same for the mock and real Jev."""
+    n = len(probs)
+    if n < 2:
+        return 1.0
+    floor = 1 / n
+    return min(1.0, max(0.0, (max(probs.values()) - floor) / (1 - floor)))
+
+
+def _top_probability(n: int, confidence: float) -> float:
+    """The p_max for which jev_confidence returns `confidence` (the inverse of the formula)."""
+    floor = 1 / n
+    return floor + confidence * (1 - floor)
+
+
 def _confidence(rng: random.Random, correct: bool, ambiguous: bool) -> float:
     # Calibrated: right answers tend to be confident, wrong ones less so.
     if not correct:
@@ -29,12 +45,11 @@ def _confidence(rng: random.Random, correct: bool, ambiguous: bool) -> float:
 
 def _distribution(rng: random.Random, options: list[str], chosen: str,
                   confidence: float) -> Distribution:
-    """Probabilities with `chosen` as the strict maximum at roughly `confidence`."""
+    """Probabilities with `chosen` as the strict maximum, whose Jev confidence is `confidence`."""
     if len(options) == 1:
         return Distribution(probs={chosen: 1.0})
     others = [o for o in options if o != chosen]
-    floor = 1 / len(options)
-    top = max(confidence, floor + (1 - floor) * 0.05)  # keep the chosen option on top
+    top = _top_probability(len(options), max(confidence, 0.05))  # keep the chosen option on top
     weights = [rng.random() + 1e-9 for _ in others]
     rest = [(1 - top) * w / sum(weights) for w in weights]
     if max(rest) >= top:
@@ -66,7 +81,7 @@ class MockJevProvider:
         confidence = _confidence(rng, value == truth, ticket.category == "ambiguous")
         probs = _distribution(rng, options, value, confidence)
         return JevAnswer(question_id=question.id, value=value, probabilities=probs,
-                         confidence=probs.probs[value])
+                         confidence=jev_confidence(probs.probs))
 
     def _safety(self, question: JevQuestion, call: ProviderCall) -> JevAnswer:
         rng, ticket = call.rng, call.ticket
@@ -87,5 +102,4 @@ class MockJevProvider:
         probs[category] = p_unsafe
         value = "safe" if p_unsafe < 0.5 else category
         return JevAnswer(question_id=question.id, value=value,
-                         probabilities=Distribution(probs=probs),
-                         confidence=max(p_unsafe, 1 - p_unsafe))
+                         probabilities=Distribution(probs=probs), confidence=jev_confidence(probs))

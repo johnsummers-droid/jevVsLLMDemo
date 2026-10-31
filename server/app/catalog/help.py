@@ -80,7 +80,8 @@ JEV_INTENT_ROUTER_HELP = NodeHelp(
     outputs={
         "intent": "The chosen intent.",
         "probabilities": "The probability of every allowed intent, as JSON.",
-        "confidence": "The probability of the chosen intent, from 0 to 1.",
+        "confidence": "How sure the router is about its choice, from 0 (all options equally "
+                      "likely) to 1 (certain).",
         "route.*": "One branch per allowed intent. The message leaves on the chosen one when "
                    "the confidence clears the threshold.",
         "route.low_confidence": "Where the message goes when the router isn't sure enough.",
@@ -92,12 +93,12 @@ JEV_INTENT_ROUTER_HELP = NodeHelp(
         outputs={
             "intent": "technical_support",
             "confidence": 0.91,
-            "probabilities": {"probs": {"technical_support": 0.91, "billing": 0.04,
-                                        "bug_report": 0.04, "feature_request": 0.01}},
+            "probabilities": {"probs": {"technical_support": 0.94, "billing": 0.03,
+                                        "bug_report": 0.03, "feature_request": 0.0}},
             "route.technical_support": "How do I reset my password? The reset email never "
                                        "arrives.",
         },
-        explanation="The router is 91% sure this is a technical support request. That is "
+        explanation="Technical support gets 94% of the probability, a confidence of 0.91. That is "
                     "above the default threshold, so the message leaves on "
                     "route.technical_support.",
     ),
@@ -183,7 +184,6 @@ LLM_ANSWER_GENERATOR_HELP = NodeHelp(
     params={
         "model": "Small is faster and cheaper; large is slower, costs more per token and is "
                  "generally more reliable.",
-        "temperature": "Higher values make answers longer and more varied.",
         "max_tokens": "The longest answer it may write. Longer answers take more time and "
                       "cost more.",
         "prompt": "The system prompt: instructions on how to behave. What you write here "

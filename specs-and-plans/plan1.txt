@@ -2489,6 +2489,68 @@ Tasks (in order):
       migration 0003 + repo, the call store and spend ledger, real prices
       in config, U11 (temperature removed; schema, TS types and fixtures
       regenerated), U7's mock confidence change with T5 numbers re-checked.
+      T35 detailed plan (2026-10-31, no user input needed):
+        a. Settings: JEV_MODE / LLM_MODE = mock | live (default mock),
+           TYPESAFE_API_KEY, GEMINI_API_KEY, ANTHROPIC_API_KEY (empty =
+           unset), LIVE_SPEND_CAP_USD (default 10). `check_live()` runs in
+           the lifespan: live mode without its key, or before its provider
+           exists (Jev until T36, Gemini until T37, Claude until built),
+           refuses to start with a clear message.
+        b. Prices and models in config: LLM_MODELS[provider][tier] (gemini:
+           gemini-3.5-flash-lite / gemini-4-argon; claude: claude-haiku-5-5
+           / claude-sonnet-5-5), LLM_PRICES_PER_1K_USD[provider][tier] (the
+           real prices replace the T5 placeholders; the mock bills at the
+           configured LLM_PROVIDER's prices so mock and live costs compare),
+           JEV_MODEL = jev-1.14.0 and JEV_PRICE_PER_1K_INPUT_USD.
+        c. provider_calls table (migration 0003): key (sha256 of provider,
+           model and the exact request fields; PK), provider, model,
+           response (JSON), latency_ms, tokens_in, tokens_out, cost_usd,
+           created_at (indexed). No request bodies are stored. repo:
+           get_provider_call, put_provider_call (a duplicate key is
+           ignored), spend_since(t).
+        d. app/providers/call_store.py: CallStore.call(provider, model,
+           request_fields, fetch) returns the stored reply on a hit; on a
+           miss it checks the daily cap (UTC day, sum of stored costs),
+           times the real call, stores it and returns it. Identical calls
+           in flight at once share one real call. SpendCapReached is raised
+           at the cap (T38 turns it into the mock fallback + warning).
+        e. U11: `temperature` leaves the catalog, LLMRequest, the runner's
+           seed, the mock's verbosity term (now 1.0), the help text, the
+           reference graphs and the fixtures. GraphNode drops RETIRED_PARAMS
+           ({"llm_answer_generator": {"temperature"}}) on parse, so graphs
+           already saved in prod, stale tabs and old fixtures still load
+           and validate. Schema, TS types and web fixtures regenerated.
+        f. U7: the mock's router and safety answers report Jev's confidence
+           (p_max - 1/n)/(1 - 1/n); the mock builds the probabilities so
+           that the formula returns the confidence it drew, which keeps the
+           router's decisions (and the T5 numbers) unchanged. Re-check with
+           the golden tests and the reference means.
+        g. Guides: temperature lines removed. Tests for each part.
+      As built (2026-10-31): as planned, plus these details.
+        - config.py: LLM_MODELS, LLM_PRICES_PER_1K_USD[provider][tier],
+          JEV_MODEL, JEV_PRICE_PER_1K_INPUT_USD, LIVE_JEV_AVAILABLE /
+          LIVE_LLM_AVAILABLE (flipped by T36/T37); Settings.live_problems()
+          and llm_api_key(); main.py's lifespan raises on live problems.
+        - providers/factory.py (jev_provider, llm_provider from settings);
+          the run manager now builds its providers there. LLMProvider has
+          a `name`; the LLM runner bills at LLM_PRICES_PER_1K_USD[name].
+        - providers/call_store.py: CallStore(sessions, cap, clock, now),
+          Fetched (what an adapter's API call returns), StoredCall
+          (response, measured latency, usage, cost, replayed), call_key,
+          SpendCapReached. Shared in-flight calls use a thread-safe
+          concurrent.futures.Future, since every run computes in its own
+          worker thread and event loop. DB access goes through
+          asyncio.to_thread. T36/T37 pass partial(session_scope, app).
+        - The mock LLM's length is now the ticket's expected tokens (capped
+          by max_tokens); verbosity went with temperature.
+        - Golden tests unchanged and passing. Removing temperature from the
+          LLM's seed re-rolled its mock draws once, and costs now use
+          Gemini prices. Official means, seeds 0-9: strong 96 >
+          escalate_all -30 > default -55 > weak -80 (practice: 65, -30,
+          -66, -84). The admin guide's table is updated.
+        - The router help example now shows the new probabilities (0.94 for
+          the winner, still confidence 0.91), and its confidence text
+          says what Jev's confidence means.
   T36 Jev live provider: TypeSafeJevProvider behind the call store, U7's
       question, error mapping, tests with a fake client, and a manual
       `scripts/live_check.py jev` that asks the practice pack's tickets

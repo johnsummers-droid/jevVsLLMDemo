@@ -70,7 +70,7 @@ def strong_graph() -> Graph:
         ],
         {
             "router": {"allowed_intents": INTENTS, "threshold": 0.4},
-            "llm": {"model": "small", "max_tokens": 90, "temperature": 0.3,
+            "llm": {"model": "small", "max_tokens": 90,
                     "prompt": HARDENED_PROMPT},
             "policy": {"rules": ["no_refund_promises", "no_legal_advice", "no_internal_urls",
                                  "no_credentials"],

@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from app.models.base import CamelModel
 
@@ -14,12 +14,26 @@ class Position(CamelModel):
     y: float
 
 
+# Params removed from the catalog, per node type. They are dropped whenever a graph is parsed, so
+# graphs saved before the removal (database rows, stale browser tabs, old fixtures) still load and
+# validate. U11 (MVP step 2): temperature, which Gemini 3+ and Claude 5.5 should not get.
+RETIRED_PARAMS: dict[str, frozenset[str]] = {
+    "llm_answer_generator": frozenset({"temperature"}),
+}
+
+
 class GraphNode(CamelModel):
     id: str = Field(min_length=1)
     type: str
     position: Position
     params: dict[str, Any] = Field(default_factory=dict)  # checked against the definition's ParamSpecs
     label: str | None = None
+
+    @model_validator(mode="after")
+    def _drop_retired_params(self) -> Self:
+        if retired := RETIRED_PARAMS.get(self.type):
+            self.params = {k: v for k, v in self.params.items() if k not in retired}
+        return self
 
 
 class GraphEdge(CamelModel):

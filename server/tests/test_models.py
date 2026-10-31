@@ -1,4 +1,6 @@
+import json
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -319,3 +321,18 @@ def test_validation_report_ok_flag() -> None:
         "code": "CYCLE", "severity": "error", "message": "e",
         "nodeId": "n1", "edgeId": None, "portId": None,
     }
+
+
+def test_retired_params_are_dropped_on_parse() -> None:
+    # Graphs saved before U11 carry the LLM's temperature; they must still load and validate.
+    from app.engine.validator import validate_graph
+
+    graphs_dir = Path(__file__).resolve().parents[2] / "shared" / "fixtures" / "graphs"
+    data = json.loads((graphs_dir / "default.json").read_text())
+    for node in data["nodes"]:
+        if node["type"] == "llm_answer_generator":
+            node["params"]["temperature"] = 0.7
+    graph = Graph.model_validate(data)
+    llm = next(n for n in graph.nodes if n.type == "llm_answer_generator")
+    assert "temperature" not in llm.params
+    assert validate_graph(graph).ok

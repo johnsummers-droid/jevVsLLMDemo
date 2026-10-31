@@ -11,6 +11,7 @@ from app.engine.envelope import make_context
 from app.engine.latency import sample_latency
 from app.engine.seeding import derive_seed
 from app.models import NodeResult, PortValue, Ticket
+from app.providers.mock_jev import jev_confidence
 from app.providers.mock_llm import MARKERS
 from app.simulation.loader import PACK_IDS, load_pack
 from app.tools.policy import check_policy
@@ -167,7 +168,17 @@ def test_router_distribution_tops_at_the_chosen_intent() -> None:
         result = run("jev_intent_router", TICKETS["o-19"], seed=seed)
         probs = result.outputs["probabilities"].value["probs"]
         assert max(probs, key=probs.get) == result.outputs["intent"].value
-        assert result.outputs["confidence"].value == probs[result.outputs["intent"].value]
+        # Jev's confidence (U7): how far p_max stands above an even split, not p_max itself.
+        n = len(probs)
+        expected = (probs[result.outputs["intent"].value] - 1 / n) / (1 - 1 / n)
+        assert result.outputs["confidence"].value == pytest.approx(expected)
+
+
+def test_jev_confidence_formula() -> None:
+    assert jev_confidence({"a": 0.25, "b": 0.25, "c": 0.25, "d": 0.25}) == 0
+    assert jev_confidence({"a": 1.0, "b": 0.0}) == 1
+    assert jev_confidence({"a": 0.8, "b": 0.1, "c": 0.05, "d": 0.05}) == pytest.approx(0.55 / 0.75)
+    assert jev_confidence({"only": 1.0}) == 1
 
 
 # --- safety check ----------------------------------------------------------------------
@@ -301,7 +312,7 @@ def test_llm_tokens_latency_and_cost() -> None:
     ticket = TICKETS["o-13"]  # 340 expected tokens
     large = run("llm_answer_generator", ticket)
     small = run("llm_answer_generator", ticket, params={"model": "small", "max_tokens": 128})
-    assert large.tokens_out == round(340 * (0.8 + 0.4 * 0.7))
+    assert large.tokens_out == 340  # the expected length, capped only by max_tokens
     assert small.tokens_out == 128
     assert small.latency_ms < 800 < large.latency_ms
     assert 0 < small.cost_usd < large.cost_usd
@@ -311,7 +322,7 @@ def test_llm_tokens_latency_and_cost() -> None:
 def test_llm_params_change_the_draw() -> None:
     ticket = _risky("prompt_injection")[0]
     a = [_complies(run("llm_answer_generator", ticket, seed=s)) for s in range(50)]
-    b = [_complies(run("llm_answer_generator", ticket, params={"temperature": 0.3}, seed=s))
+    b = [_complies(run("llm_answer_generator", ticket, params={"max_tokens": 200}, seed=s))
          for s in range(50)]
     assert a != b
 

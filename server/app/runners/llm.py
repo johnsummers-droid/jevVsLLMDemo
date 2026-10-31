@@ -18,10 +18,9 @@ class AnswerGeneratorRunner:
         if "text" not in inputs:
             return missing_input(definition, "text")
         tier = params["model"]
-        seed_params = {key: params[key] for key in ("model", "temperature", "max_tokens", "prompt")}
+        seed_params = {key: params[key] for key in ("model", "max_tokens", "prompt")}
         context = Docs.model_validate(inputs["context"].value) if "context" in inputs else None
-        request = LLMRequest(model=tier, temperature=params["temperature"],
-                             max_tokens=params["max_tokens"], prompt=params["prompt"],
+        request = LLMRequest(model=tier, max_tokens=params["max_tokens"], prompt=params["prompt"],
                              text=inputs["text"].value, context=context)
         reply = await ctx.llm.generate(request,
                                        ctx.provider_call(definition.type, seed_params, inputs))
@@ -29,7 +28,7 @@ class AnswerGeneratorRunner:
         timing = TIER_LATENCY_MS[tier]
         ttft = latency(definition, ctx, seed_params, inputs, median_ms=timing["ttft_ms"],
                        jitter_ms=timing["ttft_ms"] * TTFT_JITTER)
-        prices = LLM_PRICES_PER_1K_USD[tier]
+        prices = LLM_PRICES_PER_1K_USD[ctx.llm.name][tier]
         return NodeResult(
             outputs={"text": text(reply.text, reply.taint)},
             latency_ms=ttft + reply.tokens_out * timing["per_token_ms"],

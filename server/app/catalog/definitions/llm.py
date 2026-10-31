@@ -1,5 +1,5 @@
 from app.catalog.help import LLM_ANSWER_GENERATOR_HELP
-from app.models import CostModel, EnumParam, IntParam, NodeDefinition, NumberParam, Port, TextParam
+from app.models import CostModel, EnumParam, IntParam, NodeDefinition, Port, TextParam
 
 # Per-tier latency (plan1.txt 3b). The catalog's CostModel shows the default ("large")
 # tier; runners read this table. Token prices per tier come from server config (T4).
@@ -21,7 +21,6 @@ LLM_ANSWER_GENERATOR = NodeDefinition(
     outputs=[Port(id="text", label="Text", type="text")],
     params=[
         EnumParam(key="model", label="Model tier", default="large", options=["small", "large"]),
-        NumberParam(key="temperature", label="Temperature", default=0.7, min=0, max=1),
         IntParam(key="max_tokens", label="Max tokens", default=512, min=64, max=1024),
         TextParam(key="prompt", label="System prompt",
                   default="You are a helpful support agent.", max_len=500),

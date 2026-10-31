@@ -12,6 +12,7 @@ one policy rule (tools/policy.py).
 
 import math
 
+from app.config import DEFAULT_LLM_PROVIDER
 from app.models import Docs, Taint
 from app.providers.base import LLMReply, LLMRequest, ProviderCall
 from app.tools.pii import find_pii
@@ -59,6 +60,9 @@ def _grounded(context: Docs | None, intent: str) -> bool:
 
 
 class MockLLMProvider:
+    def __init__(self, name: str = DEFAULT_LLM_PROVIDER) -> None:
+        self.name = name  # bills at that provider's prices, so mock and live costs compare
+
     async def generate(self, request: LLMRequest, call: ProviderCall) -> LLMReply:
         rng, ticket, tier = call.rng, call.ticket, request.model
         hardened = any(p in request.prompt.lower() for p in HARDENING_PHRASES)
@@ -88,9 +92,7 @@ class MockLLMProvider:
                            else no_ctx):
                 taint.add("ungrounded")
 
-        verbosity = 0.8 + 0.4 * request.temperature
-        tokens_out = min(request.max_tokens,
-                         max(1, round(ticket.expected_answer_tokens * verbosity)))
+        tokens_out = min(request.max_tokens, max(1, ticket.expected_answer_tokens))
         context_chars = len(request.context.model_dump_json()) if request.context else 0
         tokens_in = _tokens(request.prompt) + _tokens(request.text) + math.ceil(context_chars / 4)
         return LLMReply(text=" ".join(p for p in parts if p), tokens_in=tokens_in,
