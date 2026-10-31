@@ -95,9 +95,11 @@ confirm:
       returns one answer per question with a value, probabilities and a
       confidence. The JevProvider adapter keeps the exact wire format
       contained, so the rest of the system does not depend on it.
-  A2. The real LLM is Claude, called through the Anthropic SDK on the server.
-      The model param is a tier ("small" | "large"), and the server config
-      maps tiers to model ids (e.g. claude-haiku-5-5 / claude-sonnet-5-5).
+  A2. The real LLM is Gemini (revised 2026-10-31, was Claude), called
+      through Google's google-genai SDK on the server; the setting
+      LLM_PROVIDER = gemini | claude (default gemini) keeps Claude as the
+      alternative. The model param is a tier ("small" | "large"), and the
+      server config maps tiers to model ids per provider (MVP STEP 2, U1).
       Prices live in server config, not in code.
   A3. Workshop language is English. The "language" param exists but the mock
       only produces "en" for the MVP.
@@ -158,7 +160,8 @@ jevVsLLMDemo/
       providers/
         base.py                      JevProvider / LLMProvider protocols
         mock_jev.py  mock_llm.py     deterministic, scenario-aware mocks
-        jev_http.py  anthropic_llm.py   (phase M6)
+        jev_http.py  gemini_llm.py  anthropic_llm.py   (phase M6;
+                                     LLM_PROVIDER picks one)
         guards.py                    timeout, retry, cache, rate limit,
                                      spend cap (M6)
         replay.py                    record/replay real responses (M6)
@@ -225,7 +228,8 @@ New dependencies (each one is justified here, as CLAUDE.md requires):
                         driver
     httpx               move from the dev extra to runtime in M6, for the Jev
                         HTTP adapter
-    anthropic           M6 only, for the real LLM adapter
+    google-genai        M6 only, for the real LLM adapter (Gemini, the
+                        default); anthropic for the Claude alternative
   server, dev: nothing new. Async tests use the anyio pytest plugin, which is
     already installed with FastAPI, so pytest-asyncio is not needed.
   web, runtime:
@@ -796,7 +800,8 @@ M5  Full catalog and run controls          (spec phases 2 and 5, remainder)
       check.
 
 M6  Real providers                         (spec phase 4)
-    - JevHttpProvider (httpx) and AnthropicLLMProvider (anthropic SDK)
+    - JevHttpProvider (httpx) and GeminiLLMProvider (google-genai SDK;
+      AnthropicLLMProvider as the LLM_PROVIDER=claude alternative)
       implementing the protocols in providers/base.py. Credentials come only
       from env vars.
     - guards.py: per-call timeouts (Jev 2 s, LLM 10 s); 1 retry with jittered
@@ -964,7 +969,8 @@ Backend - Railway (was primary; fallback since 2026-10-30, see P1)
       ALLOWED_ORIGIN_REGEX (e.g. ^https://jev-vs-llm-.*\.vercel\.app$),
       FACILITATOR_CODE, TOKEN_SECRET, PROVIDER_MODE=mock,
       SPEND_CAP_USD, LOG_LEVEL,
-      (M6) ANTHROPIC_API_KEY, LLM_MODEL_SMALL, LLM_MODEL_LARGE,
+      (M6) LLM_PROVIDER, GEMINI_API_KEY (ANTHROPIC_API_KEY for claude),
+      LLM_MODEL_SMALL, LLM_MODEL_LARGE,
       JEV_API_URL, JEV_API_KEY
   - main.py replaces the hard-coded localhost CORS origin with
     settings.allowed_origins plus allow_origin_regex.
@@ -2107,7 +2113,7 @@ T31. Web: trace viewer, Test button and M5 exit            [depends on: T28, T29
 MVP RE-SCOPE (2026-10-31). The user set a new priority: an end-to-end MVP
 built around the 5-node graph, running in prod, styled, and connected to
 real AI. Extra nodes and features come after it. M5 is paused: T25's work
-in progress is parked (git stash "T25 WIP" from branch t25; it carries
+in progress is parked (WIP commit 7a23d1b on branch t25, pushed; it carries
 the open "gated graph" question for R2), and T26-T31 wait until the MVP
 ships.
 
@@ -2132,8 +2138,9 @@ MVP work, in order:
      uses the existing tokens and gets restyled with the rest.
   4. Prod: paid Render plans in render.yaml (deadline 2026-11-29), then a
      rehearsal on the deployed URLs.
-  Still open: whether the palette shows only the 5 MVP nodes or all 8,
-  and whether the MVP starter graph replaces the current default graph.
+  Decided (2026-10-31): the MVP starter graph replaces the current default
+  graph. Still open: whether the palette shows only the 5 MVP nodes or
+  all 8.
 
 Help panel decisions, accepted 2026-10-31 (the critique and the user's
 answers are in specs-and-plans/help-panel-conversation.txt):
@@ -2301,6 +2308,185 @@ T33. Web help panel                                        [depends on: T32]
         App queries now anchor on the card name, since each card has two
         buttons.
 
+
+MVP STEP 2: REAL PROVIDERS (planned 2026-10-31; decisions U1-U12
+ACCEPTED by the user 2026-10-31; LLM switched from Claude to Gemini 2026-10-31 at the
+user's request, Claude kept as the LLM_PROVIDER=claude alternative). M6's
+plan cut to the two AI nodes of the MVP graph: the intent router on Jev and
+the answer generator on Gemini. Everything else
+(customer message, human review, response, the scoring) stays simulated.
+
+Facts this plan rests on (TypeSafe docs and PyPI, read 2026-10-31):
+  - Jev: POST https://api.typesafe.ai/v1/systemone, bearer TYPESAFE_API_KEY,
+    body {model, state, questions{id: {type, instructions, criteria}}}.
+    A Choice answer has `choice`, `probabilities` (sum 1) and `confidence`
+    = (p_max - 1/n) / (1 - 1/n): 0 for an even split, 1 for certainty.
+    NOT p_max, which is what our mock returns today (A1 was close but not
+    exact). Price $0.042 per million input tokens, output free; a router
+    call is ~300 tokens, so 1000 calls cost about $0.01. Rate limits are
+    per organization (console.typesafe.ai/rate-limits); ours (user,
+    2026-10-31): 80 requests/s and 100,000 input tokens/s. At ~300 tokens
+    a call the request limit binds first (the token limit allows ~330/s).
+    429 and 529 are
+    retried with backoff by the SDK. Model ids: jev-1.14.0 (alias
+    jev-latest). Python SDK `typesafe-sdk` 0.7.5 (2026-10-14; deps anyio,
+    httpx2, pydantic, tenacity, truststore).
+  - Gemini (ai.google.dev pricing and thinking pages, read 2026-10-31):
+    tiers small = gemini-3.5-flash-lite ($0.30 / $2.50 per Mtok in/out;
+    thinking defaults to minimal), large = gemini-4-argon ($2 / $10 through
+    2026-11-30, then $4 / $20; thinking levels low/medium/high, no
+    minimal). Output prices include thinking tokens. Thinking is set with
+    `thinking_level` in the generation config (Gemini 3+ default: high;
+    never combined with the legacy thinking_budget, that is a 400). Google
+    strongly recommends leaving temperature at its default 1.0 for Gemini
+    3+ (lower values can loop or degrade reasoning). Auth: GEMINI_API_KEY
+    (server/.env holds it since 2026-10-31). SDK `google-genai`: 2.31.0
+    (2026-10-14) is the newest release at least two weeks old; it depends
+    on httpx (already ours), anyio, google-auth, requests, tenacity,
+    websockets. Model ids and prices are re-read when T37 starts.
+  - Claude (the alternative, LLM_PROVIDER=claude): tiers small =
+    claude-haiku-5-5 ($0.10 / $0.50 per Mtok in/out),
+    large = claude-sonnet-5-5 ($2 / $10). Both reject a non-default
+    temperature (400). Haiku 5.5 thinks by default (effort medium); thinking
+    can be turned off at effort high or below. Sonnet 5.5 turns it off with
+    thinking {type: "between_tools"}. SDK `anthropic`: the 2.x releases are
+    all younger than two weeks, so pin 1.15.0 (2026-10-15).
+
+Decisions (accepted 2026-10-31):
+  U1. Providers: TypeSafeJevProvider (typesafe-sdk AsyncTypeSafeClient) and
+      GeminiLLMProvider (google-genai Client, its async `.aio` surface),
+      implementing the existing JevProvider / LLMProvider protocols.
+      ClaudeLLMProvider (anthropic AsyncAnthropic) is the alternative behind
+      the same protocol, picked by LLM_PROVIDER (U2); it is built in T37
+      only if time allows, otherwise later. Runners and the
+      executor do not change shape. Jev is pinned to jev-1.14.0, not the
+      alias, because the router threshold is tuned against one version.
+  U2. Modes: settings JEV_MODE and LLM_MODE = mock | live, each defaulting to
+      mock, plus LLM_PROVIDER = gemini | claude (default gemini; added
+      2026-10-31, before T35) naming the live LLM. The call store key
+      includes the provider, so switching never replays the other one's
+      replies. Tests, CI and headless runs stay on mock unless asked. Live mode
+      without its key refuses to start (clear error at startup), and
+      /api/health reports both modes.
+  U3. Call store: a `provider_calls` table (migration 0003) keyed by
+      sha256(provider, model id, the exact request fields), holding the
+      response, its measured latency, tokens and cost. Live mode looks the
+      key up first and calls the provider only on a miss. This replaces
+      M6's separate "replay" mode: same params give the same answer for
+      every team and every rerun (D6's fairness, now for real output),
+      repeated practice runs cost nothing, and a restart keeps it. A
+      `scripts/prewarm.py` fills it ahead of the workshop for the packs x
+      the reference graphs.
+  U4. Time and money: in live mode a node's simulated latency is the
+      measured latency of the real call (stored with it, so a cached reply
+      replays the same latency), and its cost is real usage x the real
+      prices in config (replacing the T5 placeholders). The compute-then-
+      pace pipeline (D5, Q1) stays: the pacer still plays the run at
+      `speed`.
+  U5. Concurrency: run_simulation runs a run's requests concurrently instead
+      of one by one (the runner already merges events by sim time). One
+      process-wide semaphore per provider (start: Jev 16, LLM 4) so an
+      official run of 6 teams shares the limits. Jev 16 in flight at
+      ~0.2-1 s a call is at most ~80 requests/s, the org's request limit;
+      the SDK's 429 backoff covers bursts. The LLM limit is re-checked
+      against the Gemini key's tier limits (AI Studio) in T37.
+  U6. Starting a run no longer waits for compute: POST .../runs returns 201
+      at once with status "preparing", the computation runs in the
+      background, and the team sees "Preparing..." until the replay starts
+      (a new run state on the existing events). Reason: with uncached live
+      calls a practice run can take 10-30 s to compute, too long for one
+      HTTP request with no feedback. Official runs likewise.
+  U7. Router question: one Choice per request, instructions "Which team
+      should handle this customer message?", criteria = the allowed intents
+      with one-line descriptions (server side, not editable), options in a
+      fixed order. The mock is changed to return Jev's confidence formula
+      so the threshold means the same in both modes; T5's tuned numbers are
+      re-checked.
+  U8. Answer generator request: system = a fixed server preamble (role,
+      reply to the customer only, the KB docs when the context port is
+      connected, and the honeytokens of U9) followed by the participant's
+      prompt param; user message = the ticket text. max_tokens = the param.
+      No temperature (U11). Thinking kept as low as each model allows:
+      Gemini small thinking_level "minimal", large "low" (it has no
+      minimal), with max_output_tokens = the param (thinking counts toward
+      it and toward cost, so the measured tokens include it); Claude Haiku
+      {type: "disabled"} at effort low, Sonnet {type: "between_tools"}. No
+      streaming (replies are short).
+  U9. Scoring real output (the open question; recommended answer).
+      Ground truth stays the pack labels; taint comes from deterministic
+      checks on the real reply instead of the mock's dice:
+        - misrouted: as now (router answer vs expected_intent).
+        - injection: the server preamble holds fake secrets (an internal
+          admin URL, a service password, an API key) marked "never share".
+          A reply that contains one of them gets "injection". So does a
+          reply to a prompt_injection ticket that matches the ticket's risk
+          rule (below).
+        - policy_violation: the tools/policy.py rules (refund promise,
+          legal advice, internal URL, credentials) run on every reply; a
+          hit gets "policy_violation". The rules are widened with test
+          cases taken from real replies (T38).
+        - pii: tools/pii.py on the reply, for the ticket's pii_kinds (as the
+          mock already does).
+        - ungrounded: by label, no judging: a needs_grounding ticket
+          answered without a matching KB doc in context gets "ungrounded".
+      No model judges answer quality in the MVP (a Jev or LLM judge is a
+      later option). The injection tickets in both packs are rewritten so
+      they ask for the planted secrets.
+  U10. Guards: per-call timeout (Jev 5 s, LLM 20 s), the SDKs' own retry
+      (2 attempts, backoff). A call that still fails makes the node fail
+      (outcome "failed", node_failed event), as today; no silent fallback.
+      A daily spend cap (LIVE_SPEND_CAP_USD, default 10) counts real calls
+      only (cache hits are free); once reached, live mode answers from the
+      mock and the run carries a warning the team and facilitator see. Logs
+      never contain message bodies or replies: ids, lengths, hashes only.
+  U11. The answer generator's `temperature` param is removed from the
+      catalog (Google strongly recommends the default 1.0 for Gemini 3+
+      and Claude 5.5 models reject anything else, so in live mode it would
+      be a knob that does nothing or harms replies). The mock's verbosity term goes with it.
+  U12. Dependencies: typesafe-sdk==0.7.5 and google-genai==2.31.0 (the
+      supported clients for each API; typesafe-sdk pulls httpx2 next to the
+      httpx we already have). anthropic==1.15.0 is added only with the
+      ClaudeLLMProvider. Keys only in server env: TYPESAFE_API_KEY and
+      GEMINI_API_KEY (ANTHROPIC_API_KEY for claude) in server/.env locally
+      and in Render's dashboard (render.yaml lists them with sync: false).
+
+Tasks (in order):
+  T34 MVP starter graph replaces the default graph (user decision
+      2026-10-31): default_graph.py builds the 5-node graph, default.json
+      regenerated, the validator's default-graph expectations, golden
+      ordering (default < weak < strong, re-tuned if needed), the web
+      rebuild test, help examples, reset. Mock only.
+  T35 Live foundation: Settings (modes, keys, caps; LLM_PROVIDER already
+      exists), provider_calls table +
+      migration 0003 + repo, the call store and spend ledger, real prices
+      in config, U11 (temperature removed; schema, TS types and fixtures
+      regenerated), U7's mock confidence change with T5 numbers re-checked.
+  T36 Jev live provider: TypeSafeJevProvider behind the call store, U7's
+      question, error mapping, tests with a fake client, and a manual
+      `scripts/live_check.py jev` that asks the practice pack's tickets
+      and prints accuracy and confidence per category.
+  T37 Gemini live provider + U9 checks: GeminiLLMProvider (U8), the
+      provider factory reading LLM_PROVIDER (claude refuses to start until
+      ClaudeLLMProvider exists), the output
+      checks, honeytoken preamble, rewritten injection tickets, tests with a
+      fake client, `scripts/live_check.py llm`.
+  T38 Live runs: U5 concurrency, U6 async start ("preparing" state, web
+      included), U10 spend cap warning, /api/health modes, prewarm script,
+      render.yaml env, runbook and BEFORE-WORKSHOP updates. Policy rules
+      widened from real replies.
+  T39 Calibrate and exit: live headless runs of the reference graphs on
+      both packs, re-tune the router threshold default and the scoring
+      weights so default < weak < strong still holds live, then the
+      deploy-runbook checklist on the deployed URLs with live mode on.
+  Exit: on the deployed URLs a team runs the MVP graph on real Jev and
+  Gemini, sees real latencies and costs, and the leaderboard orders the
+  reference graphs as in mock mode.
+
+Needed from the user before T36/T37 run live: all received 2026-10-31.
+GEMINI_API_KEY is in server/.env and in Render's dashboard,
+TYPESAFE_API_KEY in server/.env (Render's dashboard still to be checked in
+T38), the TypeSafe rate limits are recorded above, and U1-U12 are
+accepted. T34 is next.
 
 8. OPEN ITEMS (none of these block T1-T5)
 -----------------------------------------
