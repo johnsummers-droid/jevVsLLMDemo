@@ -13,8 +13,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from functools import partial
 
+from app.config import get_settings
 from app.engine.pacer import Pacer
 from app.models import Graph, RunConfig, RunMetrics, RunStatus
+from app.providers.factory import jev_provider, llm_provider
 from app.models.events import RunCompleted
 from app.realtime.hub import hub
 from app.simulation.loader import load_pack
@@ -55,8 +57,10 @@ def official_config() -> RunConfig:
 async def compute(graph: Graph, config: RunConfig, *, run_id: str, team_id: str, graph_version: int) -> RunResult:
     """The whole run, computed in a worker thread so the event loop keeps serving (Q1)."""
     pack = load_pack(config.pack_id)
+    settings = get_settings()
     return await asyncio.to_thread(asyncio.run, run_simulation(
-        graph, pack, config, run_id=run_id, team_id=team_id, graph_version=graph_version))
+        graph, pack, config, run_id=run_id, team_id=team_id, graph_version=graph_version,
+        jev=jev_provider(settings), llm=llm_provider(settings)))
 
 
 @dataclass

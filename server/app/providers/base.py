@@ -51,7 +51,6 @@ class JevProvider(Protocol):
 @dataclass(frozen=True)
 class LLMRequest:
     model: str  # tier: "small" | "large" (A2)
-    temperature: float
     max_tokens: int
     prompt: str
     text: str
@@ -67,4 +66,7 @@ class LLMReply:
 
 
 class LLMProvider(Protocol):
+    # Whose prices the runner bills at: "gemini" or "claude" (config.LLM_PRICES_PER_1K_USD).
+    name: str
+
     async def generate(self, request: LLMRequest, call: ProviderCall) -> LLMReply: ...

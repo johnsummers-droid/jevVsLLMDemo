@@ -5,7 +5,8 @@ from app.config import Settings
 
 @pytest.fixture(autouse=True)
 def clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in ("DATABASE_URL", "ALLOWED_ORIGINS", "ALLOWED_ORIGIN_REGEX", "FACILITATOR_CODE", "TOKEN_SECRET", "LLM_PROVIDER"):
+    for name in ("DATABASE_URL", "ALLOWED_ORIGINS", "ALLOWED_ORIGIN_REGEX", "FACILITATOR_CODE", "TOKEN_SECRET", "LLM_PROVIDER", "JEV_MODE", "LLM_MODE",
+                 "TYPESAFE_API_KEY", "GEMINI_API_KEY", "ANTHROPIC_API_KEY", "LIVE_SPEND_CAP_USD"):
         monkeypatch.delenv(name, raising=False)
 
 
@@ -55,3 +56,64 @@ def test_empty_values_are_unset(monkeypatch: pytest.MonkeyPatch) -> None:
     settings = load()
     assert settings.allowed_origin_regex is None
     assert settings.facilitator_code is None and settings.token_secret is None
+
+
+def test_live_defaults_are_mock_and_safe() -> None:
+    settings = load()
+    assert (settings.jev_mode, settings.llm_mode) == ("mock", "mock")
+    assert settings.live_spend_cap_usd == 10
+    assert settings.typesafe_api_key is None and settings.gemini_api_key is None
+    assert settings.live_problems() == []
+
+
+def test_empty_keys_are_unset(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("GEMINI_API_KEY", "")
+    assert load().gemini_api_key is None
+
+
+def test_live_mode_needs_its_key_and_its_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("JEV_MODE", "live")
+    monkeypatch.setenv("LLM_MODE", "live")
+    problems = " | ".join(load().live_problems())
+    assert "TYPESAFE_API_KEY" in problems and "GEMINI_API_KEY" in problems
+    assert "not built yet" in problems
+    monkeypatch.setenv("LLM_PROVIDER", "claude")
+    assert "ANTHROPIC_API_KEY" in " | ".join(load().live_problems())
+
+
+def test_live_mode_refuses_to_start(monkeypatch: pytest.MonkeyPatch) -> None:
+    from fastapi.testclient import TestClient
+
+    from app.config import get_settings
+    from app.main import app
+
+    app.dependency_overrides.clear()
+    monkeypatch.setenv("LLM_MODE", "live")
+    get_settings.cache_clear()
+    try:
+        with pytest.raises(RuntimeError, match="cannot start in live mode"), TestClient(app):
+            pass
+    finally:
+        get_settings.cache_clear()
+
+
+def test_every_provider_and_tier_has_a_model_and_prices() -> None:
+    from app.catalog.definitions.llm import LLM_ANSWER_GENERATOR
+    from app.config import LLM_MODELS, LLM_PRICES_PER_1K_USD
+
+    tiers = next(p for p in LLM_ANSWER_GENERATOR.params if p.key == "model").options
+    for provider in ("gemini", "claude"):
+        assert set(LLM_MODELS[provider]) == set(tiers)
+        for tier in tiers:
+            prices = LLM_PRICES_PER_1K_USD[provider][tier]
+            assert 0 < prices["in"] < prices["out"]
+
+
+def test_the_factory_builds_mocks_billed_as_the_configured_llm(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.providers.factory import jev_provider, llm_provider
+    from app.providers.mock_jev import MockJevProvider
+
+    monkeypatch.setenv("LLM_PROVIDER", "claude")
+    settings = load()
+    assert isinstance(jev_provider(settings), MockJevProvider)
+    assert llm_provider(settings).name == "claude"

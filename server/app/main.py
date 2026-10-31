@@ -18,6 +18,9 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    # Live mode without its key, or before its provider exists, refuses to start (U2).
+    if problems := get_settings().live_problems():
+        raise RuntimeError("cannot start in live mode: " + "; ".join(problems))
     # Run state lives in memory (D8), so runs a restart cut off can never finish.
     try:
         with session_scope(app) as db:
