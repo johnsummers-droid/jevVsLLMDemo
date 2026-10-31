@@ -1,0 +1,135 @@
+HELP PANEL REQUIREMENTS: CRITIQUE (2026-10-31)
+==============================================
+
+The user's requirements
+-----------------------
+1. When nodes show on the left or right panel of the sim, they have an icon
+   (the "question mark": a circle with a "?" in it).
+2. Nodes actually put on the canvas still have this question mark icon.
+3. When any icon is clicked a modal panel (the "help panel") should appear,
+   containing a clear description of the node and its operation, nicely
+   formatted.
+4. Only one modal help panel can be shown at a time on the app.
+5. It is quite large: it can be as wide as the visible canvas, and perhaps
+   the best position is just below the nodes on the canvas.
+6. Having the help panel visible does not stop application operation
+   "under" the panel.
+
+
+Critique
+--------
+Overall the idea is good. Clear, consistent help for every node is what
+workshop players will need most. But two of the six requirements contradict
+each other or can't be built as written, and a few decisions are missing.
+
+1. Icon on nodes in the left and right panels
+   - Left panel (the palette): this works as stated. One catch: palette
+     cards are clickable (to add a node) and draggable, so clicking the "?"
+     must open help without also adding the node.
+   - Right panel: the right side is the Inspector. It doesn't list nodes;
+     it shows the one selected node. I read this as a "?" next to the
+     node's title in the Inspector. Please confirm.
+
+2. Icon on nodes on the canvas
+   Good, with some practical points:
+   - A canvas node can be dragged and selected, and clicking the "?" must
+     do neither.
+   - When the canvas is zoomed out, the icon gets tiny. Keep it at a
+     minimum size you can still click, or hide it below a certain zoom
+     level.
+   - Nodes already carry a validation badge and live-run stats, so the
+     icon needs a fixed corner that doesn't collide with those.
+   - It must keep working when the graph is locked or a run is playing.
+     Help should always be available.
+
+3. Help content: "clear description, nicely formatted"
+   This is the real work, and the requirement doesn't say yet where the
+   content comes from. Recommendations:
+   - Keep it on the server, in each node's catalog definition. The server
+     is the single source of truth for nodes, so the help text can't drift
+     from what the node actually does. It arrives in the browser with the
+     catalog, the same way the rest of each node's description already
+     does.
+   - Use the same sections for every node: what it is, where it goes in a
+     pipeline, settings, outputs, a worked example (input -> output), and
+     tips.
+   - Make the examples real. A test runs each example through the actual
+     node, so a wrong example fails CI.
+   - Watch for spoilers. The earlier policy-engine explanation gave away
+     the mock LLM's four bad sentences and the fact that the default
+     settings catch only one of them. In the workshop, discovering that is
+     part of the game. Players should get how the node works, not the
+     answers. The facilitator could have a fuller version.
+   - Plan for real AI. Once real models are in, some explanations change.
+     For example, the policy engine becomes a weaker safety net. The
+     content should be written for the mode the app is actually running
+     in.
+   - Scope: 8 nodes exist today, and 12 if T25 lands. For the MVP, write
+     the 5 MVP nodes first, then the rest.
+
+4. Only one help panel at a time
+   Clear. What's not specified:
+   - Clicking a different node's "?" should swap the content.
+   - Clicking the same "?" again should close the panel.
+   - There should be a close (x) button, and Esc should close it.
+
+5. Size and position: "as wide as the canvas, just below the nodes"
+   "Just below the nodes" can't work as stated. Nodes can be anywhere:
+   players pan, zoom and move them, and a graph can fill the whole canvas.
+   Recommendation: a panel docked along the bottom edge of the canvas:
+   - It spans the canvas width.
+   - It takes about 40% of the canvas height, can be resized, and slides
+     out of the way.
+   - The rest of the graph stays visible and usable above it.
+   That gives the size wanted without having to chase node positions.
+
+6. The app keeps working under the panel
+   This contradicts "modal". A modal panel, by definition, blocks the app
+   until it's closed. What is described is a non-modal panel (also called
+   a drawer). That's the right choice here, so drop the word "modal" from
+   the spec. The consequences:
+   - The canvas, the palette and live runs keep working while help is
+     open.
+   - The panel must not hide what players need during a run, such as the
+     run bar and metrics. The bottom dock covers the canvas, not the run
+     bar.
+
+Smaller points
+   - Accessibility: the "?" should be a real button with a label like
+     "Help: Policy engine", reachable by keyboard.
+   - Other pages: the facilitator page and /screen don't show nodes, so
+     this only affects the team page.
+   - Priority: this fits well alongside the styling work in the MVP list,
+     because the panel's look should match the new design rather than be
+     restyled later.
+
+
+Suggested revised wording
+-------------------------
+  Every node shows a "?" help button in the palette, on the canvas, and in
+  the Inspector header. Clicking it opens the help panel: a non-modal panel
+  docked along the bottom of the canvas, as wide as the canvas, resizable
+  and closable (x, Esc, or clicking the same "?" again). Only one help
+  panel exists; clicking another node's "?" swaps its content. The app
+  stays fully usable while it's open. Help content lives in each node's
+  catalog definition on the server, with fixed sections (what it is, where
+  it goes, settings, outputs, worked example, tips); examples are checked
+  against the real node in tests, and they don't reveal scenario answers.
+
+
+Open questions for the user
+---------------------------
+  - Agree with the bottom-docked placement?
+  - Agree with the spoiler rule?
+  - "Right panel" = a "?" in the Inspector header?
+  If yes, this goes into the plan as a task alongside the styling work.
+
+
+Answers (2026-10-31)
+--------------------
+  - Bottom-docked placement: agreed.
+  - Spoiler rule: agreed.
+  - "Right panel" = a "?" in the Inspector header: yes.
+  The help panel is part of the MVP. The design is in plan1.txt section 7,
+  "MVP RE-SCOPE": decisions S1-S8 and tasks T32 (server help content) and
+  T33 (web help panel). Work happens on branch help-panel.

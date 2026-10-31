@@ -2104,6 +2104,138 @@ T31. Web: trace viewer, Test button and M5 exit            [depends on: T28, T29
     Done when: the M5 exit above passes on the deployed URLs.
 
 
+MVP RE-SCOPE (2026-10-31). The user set a new priority: an end-to-end MVP
+built around the 5-node graph, running in prod, styled, and connected to
+real AI. Extra nodes and features come after it. M5 is paused: T25's work
+in progress is parked (git stash "T25 WIP" from branch t25; it carries
+the open "gated graph" question for R2), and T26-T31 wait until the MVP
+ships.
+
+The MVP graph (checked 2026-10-31 with the validator and run_headless.py):
+
+  customer_message -> jev_intent_router -(4 intent routes)-> llm_answer_generator
+                                        -(route.low_confidence)-> human_review_queue
+  llm_answer_generator, human_review_queue -> customer_response
+
+  Practice pack, seed 1: automation 0.80, escalation 0.20, dropped 0,
+  unsafe release 0.20, cost $402 per 1k. Validator warnings: no safety
+  coverage, multi-input race. 4 nodes (no human) is the bare minimum; it
+  drops the 3 low-confidence requests.
+
+MVP work, in order:
+  1. Help panel (T32-T33, designed below; decisions S1-S8 accepted).
+  2. Real providers for the MVP nodes: M6's plan, cut to the router and the
+     answer generator (replay mode, spend cap, label-based taint). Needs
+     the Jev API details from the user and a decision on how real output is
+     scored; to be planned as its own tasks.
+  3. Styling: needs a design direction from the user. The help panel
+     uses the existing tokens and gets restyled with the rest.
+  4. Prod: paid Render plans in render.yaml (deadline 2026-11-29), then a
+     rehearsal on the deployed URLs.
+  Still open: whether the palette shows only the 5 MVP nodes or all 8,
+  and whether the MVP starter graph replaces the current default graph.
+
+Help panel decisions, accepted 2026-10-31 (the critique and the user's
+answers are in specs-and-plans/help-panel-conversation.txt):
+  S1. Every node shows a "?" help button (a circle with "?") in three
+      places: its palette card, its node on the canvas (in the header), and
+      the Inspector header when it is selected. The buttons stay enabled
+      while the graph is locked or a run is playing: help is always
+      available.
+  S2. Clicking a "?" opens the help panel for that node TYPE (two router
+      nodes share one help text). There is one panel in the app: clicking
+      another node's "?" swaps the content; clicking the "?" of the type
+      already shown closes it; x and Esc close it too (Esc is ignored
+      while typing in a text field). State lives in a small helpStore
+      ({nodeType, open, toggle, close}), so "one at a time" holds by
+      construction.
+  S3. The panel is NON-modal (a drawer), not a modal: no backdrop, no
+      focus trap, the app stays fully usable. It is docked along the bottom
+      of the canvas area, as wide as the canvas; default height 40% of the
+      canvas, resizable from its top edge between 160 px and 80%, height
+      remembered per browser (guarded localStorage). The run bar, metrics,
+      palette and Inspector are outside the canvas area and never covered;
+      React Flow's zoom controls and the canvas notice move up above the
+      panel while it is open.
+  S4. Content lives on the server in each NodeDefinition, as a new
+      optional `help: NodeHelp` field (exported to the schema, TS types
+      regenerated). It arrives with GET /api/catalog. Structured fields,
+      not markdown, so the web needs no markdown renderer (no new
+      dependency):
+        summary       what the node is, 1-2 sentences
+        placement     where it goes in a pipeline
+        how_it_works  list of short points
+        params        {key: text} per param (keys must match the params)
+        outputs       {port id: text} per output (template ports like
+                      route.* allowed); inputs get an optional {id: text}
+        example       a worked example: params (overrides of the
+                      defaults), input text, optional practice ticket id
+                      (jev, llm and human mocks are driven by ticket
+                      labels), and the expected output (fired branch and
+                      chosen output values)
+        tips          list of short points
+      The panel adds what the definition already knows: category, ports
+      with types and flags, param defaults, and the cost model (latency,
+      cost per call).
+  S5. Examples are true: a test runs each node's example through its real
+      runner (mock providers, fixed seed) and checks the stated output, so
+      a wrong example fails CI.
+  S6. No spoilers: help explains how a node works, never the scenario
+      answers. It must not quote the mock LLM's marker phrases, official
+      pack text or labels, mock error rates or which rule catches which
+      risk. A test scans every help string against providers/mock_llm.py
+      MARKERS and the official pack (as test_official does for the wire).
+      A fuller facilitator version is out of scope for the MVP.
+  S7. Scope: every node in the catalog has help (8 on this branch; a test
+      requires it). T25's four nodes add theirs when T25 resumes. Help
+      describes the mock mode; it is reviewed when the real providers land
+      (MVP step 2), since e.g. the policy engine is a weaker net against
+      real model wording.
+  S8. Accessibility: the "?" is a real <button> labelled "Help: <title>",
+      with aria-expanded and aria-controls; on canvas nodes it carries
+      React Flow's nodrag/nopan classes and stops propagation, so a click
+      neither selects nor drags the node. The palette card is a <button>
+      today, and buttons can't nest, so the card becomes a wrapper holding
+      the add button and the help button side by side. On the canvas the
+      "?" is hidden below zoom 0.6, where it would be too small to hit; the
+      palette and Inspector buttons remain. Opening moves focus to the
+      panel heading; closing returns it to the "?" that opened it. The
+      panel is role="complementary" with aria-label "Help: <title>".
+
+T32. Node help content on the server                       [depends on: T24]
+    - NodeHelp model (S4) with a validator: param keys and port ids must
+      exist on the definition; `help` on NodeDefinition.
+    - Help text for all 8 catalog nodes (customer_message,
+      jev_intent_router, jev_safety_check, llm_answer_generator,
+      policy_engine, knowledge_lookup, human_review_queue,
+      customer_response), written to the S6 rule.
+    - Schema export, catalog and web fixtures, TS types regenerated.
+    - Tests: every catalog node has help; keys match; every example runs
+      through its runner and gives the stated output (S5); spoiler scan
+      (S6); GET /api/catalog carries help.
+    Done when: GET /api/catalog returns help for all 8 nodes and the
+      example and spoiler tests pass.
+
+T33. Web help panel                                        [depends on: T32]
+    - store/helpStore.ts (S2), help/HelpButton.tsx, help/HelpPanel.tsx
+      (sections: what it is, where it goes, how it works, inputs, settings
+      with defaults, outputs, example, tips, cost and speed), resize
+      handle, Esc handling.
+    - "?" in NodeCard (restructured, S8), BaseNode header and Inspector
+      header; the panel mounts inside the canvas area on TeamPage; zoom
+      controls and notice shift up while it is open.
+    - player-guide.md: a line on the "?" buttons.
+    - Tests: one panel at a time, swap, toggle closes, x and Esc (not while
+      typing); the palette "?" doesn't add a node and the canvas "?"
+      doesn't select it; every catalog node's panel renders all sections
+      from the fixture; the app keeps working under the panel (adding a
+      node and running while it is open); buttons enabled while read-only;
+      resize clamps; focus moves and returns.
+    Done when: on the deployed URL every node's "?" (palette, canvas,
+      Inspector) opens its help in the bottom panel, and editing and runs
+      carry on while it is open.
+
+
 8. OPEN ITEMS (none of these block T1-T5)
 -----------------------------------------
   - The real Jev API wire format, auth, latency and pricing (affects only
