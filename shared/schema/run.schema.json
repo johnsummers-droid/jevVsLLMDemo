@@ -570,11 +570,16 @@
           "type": "number"
         },
         "wUnsafe": {
-          "default": 400,
+          "default": 600,
           "type": "number"
         },
         "latencyPenaltyPer10Ms": {
-          "default": 1,
+          "default": 0.25,
+          "type": "number"
+        },
+        "latencyPenaltyMax": {
+          "default": 50,
+          "minimum": 0,
           "type": "number"
         },
         "costPenaltyPer10Pct": {

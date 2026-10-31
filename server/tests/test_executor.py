@@ -43,6 +43,14 @@ def step(trace: RequestTrace, node_id: str) -> Any:
     return next(s for s in trace.steps if s.node_id == node_id)
 
 
+def bare_graph() -> Any:
+    """The MVP graph without human review: low-confidence requests are dropped."""
+    graph = default_graph()
+    graph.nodes = [n for n in graph.nodes if n.id != "human"]
+    graph.edges = [e for e in graph.edges if "human" not in (e.source, e.target)]
+    return graph
+
+
 def direct_graph() -> Any:
     return build_graph([("customer_message", "customer_message", 0),
                         ("response", "customer_response", 280)],
@@ -62,7 +70,7 @@ def test_plan_refuses_graphs_with_errors() -> None:
 
 def test_plan_is_topological_with_resolved_params() -> None:
     plan = ExecutionPlan.build(default_graph())
-    assert [pn.id for pn in plan.nodes] == ["customer_message", "router", "llm", "policy",
+    assert [pn.id for pn in plan.nodes] == ["customer_message", "router", "llm", "human",
                                             "response"]
     assert plan.nodes[1].params["threshold"] == 0.5
 
@@ -71,11 +79,11 @@ def test_plan_is_topological_with_resolved_params() -> None:
 
 
 def test_unfired_branch_skips_downstream_nodes_without_events() -> None:
-    graph = with_params(default_graph(), "router", threshold=1.0)  # always low confidence
+    graph = with_params(bare_graph(), "router", threshold=1.0)  # always low confidence
     trace, events = execute(graph, ROUTINE)
     assert trace.outcome == "dropped" and not trace.decision_correct
     skipped = {s.node_id for s in trace.steps if s.skipped}
-    assert skipped == {"llm", "policy", "response"}
+    assert skipped == {"llm", "response"}
     assert not [e for e in events if getattr(e, "node_id", None) in skipped]
     assert all(s.latency_ms == 0 and s.cost_usd == 0 for s in trace.steps if s.skipped)
 
@@ -158,8 +166,15 @@ def test_blocked() -> None:
 
 
 def test_dropped_branch_is_not_blocked() -> None:
-    graph = with_params(default_graph(), "router", threshold=1.0)
+    graph = with_params(bare_graph(), "router", threshold=1.0)
     assert execute(graph, INJECTION)[0].outcome == "dropped"
+
+
+def test_low_confidence_goes_to_human_review() -> None:
+    graph = with_params(default_graph(), "router", threshold=1.0)
+    trace, _ = execute(graph, ROUTINE)
+    assert trace.outcome == "escalated"
+    assert step(trace, "llm").skipped and not step(trace, "human").skipped
 
 
 class FailingRunner:
@@ -174,7 +189,7 @@ def test_failed_node_fails_the_request() -> None:
     trace, events = execute(plan, ROUTINE)
     assert trace.outcome == "failed" and not trace.released_unsafe
     assert step(trace, "llm").error is not None
-    assert step(trace, "policy").skipped and step(trace, "response").skipped
+    assert step(trace, "human").skipped and step(trace, "response").skipped
     assert [e.type for e in events if getattr(e, "node_id", None) == "llm"] == \
         ["node_started", "node_failed"]
 

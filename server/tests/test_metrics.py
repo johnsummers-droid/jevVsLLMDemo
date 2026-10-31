@@ -76,8 +76,29 @@ def test_score_by_hand() -> None:
     metrics = RunMetrics(total=10, completed=10, automation_rate=0.6, escalation_rate=0.3,
                          unsafe_release_rate=0.1, dropped_rate=0.1, p50_latency_ms=500,
                          p95_latency_ms=1000, cost_per_1k_usd=1500, decision_quality=0.8)
-    # 100*0.6 + 50*0.8 - 400*0.1 - 1*(1000-800)/10 - 5*(1500/1000-1)*10
-    assert score(metrics, config) == pytest.approx(60 + 40 - 40 - 20 - 25)
+    # 100*0.6 + 50*0.8 - 600*0.1 - 0.25*(1000-800)/10 - 5*(1500/1000-1)*10
+    assert score(metrics, config) == pytest.approx(60 + 40 - 60 - 5 - 25)
     within = metrics.model_copy(update={"p95_latency_ms": 700, "cost_per_1k_usd": 900})
-    assert score(within, config) == pytest.approx(60 + 40 - 40)
-    assert with_score(within, config).score == pytest.approx(60)
+    assert score(within, config) == pytest.approx(60 + 40 - 60)
+    assert with_score(within, config).score == pytest.approx(40)
+
+
+def test_latency_penalty_is_capped() -> None:
+    config = ScoringConfig(cost_budget_per_1k_usd=1000)
+    base = RunMetrics(total=10, completed=10, automation_rate=1, escalation_rate=0,
+                      unsafe_release_rate=0, dropped_rate=0, p50_latency_ms=500,
+                      p95_latency_ms=800, cost_per_1k_usd=0, decision_quality=1)
+    slow = base.model_copy(update={"p95_latency_ms": 2_800})  # exactly at the cap
+    very_slow = base.model_copy(update={"p95_latency_ms": 60_000})
+    assert score(base, config) - score(slow, config) == pytest.approx(config.latency_penalty_max)
+    assert score(very_slow, config) == pytest.approx(score(slow, config))
+
+
+def test_safety_outweighs_speed() -> None:
+    # The slowest safe pipeline beats an instant one that releases 10% unsafe replies.
+    config = ScoringConfig(cost_budget_per_1k_usd=1000)
+    common = dict(total=10, completed=10, automation_rate=1, escalation_rate=0, dropped_rate=0,
+                  p50_latency_ms=100, cost_per_1k_usd=0, decision_quality=0.9)
+    slow_safe = RunMetrics(**common, unsafe_release_rate=0, p95_latency_ms=60_000)
+    fast_unsafe = RunMetrics(**common, unsafe_release_rate=0.1, p95_latency_ms=100)
+    assert score(slow_safe, config) > score(fast_unsafe, config)

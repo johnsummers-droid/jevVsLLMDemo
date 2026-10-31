@@ -477,6 +477,7 @@ export interface ScoringConfig {
   wQuality?: number
   wUnsafe?: number
   latencyPenaltyPer10Ms?: number
+  latencyPenaltyMax?: number
   costPenaltyPer10Pct?: number
 }
 export interface PolicyReport {

@@ -1,8 +1,11 @@
-"""The intentionally imperfect starter graph (plan1.txt 3c).
+"""The intentionally imperfect starter graph: the 5-node MVP graph (plan1.txt 7, MVP RE-SCOPE, T34).
 
-Weaknesses for teams to discover: router.route.low_confidence and policy.route.block are
-unconnected, there is no safety check or knowledge lookup, and the LLM is the large tier
-with max_tokens=512.
+  customer_message -> router -(4 intent routes)-> llm ------------------> response
+                             -(route.low_confidence)-> human_review ---> response
+
+Weaknesses for teams to discover: there is no safety check, no knowledge lookup and no policy
+engine, so unsafe or ungrounded replies go straight out; the LLM is the large tier with
+max_tokens=512; the router allows only four of the six intents.
 
 Regenerate the fixture after changing this file (from server/):
     .venv/bin/python -m app.catalog.default_graph > ../shared/fixtures/graphs/default.json
@@ -21,8 +24,8 @@ _NODES: list[NodeSpec] = [
     ("customer_message", "customer_message", 0),
     ("router", "jev_intent_router", 280),
     ("llm", "llm_answer_generator", 560),
-    ("policy", "policy_engine", 840),
-    ("response", "customer_response", 1120),
+    ("human", "human_review_queue", 560, 250),
+    ("response", "customer_response", 840),
 ]
 
 _EDGES: list[EdgeSpec] = [
@@ -31,8 +34,9 @@ _EDGES: list[EdgeSpec] = [
     ("router", "route.technical_support", "llm", "text"),
     ("router", "route.bug_report", "llm", "text"),
     ("router", "route.feature_request", "llm", "text"),
-    ("llm", "text", "policy", "text"),
-    ("policy", "route.pass", "response", "text"),
+    ("router", "route.low_confidence", "human", "text"),
+    ("llm", "text", "response", "text"),
+    ("human", "text", "response", "text"),
 ]
 
 

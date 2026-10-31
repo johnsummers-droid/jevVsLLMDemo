@@ -204,10 +204,10 @@ def test_any_source_is_a_warning() -> None:
 def test_default_graph_reports_its_weaknesses() -> None:
     report = validate_graph(default_graph())
     assert report.ok
+    # Only the real gap: nothing checks the LLM's reply. llm (four intent routes) and human
+    # (low confidence) are exclusive, so their shared response input is not a race.
     assert [(i.code, i.node_id, i.port_id) for i in report.issues] == [
-        (IssueCode.UNCONNECTED_BRANCH, "router", "route.low_confidence"),
-        (IssueCode.UNCONNECTED_BRANCH, "policy", "route.block"),
-        (IssueCode.NO_HUMAN_FALLBACK, None, None),
+        (IssueCode.NO_SAFETY_COVERAGE, "llm", None),
     ]
 
 
@@ -279,7 +279,8 @@ def test_multi_input_race() -> None:
 
 
 def test_router_branches_into_one_input_do_not_race() -> None:
-    # The default graph feeds four router branches into llm.text.
+    # The default graph feeds four router branches into llm.text, and llm and human (the
+    # low-confidence branch) into response.text.
     assert IssueCode.MULTI_INPUT_RACE not in _codes(validate_graph(default_graph()))
 
 
@@ -297,10 +298,8 @@ def test_validate_endpoint_default_graph() -> None:
     assert response.status_code == 200
     data = response.json()
     assert data["ok"] is True
-    assert [i["code"] for i in data["issues"]] == [
-        "UNCONNECTED_BRANCH", "UNCONNECTED_BRANCH", "NO_HUMAN_FALLBACK"]
-    assert data["issues"][0]["nodeId"] == "router"
-    assert data["issues"][0]["portId"] == "route.low_confidence"
+    assert [i["code"] for i in data["issues"]] == ["NO_SAFETY_COVERAGE"]
+    assert data["issues"][0]["nodeId"] == "llm"
 
 
 def test_validate_endpoint_reports_errors() -> None:

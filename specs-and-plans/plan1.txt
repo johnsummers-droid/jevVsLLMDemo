@@ -651,24 +651,24 @@ alias_generator=to_camel, populate_by_name=True); snake_case inside Python.
     out: none
     params: channel enum[email,chat]=chat, sla_ms int=800 (display only)
 
-3c. Default starter graph (intentionally imperfect)
+3c. Default starter graph (intentionally imperfect). Since T34 (2026-10-31)
+    it is the 5-node MVP graph; the earlier 5-node graph with a policy engine
+    and no human review is gone.
   customer_message.text -> jev_intent_router.text
   router.route.{billing,technical_support,bug_report,feature_request}
                         -> llm_answer_generator.text
-  llm.text              -> policy_engine.text
-  policy.route.pass     -> customer_response.text
+  router.route.low_confidence -> human_review_queue.text
+  llm.text, human.text  -> customer_response.text
   Built-in weaknesses for teams to discover:
-    - router.route.low_confidence is unconnected (ambiguous tickets are
-      dropped)
-    - there is no safety check before the LLM (injections reach the
-      generator)
+    - there is no safety check before the LLM and no policy engine after
+      it (injections and unsafe answers reach the customer; the validator
+      warns NO_SAFETY_COVERAGE, its only warning on this graph)
     - the LLM is the large tier with max_tokens=512 (p95 well above 800 ms)
-    - policy.route.block is unconnected (blocked answers are dropped, not
-      escalated)
     - there is no knowledge lookup (ungrounded answers on complex tickets)
+    - the router allows only four of the six intents
   Reference graphs (in-repo; used by the golden tests and the facilitator
   demo):
-    weak   : default graph plus a second LLM pass, no policy engine
+    weak   : default graph without human review, plus a second LLM pass
     strong : safety check -> router -> {routine: small LLM + knowledge lookup,
              low_confidence/unsafe: human review}; policy.block -> human review
 
@@ -725,10 +725,20 @@ alias_generator=to_camel, populate_by_name=True); snake_case inside Python.
   decision_quality    = mean(decision_correct)
   score = w_automation x automation + w_quality x quality
           - w_unsafe x unsafe
-          - latency_penalty_per_10ms x max(0, p95 - 800) / 10
+          - min(latency_penalty_max,
+                latency_penalty_per_10ms x max(0, p95 - 800) / 10)
           - cost_penalty_per_10pct x max(0, cost_per_1k / budget - 1) x 10
   The weights are in the pack's ScoringConfig. They get tuned in M1 so that
   default < weak-fix < strong.
+  Safety outweighs speed (user decision 2026-10-31): w_unsafe 600 (was
+  400), latency_penalty_per_10ms 0.25 (was 1) and the new
+  latency_penalty_max 50, so latency costs at most what ~8% unsafe
+  releases cost. Before, the starter graph lost 311 points to latency and
+  63 to unsafe releases; now 50 and 94. Official means over seeds 0-9:
+  strong 105 > escalate_all -30 > default -47 > weak -70. Tests:
+  test_metrics (cap, a slow safe pipeline beats a fast 10%-unsafe one) and
+  test_golden (the default loses more to safety than to speed, every
+  seed). T39 keeps this rule when it re-tunes with real latencies.
 
 
 4. BUILD ORDER: MOCK-ONLY MVP TO REAL JEV/LLM
@@ -2456,6 +2466,24 @@ Tasks (in order):
       regenerated, the validator's default-graph expectations, golden
       ordering (default < weak < strong, re-tuned if needed), the web
       rebuild test, help examples, reset. Mock only.
+      As built (2026-10-31): default_graph.py builds the MVP graph (human
+      review at x 560, y 250); default.json and expanded-outputs.json
+      regenerated. planner.branch_conditions now keeps, per branching
+      node, the SET of ports a node may have fired (union over its
+      incoming edges) instead of dropping the condition at a merge, so
+      llm (four intent routes) and human (low confidence) count as
+      exclusive and the starter graph no longer shows a false
+      MULTI_INPUT_RACE (the strong graph's race warning stays: its human
+      node merges safety.unsafe with paths through safety.safe). Validator
+      expectations, executor tests (a bare_graph() without human review
+      for the dropped-branch cases, a new low-confidence -> human test),
+      catalog, planner and web IssueList tests updated. Golden tests pass
+      unchanged; means over official seeds 0-9: default score -277
+      (automation 0.70, escalation 0.30, unsafe release 0.157, p95 3.9 s,
+      $602 per 1k; the old default scored -283), weak -680, strong 106,
+      escalate_all -30. Help text needed no change. Teams that already
+      hold a saved graph keep it; "Reset graph" or a new session gives
+      the MVP graph.
   T35 Live foundation: Settings (modes, keys, caps; LLM_PROVIDER already
       exists), provider_calls table +
       migration 0003 + repo, the call store and spend ledger, real prices
@@ -2476,7 +2504,8 @@ Tasks (in order):
       widened from real replies.
   T39 Calibrate and exit: live headless runs of the reference graphs on
       both packs, re-tune the router threshold default and the scoring
-      weights so default < weak < strong still holds live, then the
+      weights so weak < default < strong still holds live and safety
+      still outweighs speed (3f; the old "default < weak" was a typo), then the
       deploy-runbook checklist on the deployed URLs with live mode on.
   Exit: on the deployed URLs a team runs the MVP graph on real Jev and
   Gemini, sees real latencies and costs, and the leaderboard orders the
@@ -2484,9 +2513,9 @@ Tasks (in order):
 
 Needed from the user before T36/T37 run live: all received 2026-10-31.
 GEMINI_API_KEY is in server/.env and in Render's dashboard,
-TYPESAFE_API_KEY in server/.env (Render's dashboard still to be checked in
-T38), the TypeSafe rate limits are recorded above, and U1-U12 are
-accepted. T34 is next.
+TYPESAFE_API_KEY in server/.env and in Render's dashboard (2026-10-31), the
+TypeSafe rate limits are recorded above, and U1-U12 are accepted. T34 is
+done (2026-10-31); T35 is next.
 
 8. OPEN ITEMS (none of these block T1-T5)
 -----------------------------------------

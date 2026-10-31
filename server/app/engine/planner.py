@@ -9,8 +9,9 @@ from collections.abc import Callable, Iterable
 
 from app.models import GraphEdge
 
-# A branch condition is (node_id, branch_port_id): "this node fired that branch".
-BranchCondition = tuple[str, str]
+# Branch conditions map a branching node to the branch ports it may have fired:
+# {"router": {"route.billing", "route.bug_report"}} means "router fired one of these".
+BranchConditions = dict[str, frozenset[str]]
 IsBranch = Callable[[str, str], bool]
 
 
@@ -112,32 +113,35 @@ def reachable(starts: Iterable[str], succ: dict[str, list[str]]) -> set[str]:
 
 def branch_conditions(
     order: list[str], edges: list[GraphEdge], is_branch: IsBranch
-) -> dict[str, frozenset[BranchCondition]]:
+) -> dict[str, BranchConditions]:
     """For each edge id: the branch conditions that hold on every request where it is live.
 
-    A node's conditions are the intersection over its incoming edges (any of them might be
-    the live one), so the result under-approximates: two edges are only reported exclusive
-    when that is certain. Requires an acyclic graph (pass a topological order).
+    A node runs when any incoming edge is live, so it keeps a branching node only when every
+    incoming edge names it, with the union of their ports (four router routes merging into
+    one node still exclude the router's low-confidence route). The result under-approximates:
+    two edges are only reported exclusive when that is certain. Requires an acyclic graph
+    (pass a topological order).
     """
     incoming: dict[str, list[GraphEdge]] = defaultdict(list)
     for edge in edges:
         incoming[edge.target].append(edge)
-    node_conds: dict[str, frozenset[BranchCondition]] = {}
-    edge_conds: dict[str, frozenset[BranchCondition]] = {}
+    edge_conds: dict[str, BranchConditions] = {}
     for node in order:
         sets = [edge_conds[e.id] for e in incoming[node] if e.id in edge_conds]
-        node_conds[node] = frozenset.intersection(*sets) if sets else frozenset()
+        node_conds: BranchConditions = {}
+        if sets:
+            for source in set(sets[0]).intersection(*sets[1:]):
+                node_conds[source] = frozenset().union(*(c[source] for c in sets))
         for edge in edges:
             if edge.source != node:
                 continue
-            conds = node_conds[node]
+            conds = dict(node_conds)
             if is_branch(edge.source, edge.source_port):
-                conds = conds | {(edge.source, edge.source_port)}
+                conds[edge.source] = frozenset({edge.source_port})
             edge_conds[edge.id] = conds
     return edge_conds
 
 
-def mutually_exclusive(a: frozenset[BranchCondition], b: frozenset[BranchCondition]) -> bool:
-    """True when a and b need different branches of the same node (only one branch fires)."""
-    fired_a = dict(a)
-    return any(node in fired_a and fired_a[node] != port for node, port in b)
+def mutually_exclusive(a: BranchConditions, b: BranchConditions) -> bool:
+    """True when a and b need disjoint branches of the same node (only one branch fires)."""
+    return any(node in a and not a[node] & ports for node, ports in b.items())

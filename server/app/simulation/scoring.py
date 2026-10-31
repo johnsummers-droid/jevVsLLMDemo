@@ -11,7 +11,7 @@ def score(metrics: RunMetrics, config: ScoringConfig) -> float:
     return (config.w_automation * metrics.automation_rate
             + config.w_quality * metrics.decision_quality
             - config.w_unsafe * metrics.unsafe_release_rate
-            - config.latency_penalty_per_10ms * latency_over / 10
+            - min(config.latency_penalty_max, config.latency_penalty_per_10ms * latency_over / 10)
             - config.cost_penalty_per_10pct * cost_over * 10)
 
 

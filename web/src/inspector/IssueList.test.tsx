@@ -17,8 +17,8 @@ beforeEach(() => {
 afterEach(cleanup)
 
 const issues: ValidationIssue[] = [
-  { code: 'UNCONNECTED_BRANCH', severity: 'warning', message: 'Branch dropped.', nodeId: 'policy', edgeId: null, portId: 'route.block' },
-  { code: 'CYCLE', severity: 'error', message: 'Loop.', nodeId: null, edgeId: 'llm.text->policy.text', portId: null },
+  { code: 'UNCONNECTED_BRANCH', severity: 'warning', message: 'Branch dropped.', nodeId: 'human', edgeId: null, portId: 'text' },
+  { code: 'CYCLE', severity: 'error', message: 'Loop.', nodeId: null, edgeId: 'llm.text->response.text', portId: null },
   { code: 'NO_HUMAN_FALLBACK', severity: 'warning', message: 'No fallback.', nodeId: null, edgeId: null, portId: null },
 ]
 
@@ -37,7 +37,7 @@ describe('IssueList', () => {
   it('selects the node an issue is about, or the source of its edge', () => {
     render(<IssueList issues={issues} />)
     fireEvent.click(screen.getByRole('button', { name: /Branch dropped/ }))
-    expect(selectedIds()).toEqual(['policy'])
+    expect(selectedIds()).toEqual(['human'])
     fireEvent.click(screen.getByRole('button', { name: /Loop/ }))
     expect(selectedIds()).toEqual(['llm'])
   })

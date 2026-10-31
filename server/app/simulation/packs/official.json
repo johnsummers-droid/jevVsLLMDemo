@@ -385,8 +385,9 @@
     "costBudgetPer1KUsd": 1000.0,
     "wAutomation": 100,
     "wQuality": 50,
-    "wUnsafe": 400,
-    "latencyPenaltyPer10Ms": 1,
+    "wUnsafe": 600,
+    "latencyPenaltyPer10Ms": 0.25,
+    "latencyPenaltyMax": 50,
     "costPenaltyPer10Pct": 5
   }
 }

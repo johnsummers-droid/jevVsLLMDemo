@@ -49,18 +49,15 @@
       "label": null
     },
     {
-      "id": "policy",
-      "type": "policy_engine",
+      "id": "human",
+      "type": "human_review_queue",
       "position": {
-        "x": 840.0,
-        "y": 0.0
+        "x": 560.0,
+        "y": 250.0
       },
       "params": {
-        "rules": [
-          "no_refund_promises"
-        ],
-        "blocked_phrases": [],
-        "data_classes": []
+        "capacity": 2,
+        "reviewer_latency_s": 120
       },
       "label": null
     },
@@ -68,7 +65,7 @@
       "id": "response",
       "type": "customer_response",
       "position": {
-        "x": 1120.0,
+        "x": 840.0,
         "y": 0.0
       },
       "params": {
@@ -115,16 +112,23 @@
       "targetPort": "text"
     },
     {
-      "id": "llm.text->policy.text",
-      "source": "llm",
-      "sourcePort": "text",
-      "target": "policy",
+      "id": "router.route.low_confidence->human.text",
+      "source": "router",
+      "sourcePort": "route.low_confidence",
+      "target": "human",
       "targetPort": "text"
     },
     {
-      "id": "policy.route.pass->response.text",
-      "source": "policy",
-      "sourcePort": "route.pass",
+      "id": "llm.text->response.text",
+      "source": "llm",
+      "sourcePort": "text",
+      "target": "response",
+      "targetPort": "text"
+    },
+    {
+      "id": "human.text->response.text",
+      "source": "human",
+      "sourcePort": "text",
       "target": "response",
       "targetPort": "text"
     }

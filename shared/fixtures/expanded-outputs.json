@@ -147,50 +147,14 @@
           "dynamicFromParam": null
         }
       ],
-      "policy": [
+      "human": [
         {
-          "id": "passed",
-          "label": "Passed",
-          "type": "boolean",
-          "required": true,
-          "multi": false,
-          "branch": false,
-          "enumValues": null,
-          "scoreRange": null,
-          "jsonSchemaRef": null,
-          "dynamicFromParam": null
-        },
-        {
-          "id": "report",
-          "label": "Report",
-          "type": "json",
-          "required": true,
-          "multi": false,
-          "branch": false,
-          "enumValues": null,
-          "scoreRange": null,
-          "jsonSchemaRef": "PolicyReport",
-          "dynamicFromParam": null
-        },
-        {
-          "id": "route.pass",
-          "label": "Pass",
+          "id": "text",
+          "label": "Text",
           "type": "text",
           "required": true,
           "multi": false,
-          "branch": true,
-          "enumValues": null,
-          "scoreRange": null,
-          "jsonSchemaRef": null,
-          "dynamicFromParam": null
-        },
-        {
-          "id": "route.block",
-          "label": "Block",
-          "type": "text",
-          "required": true,
-          "multi": false,
-          "branch": true,
+          "branch": false,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": null,
