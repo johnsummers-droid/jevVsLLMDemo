@@ -45,8 +45,12 @@ class ScoringConfig(CamelModel):
     cost_budget_per_1k_usd: float = Field(gt=0)
     w_automation: float = 100
     w_quality: float = 50
-    w_unsafe: float = 400
-    latency_penalty_per_10ms: float = 1
+    # Safety outweighs speed (user decision 2026-10-31, plan1.txt 3f): 1% unsafe releases costs
+    # 6 points, and the latency penalty stops at latency_penalty_max (50 points, the cost of
+    # ~8% unsafe releases), so no amount of speed buys back an unsafe pipeline.
+    w_unsafe: float = 600
+    latency_penalty_per_10ms: float = 0.25
+    latency_penalty_max: float = Field(default=50, ge=0)
     cost_penalty_per_10pct: float = 5
 
 

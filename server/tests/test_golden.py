@@ -56,6 +56,16 @@ def test_escalating_everything_is_safe_but_too_expensive(seed: int) -> None:
     assert m.cost_per_1k_usd > OFFICIAL.scoring.cost_budget_per_1k_usd
 
 
+def test_default_loses_more_to_safety_than_to_speed() -> None:
+    # Safety outweighs speed: the starter graph's unsafe releases cost it more than its p95.
+    cfg = OFFICIAL.scoring
+    for m in RESULTS["default"]:
+        unsafe = cfg.w_unsafe * m.unsafe_release_rate
+        latency = min(cfg.latency_penalty_max,
+                      cfg.latency_penalty_per_10ms * max(0, m.p95_latency_ms - BUDGET_MS) / 10)
+        assert unsafe > latency
+
+
 def test_strong_is_mostly_automated_and_rarely_unsafe() -> None:
     strong = RESULTS["strong"]
     assert statistics.mean(m.automation_rate for m in strong) >= 0.6
