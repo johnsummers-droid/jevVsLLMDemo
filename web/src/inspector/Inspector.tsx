@@ -2,13 +2,15 @@
 // cost/latency assumptions from its CostModel.
 import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
+import { HelpButton } from '../help/HelpButton'
+import { costRows } from '../lib/costModel'
 import { expandOutputs } from '../lib/graphMapping'
 import { countBySeverity } from '../lib/issues'
 import { useCatalogStore } from '../store/catalogStore'
 import { useGraphStore } from '../store/graphStore'
 import { useReadOnly } from '../store/runStore'
 import { useValidationStore } from '../store/validationStore'
-import type { CostModel, NodeDefinition, Port } from '../types'
+import type { NodeDefinition, Port } from '../types'
 import { IssueList } from './IssueList'
 import { ParamField } from './ParamField'
 import { SchemaPreview } from './SchemaPreview'
@@ -24,21 +26,6 @@ function PortItem({ port, input = false }: { port: Port; input?: boolean }) {
       {port.jsonSchemaRef && <SchemaPreview name={port.jsonSchemaRef} />}
     </li>
   )
-}
-
-const usd = (n: number) => `$${n < 0.01 && n > 0 ? n.toPrecision(2) : n.toFixed(2)}`
-
-function costRows(cost: CostModel): [string, string][] {
-  const rows: [string, string][] = []
-  const jitter = cost.latencyJitterMs ? ` ± ${cost.latencyJitterMs} ms` : ''
-  const latency = cost.latencyMs >= 1000 ? `${cost.latencyMs / 1000} s` : `${cost.latencyMs} ms`
-  rows.push(['Latency', `${latency}${jitter}`])
-  if (cost.perTokenLatencyMs) rows.push(['Per output token', `+ ${cost.perTokenLatencyMs} ms`])
-  rows.push(['Cost per call', usd(cost.costPerCallUsd ?? 0)])
-  if (cost.priceInPer1KUsd != null) rows.push(['Input price', `${usd(cost.priceInPer1KUsd)} / 1k tokens`])
-  if (cost.priceOutPer1KUsd != null) rows.push(['Output price', `${usd(cost.priceOutPer1KUsd)} / 1k tokens`])
-  if (cost.excludedFromLatency) rows.push(['Latency metrics', 'not counted in p95 latency'])
-  return rows
 }
 
 function NodeDetails({ nodeId, definition }: { nodeId: string; definition: NodeDefinition }) {
@@ -63,7 +50,10 @@ function NodeDetails({ nodeId, definition }: { nodeId: string; definition: NodeD
     <>
       <header className="inspector__header">
         <span className={`inspector__category inspector__category--${definition.category}`}>{definition.category}</span>
-        <h2>{definition.title}</h2>
+        <div className="inspector__title">
+          <h2>{definition.title}</h2>
+          {definition.help && <HelpButton definition={definition} />}
+        </div>
         <code>{node.id}</code>
         <p>{definition.description}</p>
       </header>

@@ -87,9 +87,29 @@ describe('App pages', () => {
     render(<App />)
     expect((await screen.findByRole('alert')).textContent).toMatch(/Pencils down/)
     expect(screen.getByText('Locked')).toBeTruthy()
-    const card = screen.getByRole('button', { name: /Knowledge/ }) as HTMLButtonElement
+    const card = screen.getByRole('button', { name: /^Knowledge lookup/ }) as HTMLButtonElement
     expect(card.disabled).toBe(true)
     expect((screen.getByRole('button', { name: 'Reset graph' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('the help panel opens over the canvas and the workbench keeps working under it', async () => {
+    useSessionStore.setState({ team })
+    window.history.replaceState(null, '', '/team')
+    stubCanvasDom()
+    mockApi({
+      'GET /api/catalog': { body: { nodes: catalogNodes } },
+      'GET /api/teams/t1/graph': { body: stored },
+      'POST /api/graphs/validate': { body: { ok: true, issues: [] } },
+    })
+    render(<App />)
+    await waitFor(() => expect(useGraphStore.getState().status).toBe('ready'))
+    fireEvent.click(screen.getByRole('button', { name: 'Help: Policy engine' }))
+    const panel = screen.getByRole('complementary', { name: 'Help: Policy engine' })
+    expect(panel.closest('.app__canvas')?.classList.contains('app__canvas--help-open')).toBe(true)
+    const before = useGraphStore.getState().nodes.length
+    fireEvent.click(screen.getByRole('button', { name: /^Knowledge lookup/ }))
+    expect(useGraphStore.getState().nodes).toHaveLength(before + 1)
+    expect(screen.getByRole('complementary', { name: 'Help: Policy engine' })).toBeTruthy()
   })
 
   it('reset asks for confirmation, then loads the default graph', async () => {

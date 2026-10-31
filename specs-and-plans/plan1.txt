@@ -2266,6 +2266,40 @@ T33. Web help panel                                        [depends on: T32]
     Done when: on the deployed URL every node's "?" (palette, canvas,
       Inspector) opens its help in the bottom panel, and editing and runs
       carry on while it is open.
+    As built (2026-10-31; checked locally in headless Chromium, not yet
+    on the deployed URL, which needs the merge to main):
+      - store/helpStore.ts ({nodeType, opener, height, open, toggle,
+        close, setHeight}; height is a fraction of the canvas area,
+        clamped 0.1-0.8, remembered in guarded localStorage).
+        help/HelpButton.tsx (nodrag/nopan, stops click, pointer, mouse
+        and key events from reaching the node), help/HelpPanel.tsx.
+      - Panel layout: two columns that stack on a narrow canvas: left =
+        what it is, where it goes, how it works, example, tips; right =
+        inputs, settings (with defaults), outputs, cost and speed. CSS
+        multi-column was tried first and dropped: in a fixed-height
+        scroller it overflows into hidden side columns. Text outputs are
+        quoted; enums, numbers and JSON are shown as values.
+      - Resize: drag the top edge, or focus it (role separator) and use
+        the up/down arrow keys (5% steps). Esc is caught on window in the
+        capture phase, because the "?" stops key propagation.
+      - The canvas hides its "?" below zoom 0.6 (Canvas.HELP_MIN_ZOOM via
+        a canvas--zoomed-out class). TeamPage closes the panel when it
+        unmounts. lib/costModel.ts now holds costRows (Inspector and
+        panel).
+      - T32 change: HelpExample.input_text is now required exactly when
+        the node has inputs, because the web never sees ticket text; for
+        jev, llm and human nodes it must equal the ticket's text (test).
+      - Checked in headless Chromium: panel opens at 40% of the canvas
+        (324 of 811 px), zoom controls above it, the canvas "?" neither
+        selects nor moves its node, editing and selecting work under the
+        panel, same "?" and Esc close, drag-resize to 80%, zoomed-out
+        hides the canvas "?", dark mode, no console errors.
+      - Tests: help/help.test.tsx (every node's sections, x and Esc,
+        focus, keyboard resize, palette/canvas/Inspector buttons),
+        store/helpStore.test.ts, App.test (workbench keeps working with
+        the panel open), run.test (a run starts with it open). Palette and
+        App queries now anchor on the card name, since each card has two
+        buttons.
 
 
 8. OPEN ITEMS (none of these block T1-T5)

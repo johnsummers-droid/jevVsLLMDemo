@@ -23,8 +23,9 @@ class HelpExample(CamelModel):
     """A worked example for the help panel. A test runs it through the node's runner on the
     mock providers (run seed 0) and checks the stated outputs (plan1.txt S5)."""
 
-    # A practice ticket: the mocks read its labels. Its customer message is the input text
-    # unless input_text replaces it (the message's taint is kept either way).
+    # A practice ticket: the mocks read its labels. input_text is what arrives on the node's
+    # text input (shown in the panel, which never sees ticket text); it carries the ticket's
+    # taint. Required exactly when the node has inputs.
     ticket_id: str = Field(pattern=r"^p-[0-9]+$")
     input_text: str | None = None
     params: dict[str, Any] = Field(default_factory=dict)  # overrides of the defaults
@@ -66,6 +67,9 @@ def _check_help(definition: "NodeDefinition", help: NodeHelp) -> None:
     if help.example is not None:
         check("example params", set(help.example.params), {p.key for p in definition.params},
               complete=False)
+        if (help.example.input_text is not None) != bool(definition.inputs):
+            raise ValueError("help example: input_text is required exactly when the node has "
+                             "inputs")
 
 
 class NodeDefinition(CamelModel):

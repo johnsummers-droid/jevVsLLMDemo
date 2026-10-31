@@ -2,9 +2,10 @@
 // automatically (saveStore), with Run traffic, live telemetry and the run's metrics (T23). While the
 // facilitator has locked graphs, or a run plays, it is read-only.
 import { ReactFlowProvider, useReactFlow } from '@xyflow/react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Canvas } from '../canvas/Canvas'
 import { ErrorBoundary } from '../components/ErrorBoundary'
+import { HelpPanel } from '../help/HelpPanel'
 import { Inspector } from '../inspector/Inspector'
 import { navigate, PATHS } from '../lib/navigation'
 import { Palette } from '../palette/Palette'
@@ -12,6 +13,7 @@ import { MetricsBar } from '../run/MetricsBar'
 import { RunControls } from '../run/RunControls'
 import { useCatalogStore } from '../store/catalogStore'
 import { useGraphStore } from '../store/graphStore'
+import { useHelpStore } from '../store/helpStore'
 import { type SaveStatus, startAutosave, useSaveStore } from '../store/saveStore'
 import { type TeamCredentials, useSessionStore } from '../store/sessionStore'
 import { startLive, useReadOnly } from '../store/runStore'
@@ -77,6 +79,8 @@ function Workbench({ team }: { team: TeamCredentials }) {
   const signOut = useSessionStore((s) => s.signOut)
   const { screenToFlowPosition } = useReactFlow()
   const canvasRef = useRef<HTMLDivElement>(null)
+  const helpOpen = useHelpStore((s) => s.nodeType !== null)
+  const helpHeight = useHelpStore((s) => s.height)
   const { load: loadCatalog, status: catalogStatus } = catalog
   const { teamId } = team
 
@@ -87,6 +91,9 @@ function Workbench({ team }: { team: TeamCredentials }) {
   useEffect(() => startAutoValidation(), [])
 
   useEffect(() => startAutosave(), [])
+
+  // The help panel belongs to this page; leaving it closes the panel.
+  useEffect(() => () => useHelpStore.getState().close(), [])
 
   // The live event stream: locks now, run events from T23 on.
   useEffect(() => startLive('team'), [teamId])
@@ -148,12 +155,19 @@ function Workbench({ team }: { team: TeamCredentials }) {
       )}
       <main className="app__body">
         <Palette nodes={catalog.nodes} onAdd={addAtCenter} disabled={readOnly} />
-        <div className="app__canvas" ref={canvasRef}>
+        <div
+          className={`app__canvas${helpOpen ? ' app__canvas--help-open' : ''}`}
+          ref={canvasRef}
+          style={{ '--help-height': `${helpHeight * 100}%` } as CSSProperties}
+        >
           {graphStatus === 'ready' && (
             <ErrorBoundary name="the canvas">
               <Canvas />
             </ErrorBoundary>
           )}
+          <ErrorBoundary name="the help panel">
+            <HelpPanel />
+          </ErrorBoundary>
         </div>
         <Inspector />
       </main>

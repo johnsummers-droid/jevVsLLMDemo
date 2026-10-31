@@ -1,10 +1,14 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { HelpPanel } from '../help/HelpPanel'
+import { useCatalogStore } from '../store/catalogStore'
 import { useGraphStore } from '../store/graphStore'
+import { useHelpStore } from '../store/helpStore'
 import { usePackStore } from '../store/packStore'
 import { EMPTY_RUN, useRunStore } from '../store/runStore'
 import { useSessionStore } from '../store/sessionStore'
 import { useValidationStore } from '../store/validationStore'
+import { catalogByType, catalogNodes } from '../test/fixtures'
 import { mockApi } from '../test/mockApi'
 import type { RunMetrics, RunSummary, ValidationReport } from '../types'
 import { MetricsBar } from './MetricsBar'
@@ -55,6 +59,22 @@ afterEach(() => {
 
 describe('RunControls', () => {
   const button = () => screen.getByRole('button', { name: /Run traffic|Starting/ }) as HTMLButtonElement
+
+  it('starts a run while the help panel is open', async () => {
+    useCatalogStore.setState({ status: 'ready', nodes: catalogNodes, byType: catalogByType, error: null })
+    useHelpStore.getState().open('llm_answer_generator')
+    const fetchMock = mockApi({ 'POST /api/teams/t1/runs': { status: 201, body: { ...run('running'), startedAt: 'x' } } })
+    render(
+      <>
+        <RunControls teamId="t1" />
+        <HelpPanel />
+      </>,
+    )
+    expect(screen.getByRole('complementary', { name: 'Help: LLM answer generator' })).toBeTruthy()
+    fireEvent.click(button())
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    useHelpStore.getState().close()
+  })
 
   it('starts a practice run', async () => {
     const fetchMock = mockApi({ 'POST /api/teams/t1/runs': { status: 201, body: { ...run('running'), startedAt: 'x' } } })

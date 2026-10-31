@@ -19,8 +19,8 @@ DEFINITIONS = {d.type: d for d in catalog()}
 
 
 def run_example(definition: NodeDefinition, example: HelpExample) -> Any:
-    """Run the example as S5 says: the ticket's customer message (with its taint) as input,
-    unless input_text replaces its text; mock providers; run seed 0."""
+    """Run the example as S5 says: input_text with the ticket's taint as input, mock providers,
+    run seed 0."""
     ticket = PRACTICE[example.ticket_id]
     ctx = make_context(ticket, run_seed=0)
     entry = REGISTRY[definition.type]
@@ -29,8 +29,8 @@ def run_example(definition: NodeDefinition, example: HelpExample) -> Any:
         source = REGISTRY["customer_message"]
         emitted = asyncio.run(source.runner.run({}, resolve_params(source.definition, {}), ctx))
         message = emitted.outputs["text"]
-        inputs["text"] = PortValue(type="text", value=example.input_text or message.value,
-                                   taint=message.taint)
+        assert example.input_text is not None
+        inputs["text"] = PortValue(type="text", value=example.input_text, taint=message.taint)
     params = resolve_params(definition, example.params)
     return asyncio.run(entry.runner.run(inputs, params, ctx)), params
 
@@ -85,6 +85,15 @@ def test_example_gives_the_stated_output(node_type: str) -> None:
         assert matches(actual, expected), f"{port_id}: {actual!r} != {expected!r}"
 
 
+@pytest.mark.parametrize("node_type", [t for t, d in DEFINITIONS.items()
+                                       if d.category in ("jev", "llm", "human")])
+def test_label_driven_examples_use_the_ticket_text(node_type: str) -> None:
+    # These mocks answer from the ticket's labels, so a made-up input text would show an
+    # output that the text alone doesn't explain. Tools may use any text.
+    example = DEFINITIONS[node_type].help.example  # type: ignore[union-attr]
+    assert example is not None and example.input_text == PRACTICE[example.ticket_id].text
+
+
 def test_matches_rules() -> None:
     assert matches(0.9149, 0.91) and not matches(0.92, 0.91)
     assert matches({"a": 1, "b": 2}, {"a": 1}) and not matches({"a": 1}, {"a": 1, "b": 2})
@@ -121,6 +130,8 @@ def test_help_must_cover_params_and_outputs_and_name_only_real_ones() -> None:
         build(inputs={"nope": "x"})
     with pytest.raises(ValueError, match="help example params: unknown"):
         build(example={**good["example"], "params": {"nope": 1}})
+    with pytest.raises(ValueError, match="input_text is required"):
+        build(example={**good["example"], "input_text": None})
     with pytest.raises(ValueError):
         NodeHelp.model_validate({**good, "how_it_works": []})
     with pytest.raises(ValueError):
