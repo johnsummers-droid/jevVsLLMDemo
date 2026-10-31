@@ -6,7 +6,7 @@ default graph misses the cost budget.
 """
 
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     facilitator_code: str | None = None
     token_secret: str | None = None
     log_level: str = "info"
+    # Which real LLM the answer generator uses once live mode lands (plan1.txt MVP STEP 2, U1/U2).
+    # Nodes still run on the mock providers; nothing reads this yet.
+    llm_provider: Literal["gemini", "claude"] = "gemini"
 
     @field_validator("database_url")
     @classmethod

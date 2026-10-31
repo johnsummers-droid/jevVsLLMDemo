@@ -5,7 +5,7 @@ from app.config import Settings
 
 @pytest.fixture(autouse=True)
 def clean_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in ("DATABASE_URL", "ALLOWED_ORIGINS", "ALLOWED_ORIGIN_REGEX", "FACILITATOR_CODE", "TOKEN_SECRET"):
+    for name in ("DATABASE_URL", "ALLOWED_ORIGINS", "ALLOWED_ORIGIN_REGEX", "FACILITATOR_CODE", "TOKEN_SECRET", "LLM_PROVIDER"):
         monkeypatch.delenv(name, raising=False)
 
 
@@ -19,6 +19,15 @@ def test_defaults() -> None:
     assert settings.allowed_origins == ["http://localhost:5173"]
     assert settings.allowed_origin_regex is None
     assert settings.facilitator_code is None and settings.token_secret is None
+    assert settings.llm_provider == "gemini"
+
+
+def test_llm_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM_PROVIDER", "claude")
+    assert load().llm_provider == "claude"
+    monkeypatch.setenv("LLM_PROVIDER", "openai")
+    with pytest.raises(ValueError):
+        load()
 
 
 @pytest.mark.parametrize(
