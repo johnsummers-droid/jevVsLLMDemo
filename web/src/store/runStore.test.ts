@@ -133,6 +133,23 @@ describe('reduceRun', () => {
     expect(s).toMatchObject({ requests: 1, errors: 1, avgLatencyMs: 2000, totalCostUsd: 0.01 })
   })
 
+  it("counts a provider's safety block apart from failures", () => {
+    const view = reduceAll(EVENTS.slice(0, 1))
+    const blocked = {
+      type: 'node_failed',
+      runId: 'fixture-run',
+      seq: 1,
+      simMs: 5,
+      requestId: 'r1',
+      nodeId: 'llm',
+      error: { code: 'provider_blocked', message: 'refused', retryable: false },
+      latencyMs: 2000,
+      costUsd: 0,
+    } as ServerEvent
+    const s = reduceRun(view, blocked).nodeStats.llm
+    expect(s).toMatchObject({ requests: 1, errors: 0, providerBlocks: 1 })
+  })
+
   it('queues edge pulses for the canvas, capped at MAX_PULSES', () => {
     const view = reduceAll(EVENTS)
     const transfers = EVENTS.filter((e) => e.type === 'edge_transferred')

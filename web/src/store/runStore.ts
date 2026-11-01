@@ -56,7 +56,7 @@ const emptyStats = (nodeId: string): NodeStats => ({
 function countRun(
   view: RunView,
   nodeId: string,
-  { latencyMs = 0, costUsd = 0, tokensOut = 0, escalated = false, failed = false, branch = null as string | null },
+  { latencyMs = 0, costUsd = 0, tokensOut = 0, escalated = false, failed = false, blocked = false, branch = null as string | null },
 ): RunView {
   const s = view.nodeStats[nodeId] ?? emptyStats(nodeId)
   const requests = s.requests + 1
@@ -65,6 +65,7 @@ function countRun(
     ...s,
     requests,
     errors: s.errors + (failed ? 1 : 0),
+    providerBlocks: (s.providerBlocks ?? 0) + (blocked ? 1 : 0),
     escalations: s.escalations + (escalated ? 1 : 0),
     avgLatencyMs: (s.avgLatencyMs * s.requests + latencyMs) / requests,
     totalCostUsd: s.totalCostUsd + costUsd,
@@ -107,7 +108,12 @@ export function reduceRun(view: RunView, event: ServerEvent): RunView {
         branch: event.firedBranch ?? null,
       })
     case 'node_failed':
-      return countRun(view2, event.nodeId, { latencyMs: event.latencyMs, costUsd: event.costUsd, failed: true })
+      return countRun(view2, event.nodeId, {
+        latencyMs: event.latencyMs,
+        costUsd: event.costUsd,
+        failed: event.error.code !== 'provider_blocked',
+        blocked: event.error.code === 'provider_blocked',
+      })
     case 'edge_transferred': {
       const pulses = [...view2.pulses, { edgeId: event.edgeId, requestId: event.requestId, seq: event.seq }]
       return {

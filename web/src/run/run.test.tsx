@@ -218,6 +218,30 @@ describe('NodeStatsBadge', () => {
     expect(text).not.toContain('low_confidence') // top three decisions only
   })
 
+  it("shows a provider's safety blocks as blocked, not failed", () => {
+    useRunStore.setState({
+      run: run('completed'),
+      nodeStats: {
+        llm: {
+          nodeId: 'llm',
+          requests: 3,
+          skipped: 0,
+          errors: 0,
+          providerBlocks: 2,
+          escalations: 0,
+          avgLatencyMs: 5000,
+          totalCostUsd: 0,
+          tokensOut: 0,
+          decisions: {},
+        },
+      },
+    })
+    render(<NodeStatsBadge nodeId="llm" />)
+    const text = screen.getByLabelText('Run statistics').textContent
+    expect(text).toContain('2 blocked')
+    expect(text).not.toContain('failed')
+  })
+
   it('says so when a node has had no traffic yet', () => {
     useRunStore.setState({ run: run('running'), nodeStats: {} })
     render(<NodeStatsBadge nodeId="llm" />)

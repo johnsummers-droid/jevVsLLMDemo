@@ -26,6 +26,7 @@ export function NodeStatsBadge({ nodeId }: { nodeId: string }) {
   const decisions = Object.entries(stats.decisions ?? {})
     .sort(([, a], [, b]) => b - a)
     .slice(0, MAX_DECISIONS)
+  const blocks = stats.providerBlocks ?? 0
   return (
     <div className="node-stats" aria-label="Run statistics">
       <div className="node-stats__main">
@@ -33,7 +34,7 @@ export function NodeStatsBadge({ nodeId }: { nodeId: string }) {
         {stats.requests > 0 && <span title="Average latency">{formatMs(stats.avgLatencyMs)}</span>}
         {stats.totalCostUsd > 0 && <span title="Total cost">{formatUsd(stats.totalCostUsd)}</span>}
       </div>
-      {(decisions.length > 0 || stats.tokensOut > 0 || stats.escalations > 0 || stats.errors > 0 || stats.skipped > 0) && (
+      {(decisions.length > 0 || stats.tokensOut > 0 || stats.escalations > 0 || stats.errors > 0 || blocks > 0 || stats.skipped > 0) && (
         <div className="node-stats__extra">
           {decisions.map(([branch, count]) => (
             <span key={branch} title={`Requests routed to ${branch}`}>
@@ -49,6 +50,11 @@ export function NodeStatsBadge({ nodeId }: { nodeId: string }) {
           {stats.errors > 0 && (
             <span className="node-stats__error" title="Failed calls">
               {stats.errors} failed
+            </span>
+          )}
+          {blocks > 0 && (
+            <span className="node-stats__blocked" title="The model's safety filter refused these messages, so no reply was sent">
+              {blocks} blocked
             </span>
           )}
           {stats.skipped > 0 && <span title="Requests that took another branch">{stats.skipped} skipped</span>}
