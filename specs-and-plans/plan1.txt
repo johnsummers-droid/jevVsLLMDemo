@@ -2149,8 +2149,9 @@ MVP work, in order:
   4. Prod: paid Render plans in render.yaml (deadline 2026-11-29), then a
      rehearsal on the deployed URLs.
   Decided (2026-10-31): the MVP starter graph replaces the current default
-  graph. Still open: whether the palette shows only the 5 MVP nodes or
-  all 8.
+  graph. Decided (2026-11-01): the palette shows all 8 nodes, not only the
+  5 MVP nodes. Styling (item 3) is deferred by the user, 2026-11-01; it no
+  longer blocks the real-provider work or prod.
 
 Help panel decisions, accepted 2026-10-31 (the critique and the user's
 answers are in specs-and-plans/help-panel-conversation.txt):
