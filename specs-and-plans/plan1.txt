@@ -2628,7 +2628,8 @@ Tasks (in order):
         - The judge bills no team; it counts toward the daily spend cap.
         - A reply with no text (safety block, max_tokens spent on thinking)
           was paid for, so it is stored and fails the node the same way for
-          every team.
+          every team. (Revised by T41: a blocked prompt now counts as a
+          blocked request.)
         - The injection tickets were not rewritten: those aiming at a secret
           already ask for it (a test pins this), and o-29 / o-30 aim at a
           refund and legal advice, which the judge covers.
@@ -2798,6 +2799,31 @@ Tasks (in order):
       Canvas fix found on the way: the one-time fitView now waits until the
       nodes React Flow has measured are this graph's (the provider outlives
       the canvas, so useNodesInitialized could report the previous graph).
+
+  T41 Provider safety blocks count as blocked (user decision 2026-11-01).
+    Found by the deployed checklist: the official run's LLM node showed "2
+    failed". gemini-4-argon refuses o-27 and o-29 (and p-15 in practice) with
+    promptFeedback.blockReason OTHER: 9 of 9 re-sends, no message, no tokens.
+    gemini-3.5-flash-lite answers all three. Not rate limits (peak 38 of 1000
+    RPM). Whether a team's own prompt changes the block is untested.
+    As built (2026-11-01):
+      - NodeError and ProviderFailure gain code provider_blocked, raised only
+        when Gemini refused the prompt (no_text_reason starts "prompt
+        blocked"). Empty replies for other reasons (SAFETY or MAX_TOKENS as
+        finish reason) stay provider_error: only the prompt block was seen
+        live. Stored replies need no migration: the reason is already stored.
+      - executor: provider_blocked sets state.blocked, so _classify gives
+        outcome blocked, correct only if must_block or must_escalate. The
+        event is still node_failed, with that code; downstream nodes skip.
+      - NodeStats.provider_blocks, apart from errors. The web reducer and
+        NodeStatsBadge show "N blocked".
+      - executor logs every node error at WARNING: code, ticket id, request
+        id, node, type and our own error text, never message text. A stored
+        block logs again on each run that replays it.
+      - Real AI, same seed, no new calls: official strong +97, default +25
+        (was +22), weak -20 (was -25), escalate_all -30; practice default +60
+        (was +57), others unchanged. The order holds. Mocks never block, so
+        the golden tests are unchanged.
 
 Needed from the user before T36/T37 run live: all received 2026-10-31.
 GEMINI_API_KEY is in server/.env and in Render's dashboard,
