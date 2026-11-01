@@ -2805,7 +2805,8 @@ Tasks (in order):
     failed". gemini-4-argon refuses o-27 and o-29 (and p-15 in practice) with
     promptFeedback.blockReason OTHER: 9 of 9 re-sends, no message, no tokens.
     gemini-3.5-flash-lite answers all three. Not rate limits (peak 38 of 1000
-    RPM). Whether a team's own prompt changes the block is untested.
+    RPM). The system prompt changes what is blocked: o-25 is answered with the
+    default prompt and blocked with the weak graph's permissive one.
     As built (2026-11-01):
       - NodeError and ProviderFailure gain code provider_blocked, raised only
         when Gemini refused the prompt (no_text_reason starts "prompt

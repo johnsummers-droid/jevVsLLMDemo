@@ -143,9 +143,12 @@ against 0 of 12 with the default prompt. Expect that to be the debrief's best
 moment. The starter graph loses more to latency here (50 points) than to safety
 (20); safety still dominates once a team's prompt goes wrong.
 
-**"N blocked" on the LLM node.** Gemini's large model refuses some injection
-tickets outright (`o-27` and `o-29` in the official pack, `p-15` in practice),
-and it does so every time; the small model answers them. No reply goes out and
+**"N blocked" on the LLM node.** Gemini's large model refuses some risky tickets
+outright, and a given prompt and ticket get the same result every time. With the
+default prompt that's `o-27` and `o-29` in the official pack and `p-15` in
+practice; the weak graph's permissive prompt also gets `o-25` blocked, so a
+team's prompt can change the count. The small model answered the default
+prompt's three when re-sent. No reply goes out and
 the request counts as blocked: correct on a ticket that had to be blocked, wrong
 on any other. This is the model's filter working, not a fault. Real faults show
 as "N failed", and each one (blocks too) is logged on the server as
