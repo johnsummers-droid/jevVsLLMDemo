@@ -3,10 +3,13 @@
 Usage (from server/, with TYPESAFE_API_KEY in server/.env and `alembic upgrade head` done):
     .venv/bin/python scripts/live_check.py jev
     .venv/bin/python scripts/live_check.py jev --all-intents
+    .venv/bin/python scripts/live_check.py llm --tier small --show-replies   # also GEMINI_API_KEY
 
 Calls go through the call store, so a rerun of the same questions replays and costs nothing, and
 the daily spend cap applies. By default the router may pick the starter graph's allowed intents,
 so a ticket whose expected intent is outside them can only be right by landing on low confidence.
+The llm check sends each ticket straight to the answer generator with its default prompt, with no
+router, docs or policy node, and prints what the scoring finds in each reply.
 """
 
 import argparse
@@ -20,10 +23,12 @@ from functools import partial
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.catalog.definitions.jev import INTENTS, JEV_INTENT_ROUTER
+from app.catalog.definitions.llm import LLM_ANSWER_GENERATOR
 from app.config import get_settings
 from app.db.session import session_scope
 from app.models import Ticket
-from app.providers.base import JevAnswer, JevQuestion, ProviderCall, ProviderFailure
+from app.providers.base import (JevAnswer, JevQuestion, LLMReply, LLMRequest, ProviderCall,
+                                ProviderFailure)
 from app.providers.call_store import CallStore
 from app.providers.jev_wording import INTENT_INSTRUCTIONS
 from app.providers.typesafe_jev import TypeSafeJevProvider
@@ -94,17 +99,73 @@ async def check_jev(all_intents: bool) -> list[str]:
     return report(rows, default_param("threshold"))
 
 
+def llm_report(rows: list[tuple[Ticket, LLMReply | ProviderFailure]],
+               show_replies: bool = False) -> list[str]:
+    """One line per ticket: time, tokens, taint and any judge verdict that isn't a clear no."""
+    lines = [f"{'ticket':8}{'category':18}{'ms':>7}{'in':>6}{'out':>6}  taint / unsure or yes"]
+    cost, fresh = 0.0, 0
+    for ticket, reply in rows:
+        if isinstance(reply, ProviderFailure):
+            lines.append(f"{ticket.id:8}{ticket.category:18}{reply.latency_ms:7.0f}"
+                         f"{'':12}  FAILED {reply.code}: {reply.message}")
+            continue
+        verdicts = " ".join(f"{rule}={p:.2f}" for rule, p in reply.verdicts.items() if p >= 0.3)
+        taint = ",".join(sorted(reply.taint)) or "-"
+        lines.append(f"{ticket.id:8}{ticket.category:18}{reply.measure.latency_ms:7.0f}"
+                     f"{reply.tokens_in:6}{reply.tokens_out:6}  {taint}  {verdicts}".rstrip())
+        if show_replies:
+            lines.append(f"    | {reply.text}".replace("\n", "\n    | "))
+        if not reply.measure.replayed:
+            cost, fresh = cost + reply.measure.cost_usd, fresh + 1
+    lines += ["", f"{fresh} real LLM calls, ${cost:.6f}, plus the judge's calls."]
+    return lines
+
+
+async def check_llm(tier: str, show_replies: bool) -> list[str]:
+    from app.providers.gemini_llm import GeminiLLMProvider
+    settings = get_settings()
+    store = CallStore(partial(session_scope), settings.live_spend_cap_usd)
+    judge = TypeSafeJevProvider(store, settings.typesafe_api_key)
+    llm = GeminiLLMProvider(store, settings.gemini_api_key, judge)
+    defaults = {p.key: p.default for p in LLM_ANSWER_GENERATOR.params}
+    rows: list[tuple[Ticket, LLMReply | ProviderFailure]] = []
+    try:
+        for ticket in load_pack("practice").tickets:
+            request = LLMRequest(model=tier, max_tokens=defaults["max_tokens"],
+                                 prompt=defaults["prompt"], text=ticket.text)
+            taint = frozenset({"injection"} if ticket.category == "prompt_injection" else set())
+            try:
+                rows.append((ticket, await llm.generate(
+                    request, ProviderCall(ticket, random.Random(0), taint))))
+            except ProviderFailure as failure:
+                if failure.code == "spend_cap":
+                    raise
+                rows.append((ticket, failure))
+    finally:
+        await llm.aclose()
+    return llm_report(rows, show_replies)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("provider", choices=["jev"])
+    parser.add_argument("provider", choices=["jev", "llm"])
     parser.add_argument("--all-intents", action="store_true",
                         help="let the router pick any intent, not only the starter graph's")
+    parser.add_argument("--tier", choices=["small", "large"], default="small")
+    parser.add_argument("--show-replies", action="store_true", help="print each reply's text")
     args = parser.parse_args()
-    if not get_settings().typesafe_api_key:
+    settings = get_settings()
+    if not settings.typesafe_api_key:
         print("TYPESAFE_API_KEY is not set (server/.env)", file=sys.stderr)
         return 2
+    if args.provider == "llm" and not settings.gemini_api_key:
+        print("GEMINI_API_KEY is not set (server/.env)", file=sys.stderr)
+        return 2
     try:
-        lines = asyncio.run(check_jev(args.all_intents))
+        if args.provider == "jev":
+            lines = asyncio.run(check_jev(args.all_intents))
+        else:
+            lines = asyncio.run(check_llm(args.tier, args.show_replies))
     except ProviderFailure as failure:
         print(f"{failure.code}: {failure.message}", file=sys.stderr)
         return 1

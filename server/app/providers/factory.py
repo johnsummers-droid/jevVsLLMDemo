@@ -1,7 +1,7 @@
 """The providers a run uses, from settings (U2): the mocks unless JEV_MODE / LLM_MODE say live.
 
-The live Gemini provider arrives in T37; until then Settings.live_problems() stops the server
-from starting with LLM_MODE=live.
+Live Claude isn't built; Settings.live_problems() stops the server from starting with it. The
+Gemini module is imported only when used: its SDK is heavy and most processes run on mocks.
 """
 
 from functools import partial
@@ -33,10 +33,17 @@ def jev_provider(settings: Settings, store: CallStore | None = None) -> JevProvi
     return TypeSafeJevProvider(store, settings.typesafe_api_key)
 
 
-def llm_provider(settings: Settings) -> LLMProvider:
-    if settings.llm_mode == "live":
-        raise NotImplementedError(f"the live {settings.llm_provider} provider arrives in T37")
-    return MockLLMProvider(name=settings.llm_provider)
+def llm_provider(settings: Settings, store: CallStore | None = None) -> LLMProvider:
+    if settings.llm_mode != "live":
+        return MockLLMProvider(name=settings.llm_provider)
+    if settings.llm_provider != "gemini":
+        raise NotImplementedError(f"the live {settings.llm_provider} provider isn't built")
+    if store is None or not settings.gemini_api_key or not settings.typesafe_api_key:
+        raise ValueError("live Gemini needs a call store, GEMINI_API_KEY and TYPESAFE_API_KEY")
+    from app.providers.gemini_llm import GeminiLLMProvider
+    # Its own judge, in every JEV_MODE: the scoring must not depend on the mock router's mode.
+    judge = TypeSafeJevProvider(store, settings.typesafe_api_key)
+    return GeminiLLMProvider(store, settings.gemini_api_key, judge)
 
 
 async def close_provider(provider: object) -> None:

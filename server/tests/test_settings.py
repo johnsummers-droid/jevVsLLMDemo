@@ -76,10 +76,14 @@ def test_live_mode_needs_its_key_and_its_provider(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setenv("LLM_MODE", "live")
     problems = " | ".join(load().live_problems())
     assert "TYPESAFE_API_KEY" in problems and "GEMINI_API_KEY" in problems
-    assert "not built yet" in problems  # the LLM, until T37
-    assert "Jev provider is not built" not in problems
+    assert "not built" not in problems
+    monkeypatch.setenv("GEMINI_API_KEY", "g")
+    assert "Jev judges" in " | ".join(load().live_problems())  # the judge needs TypeSafe (U9)
+    monkeypatch.setenv("TYPESAFE_API_KEY", "t")
+    assert load().live_problems() == []
     monkeypatch.setenv("LLM_PROVIDER", "claude")
-    assert "ANTHROPIC_API_KEY" in " | ".join(load().live_problems())
+    problems = " | ".join(load().live_problems())
+    assert "ANTHROPIC_API_KEY" in problems and "not built" in problems
 
 
 def test_live_mode_refuses_to_start(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -90,6 +94,7 @@ def test_live_mode_refuses_to_start(monkeypatch: pytest.MonkeyPatch) -> None:
 
     app.dependency_overrides.clear()
     monkeypatch.setenv("LLM_MODE", "live")
+    monkeypatch.setenv("LLM_PROVIDER", "claude")  # not built, whatever keys server/.env holds
     get_settings.cache_clear()
     try:
         with pytest.raises(RuntimeError, match="cannot start in live mode"), TestClient(app):

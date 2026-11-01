@@ -5,6 +5,7 @@ a value, probabilities and a confidence out. The adapters keep the real wire for
 """
 
 import random
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Literal, Protocol, Self
 
@@ -86,6 +87,8 @@ class LLMReply:
     tokens_in: int
     tokens_out: int
     taint: frozenset[Taint]  # taint of the generated text (replaces the input's taint)
+    measure: CallMeasure | None = None  # None from the mock (see JevAnswer)
+    verdicts: Mapping[str, float] = field(default_factory=dict)  # judge question -> p(yes), live
 
 
 class LLMProvider(Protocol):

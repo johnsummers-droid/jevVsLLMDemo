@@ -60,17 +60,19 @@ async def compute(app: Any, graph: Graph, config: RunConfig, *, run_id: str, tea
     """The whole run, computed in a worker thread so the event loop keeps serving (Q1)."""
     pack = load_pack(config.pack_id)
     settings = get_settings()
-    store = call_store_for(app) if settings.jev_mode == "live" else None
+    live = "live" in (settings.jev_mode, settings.llm_mode)
+    store = call_store_for(app) if live else None
 
     async def run_on_own_loop() -> RunResult:
         # Built and closed here: a live provider's HTTP connections belong to this event loop.
-        jev = jev_provider(settings, store)
+        jev, llm = jev_provider(settings, store), llm_provider(settings, store)
         try:
             return await run_simulation(
                 graph, pack, config, run_id=run_id, team_id=team_id, graph_version=graph_version,
-                jev=jev, llm=llm_provider(settings))
+                jev=jev, llm=llm)
         finally:
             await close_provider(jev)
+            await close_provider(llm)
 
     return await asyncio.to_thread(asyncio.run, run_on_own_loop())
 
