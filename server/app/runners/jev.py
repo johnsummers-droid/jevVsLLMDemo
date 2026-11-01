@@ -3,8 +3,9 @@ from typing import Any
 from app.catalog.definitions.jev import JEV_INTENT_ROUTER, JEV_SAFETY_CHECK
 from app.engine.envelope import RunContext, merged_taint
 from app.models import NodeResult, PortValue
-from app.providers.base import JevQuestion
-from app.runners.base import latency, missing_input, text
+from app.providers.base import JevQuestion, ProviderFailure
+from app.providers.jev_wording import INTENT_INSTRUCTIONS, SAFETY_INSTRUCTIONS
+from app.runners.base import measured, missing_input, provider_failed, text
 
 LOW_CONFIDENCE = "route.low_confidence"
 
@@ -17,11 +18,14 @@ class IntentRouterRunner:
             return missing_input(definition, "text")
         # The threshold is applied below, after the call, so it stays out of the seed.
         seed_params = {"allowed_intents": params["allowed_intents"]}
-        question = JevQuestion(id="intent", kind="choice", prompt="Which intent fits best?",
+        question = JevQuestion(id="intent", kind="choice", prompt=INTENT_INSTRUCTIONS,
                                options=params["allowed_intents"])
         message = inputs["text"]
-        [answer] = await ctx.jev.ask(message.value, [question],
-                                     ctx.provider_call(definition.type, seed_params, inputs))
+        try:
+            [answer] = await ctx.jev.ask(message.value, [question],
+                                         ctx.provider_call(definition.type, seed_params, inputs))
+        except ProviderFailure as failure:
+            return provider_failed(failure)
 
         taint = merged_taint(inputs)
         if answer.confidence < params["threshold"]:
@@ -39,8 +43,7 @@ class IntentRouterRunner:
                 branch: text(message.value, taint),
             },
             fired_branch=branch,
-            latency_ms=latency(definition, ctx, seed_params, inputs),
-            cost_usd=definition.cost_model.cost_per_call_usd,
+            **measured(answer.measure, definition, ctx, seed_params, inputs),
             decision={"intent": answer.value, "confidence": answer.confidence},
         )
 
@@ -58,11 +61,14 @@ class SafetyCheckRunner:
         if "text" not in inputs:
             return missing_input(definition, "text")
         seed_params = {"categories": params["categories"]}
-        question = JevQuestion(id="safety", kind="choice", prompt="Is this message safe?",
+        question = JevQuestion(id="safety", kind="choice", prompt=SAFETY_INSTRUCTIONS,
                                options=["safe", *params["categories"]])
         message = inputs["text"]
-        [answer] = await ctx.jev.ask(message.value, [question],
-                                     ctx.provider_call(definition.type, seed_params, inputs))
+        try:
+            [answer] = await ctx.jev.ask(message.value, [question],
+                                         ctx.provider_call(definition.type, seed_params, inputs))
+        except ProviderFailure as failure:
+            return provider_failed(failure)
 
         probs = answer.probabilities.probs
         p_unsafe = 1 - probs["safe"]
@@ -79,7 +85,6 @@ class SafetyCheckRunner:
                 branch: text(message.value, merged_taint(inputs)),
             },
             fired_branch=branch,
-            latency_ms=latency(definition, ctx, seed_params, inputs),
-            cost_usd=definition.cost_model.cost_per_call_usd,
+            **measured(answer.measure, definition, ctx, seed_params, inputs),
             decision={"is_safe": is_safe, "confidence": confidence, "flagged": flagged},
         )

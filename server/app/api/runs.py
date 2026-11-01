@@ -53,7 +53,7 @@ async def start_practice_run(
         raise HTTPException(status_code=409, detail="a run is already in progress") from None
     try:
         config, run_id = practice_config(), new_id()
-        result = await compute(stored.graph, config, run_id=run_id, team_id=team.id, graph_version=stored.version)
+        result = await compute(request.app, stored.graph, config, run_id=run_id, team_id=team.id, graph_version=stored.version)
         row = await run_in_threadpool(repo.create_run, db, team, config, stored.graph, stored.version, run_id)
         record = repo.run_record(row)
     except BaseException:

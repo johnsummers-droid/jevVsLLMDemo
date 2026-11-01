@@ -34,7 +34,7 @@ JEV_PRICE_PER_1K_INPUT_USD = 0.000042
 
 ProviderMode = Literal["mock", "live"]
 # Live providers that exist so far; live mode for anything else refuses to start (U2).
-LIVE_JEV_AVAILABLE = False  # T36
+LIVE_JEV_AVAILABLE = True
 LIVE_LLM_AVAILABLE: frozenset[str] = frozenset()  # T37 adds "gemini"
 
 

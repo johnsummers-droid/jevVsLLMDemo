@@ -36,11 +36,34 @@ class JevQuestion(CamelModel):
         return self
 
 
+class CallMeasure(CamelModel):
+    """A real call's measured numbers (U4). Replays repeat them, so reruns time and cost the same."""
+
+    latency_ms: float = Field(ge=0)
+    cost_usd: float = Field(ge=0)
+    tokens_in: int = Field(ge=0)
+    tokens_out: int = Field(ge=0)
+    replayed: bool
+
+
 class JevAnswer(CamelModel):
     question_id: str
     value: str
     probabilities: Distribution
     confidence: float = Field(ge=0, le=1)
+    # None from the mock: the runner then samples latency and cost from the node's cost model.
+    # Covers the whole request; every runner asks one question per request.
+    measure: CallMeasure | None = None
+
+
+class ProviderFailure(Exception):
+    """A real provider call failed for good (U10). The runner turns it into a failed node."""
+
+    def __init__(self, code: Literal["timeout", "provider_error", "rate_limited", "spend_cap"],
+                 message: str, *, retryable: bool, latency_ms: float = 0) -> None:
+        super().__init__(message)
+        self.code, self.message, self.retryable = code, message, retryable
+        self.latency_ms = latency_ms  # time spent before giving up, for the node_failed event
 
 
 class JevProvider(Protocol):
