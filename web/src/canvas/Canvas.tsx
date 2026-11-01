@@ -1,7 +1,6 @@
 // The editable pipeline canvas (read-only while the graph is locked or a run plays). Must be rendered inside a
 // ReactFlowProvider, and mounted once the graph has loaded so the first fitView frames it.
 import {
-  Background,
   Controls,
   ReactFlow,
   useReactFlow,
@@ -11,6 +10,7 @@ import {
   type FinalConnectionState,
 } from '@xyflow/react'
 import { useCallback, useEffect, useRef, type DragEvent } from 'react'
+import { CanvasGrid } from './CanvasGrid'
 import { nodeTypes } from '../nodes/nodeTypes'
 import { NODE_DRAG_TYPE } from '../palette/NodeCard'
 import { useCatalogStore } from '../store/catalogStore'
@@ -124,9 +124,9 @@ export function Canvas() {
         edgesReconnectable={!locked}
         deleteKeyCode={locked ? null : undefined}
         minZoom={0.2}
-        colorMode="system"
+        colorMode="dark"
       >
-        <Background />
+        <CanvasGrid />
         <Controls />
       </ReactFlow>
       {notice && (

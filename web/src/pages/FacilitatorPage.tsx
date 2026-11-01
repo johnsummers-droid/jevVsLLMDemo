@@ -12,6 +12,7 @@ import { OfficialRunPanel } from '../run/OfficialRunPanel'
 import { type FacilitatorCredentials, useSessionStore } from '../store/sessionStore'
 import { type TeamRun, useSessionLive, useSessionLiveStore } from '../store/sessionLiveStore'
 import type { SessionDetail } from '../types'
+import { Logo } from '../components/Logo'
 import { Link } from './Link'
 
 const RUN_LABELS: Record<string, string> = {
@@ -56,6 +57,7 @@ function CreateSession() {
 
   return (
     <div className="page">
+      <Logo className="page__logo" />
       <form className="page__card" onSubmit={submit}>
         <h1>Start a workshop session</h1>
         <label className="field">
@@ -132,6 +134,7 @@ function SessionView({ facilitator }: { facilitator: FacilitatorCredentials }) {
   const joinUrl = `${window.location.origin}${PATHS.join}?code=${sessionCode}`
   return (
     <div className="page page--wide">
+      <Logo className="page__logo" />
       <section className="page__card">
         <p className="page__hint">Session code</p>
         <p className="session-code" aria-label="Session code">

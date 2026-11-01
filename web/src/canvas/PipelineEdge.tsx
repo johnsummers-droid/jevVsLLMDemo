@@ -1,6 +1,6 @@
 // The default edge plus a validation badge (issues on this edge color it and show at its middle)
 // and, during a run, the request dots the pulse animator moves along it (T23).
-import { BaseEdge, EdgeLabelRenderer, getBezierPath, type EdgeProps } from '@xyflow/react'
+import { BaseEdge, EdgeLabelRenderer, getSmoothStepPath, type EdgeProps } from '@xyflow/react'
 import { useEffect, useRef } from 'react'
 import { worstSeverity } from '../lib/issues'
 import { useGraphStore } from '../store/graphStore'
@@ -14,7 +14,7 @@ export function PipelineEdge({ id, sourceX, sourceY, targetX, targetY, sourcePos
   const runTransfers = useRunStore((s) => s.edgeCounts[id] ?? 0)
   const transfers = viewingReference ? 0 : runTransfers
   const severity = worstSeverity(issues)
-  const [path, labelX, labelY] = getBezierPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition })
+  const [path, labelX, labelY] = getSmoothStepPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, borderRadius: 12 })
   const trackRef = useRef<SVGPathElement>(null)
   const layerRef = useRef<SVGGElement>(null)
 

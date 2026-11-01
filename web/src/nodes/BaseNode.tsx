@@ -4,20 +4,14 @@ import { useUpdateNodeInternals, type NodeProps } from '@xyflow/react'
 import { useEffect, useMemo, type ReactNode } from 'react'
 import { TypedHandle } from '../handles/TypedHandle'
 import { HelpButton } from '../help/HelpButton'
+import { CATEGORY_LABELS } from './categoryLabels'
+import { CategoryIcon } from './CategoryIcon'
 import { expandOutputs } from '../lib/graphMapping'
 import { portKey, worstSeverity } from '../lib/issues'
 import { NodeStatsBadge } from '../run/NodeStatsBadge'
 import { useCatalogStore } from '../store/catalogStore'
 import { useValidationStore } from '../store/validationStore'
 import type { FlowNode, NodeCategory, Port } from '../types'
-
-const CATEGORY_LABELS: Record<NodeCategory, string> = {
-  io: 'Input / output',
-  jev: 'Jev decision',
-  llm: 'LLM',
-  tool: 'Tool',
-  human: 'Human',
-}
 
 interface BaseNodeProps extends NodeProps<FlowNode> {
   category: NodeCategory | 'unknown'
@@ -53,6 +47,36 @@ export function BaseNode({ id, data, selected, category, children }: BaseNodePro
   const updateNodeInternals = useUpdateNodeInternals()
   useEffect(() => updateNodeInternals(id), [id, outputKey, updateNodeInternals])
 
+  const categoryLabel = category === 'unknown' ? 'Unknown' : CATEGORY_LABELS[category]
+  const badge = severity && issues && (
+    <span
+      className={`issue-badge issue-badge--${severity} issue-badge--node`}
+      title={issues.map((i) => i.message).join('\n')}
+      role="img"
+      aria-label={`${issues.length} ${severity === 'error' ? 'error' : 'warning'}${issues.length > 1 ? 's' : ''} on this node`}
+    >
+      {severity === 'error' ? '!' : '⚠'} {issues.length}
+    </span>
+  )
+  const title = data.label || definition?.title || data.nodeType
+  const help = definition?.help && <HelpButton definition={definition} className="pipeline-node__help" />
+  const ports = definition ? (
+    <div className="pipeline-node__ports">
+      <div className="pipeline-node__inputs">
+        {definition.inputs.map((port) => (
+          <PortRow key={port.id} nodeId={id} port={port} kind="target" />
+        ))}
+      </div>
+      <div className="pipeline-node__outputs">
+        {outputs.map((port) => (
+          <PortRow key={port.id} nodeId={id} port={port} kind="source" />
+        ))}
+      </div>
+    </div>
+  ) : (
+    <p className="pipeline-node__missing">Node type “{data.nodeType}” is not in the catalog.</p>
+  )
+
   return (
     <div
       className={[
@@ -64,41 +88,17 @@ export function BaseNode({ id, data, selected, category, children }: BaseNodePro
         .filter(Boolean)
         .join(' ')}
     >
-      {severity && issues && (
-        <span
-          className={`issue-badge issue-badge--${severity} issue-badge--node`}
-          title={issues.map((i) => i.message).join('\n')}
-          role="img"
-          aria-label={`${issues.length} ${severity === 'error' ? 'error' : 'warning'}${issues.length > 1 ? 's' : ''} on this node`}
-        >
-          {severity === 'error' ? '!' : '⚠'} {issues.length}
-        </span>
-      )}
+      {badge}
+      <span className="pipeline-node__panel" title={categoryLabel}>
+        <CategoryIcon category={category} nodeType={data.nodeType} alt={categoryLabel} />
+      </span>
       <header className="pipeline-node__header">
-        <span className="pipeline-node__category">
-          {category === 'unknown' ? 'Unknown' : CATEGORY_LABELS[category]}
-        </span>
-        <strong className="pipeline-node__title">{data.label || definition?.title || data.nodeType}</strong>
+        <strong className="pipeline-node__title">{title}</strong>
         <span className="pipeline-node__id">{id}</span>
         {children}
-        {definition?.help && <HelpButton definition={definition} className="pipeline-node__help" />}
+        {help}
       </header>
-      {definition ? (
-        <div className="pipeline-node__ports">
-          <div className="pipeline-node__inputs">
-            {definition.inputs.map((port) => (
-              <PortRow key={port.id} nodeId={id} port={port} kind="target" />
-            ))}
-          </div>
-          <div className="pipeline-node__outputs">
-            {outputs.map((port) => (
-              <PortRow key={port.id} nodeId={id} port={port} kind="source" />
-            ))}
-          </div>
-        </div>
-      ) : (
-        <p className="pipeline-node__missing">Node type “{data.nodeType}” is not in the catalog.</p>
-      )}
+      {ports}
       <NodeStatsBadge nodeId={id} />
     </div>
   )

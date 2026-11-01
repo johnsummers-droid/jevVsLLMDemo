@@ -5,6 +5,9 @@ import { ReactFlowProvider, useReactFlow } from '@xyflow/react'
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Canvas } from '../canvas/Canvas'
 import { ErrorBoundary } from '../components/ErrorBoundary'
+import { LockIcon } from '../components/LockIcon'
+import { Logo } from '../components/Logo'
+import { PanelToggle } from '../components/PanelToggle'
 import { HelpPanel } from '../help/HelpPanel'
 import { Inspector } from '../inspector/Inspector'
 import { navigate, PATHS } from '../lib/navigation'
@@ -36,6 +39,7 @@ function SaveIndicator() {
   const error = useSaveStore((s) => s.error)
   return (
     <span className={`save-status save-status--${status}`} role="status" title={error ?? undefined}>
+      {status === 'locked' && <LockIcon />}
       {SAVE_LABELS[status]}
     </span>
   )
@@ -80,6 +84,8 @@ function Workbench({ team }: { team: TeamCredentials }) {
   const locked = useGraphStore((s) => s.locked)
   const reference = useGraphStore((s) => s.reference)
   const [showPicker] = useState(() => referenceViewerEnabled())
+  const [paletteCollapsed, setPaletteCollapsed] = useState(false)
+  const [inspectorCollapsed, setInspectorCollapsed] = useState(false)
   const revealed = useReveal(team.teamId, locked)
   const readOnly = useReadOnly()
   const signOut = useSessionStore((s) => s.signOut)
@@ -139,7 +145,9 @@ function Workbench({ team }: { team: TeamCredentials }) {
   return (
     <div className="app">
       <header className="app__header">
-        <h1>Pipeline Simulator</h1>
+        <h1 className="app__logo">
+          <Logo />
+        </h1>
         <span className="app__status">
           {error ? `Could not reach the server: ${error}` : graphStatus === 'ready' ? <SaveIndicator /> : 'Loading…'}
         </span>
@@ -151,7 +159,10 @@ function Workbench({ team }: { team: TeamCredentials }) {
           <ReferencePicker label="View reference graph" graphs={revealed} onPick={viewRevealed} />
         )}
         <span className="app__team">
-          <strong>{team.teamName}</strong> · session {team.sessionCode}
+          <strong className="app__team-name" title={team.teamName}>
+            {team.teamName}
+          </strong>
+          <span className="app__session">session {team.sessionCode}</span>
         </span>
         <button type="button" className="button button--small" onClick={() => void leave()}>
           Sign out
@@ -159,6 +170,7 @@ function Workbench({ team }: { team: TeamCredentials }) {
       </header>
       {locked && (
         <div className="app__banner" role="alert">
+          <LockIcon />
           Pencils down: the facilitator has locked the graphs. You can look around, but not edit.
         </div>
       )}
@@ -168,16 +180,11 @@ function Workbench({ team }: { team: TeamCredentials }) {
           saved). Pick “User defined” to go back to your graph.
         </div>
       )}
-      {graphStatus === 'ready' && (
-        <ErrorBoundary name="the run bar">
-          <div className="run-bar">
-            <RunControls teamId={teamId} />
-            <MetricsBar />
-          </div>
-        </ErrorBoundary>
-      )}
       <main className="app__body">
-        <Palette nodes={catalog.nodes} onAdd={addAtCenter} disabled={readOnly} />
+        {/* Hidden, not removed, so a panel keeps its state (open sections, half-typed values). */}
+        <div className="app__side" hidden={paletteCollapsed}>
+          <Palette nodes={catalog.nodes} onAdd={addAtCenter} disabled={readOnly} />
+        </div>
         <div
           className={`app__canvas${helpOpen ? ' app__canvas--help-open' : ''}`}
           ref={canvasRef}
@@ -188,12 +195,29 @@ function Workbench({ team }: { team: TeamCredentials }) {
               <Canvas key={reference ?? 'user'} />
             </ErrorBoundary>
           )}
+          <PanelToggle side="left" name="node palette" collapsed={paletteCollapsed} onToggle={() => setPaletteCollapsed((c) => !c)} />
+          <PanelToggle side="right" name="node information panel" collapsed={inspectorCollapsed} onToggle={() => setInspectorCollapsed((c) => !c)} />
+          {locked && (
+            <span className="app__canvas-lock">
+              <LockIcon label="This graph is locked" />
+            </span>
+          )}
           <ErrorBoundary name="the help panel">
             <HelpPanel />
           </ErrorBoundary>
         </div>
-        <Inspector />
+        <div className="app__side" hidden={inspectorCollapsed}>
+          <Inspector />
+        </div>
       </main>
+      {graphStatus === 'ready' && (
+        <ErrorBoundary name="the run bar">
+          <div className="run-bar">
+            <MetricsBar />
+            <RunControls teamId={teamId} />
+          </div>
+        </ErrorBoundary>
+      )}
     </div>
   )
 }

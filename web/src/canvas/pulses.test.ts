@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createAnimator, DOT_MS, MAX_DOTS_PER_EDGE, type PathLike } from './pulses'
+import { createAnimator, DOT_MS, DOT_RADIUS, MAX_DOTS_PER_EDGE, type PathLike } from './pulses'
 
 const straight: PathLike = {
   getTotalLength: () => 100,
@@ -22,6 +22,18 @@ function manualFrames() {
 }
 
 describe('pulse animator', () => {
+  it('draws dots at the large radius, with the class that makes them throb', () => {
+    const animator = createAnimator(() => 0)
+    const g = layer()
+    animator.track('e1', straight, g)
+    animator.push([pulse('e1', 1)])
+    animator.frame(0)
+    const dot = g.querySelector('circle')!
+    expect(dot.getAttribute('r')).toBe(DOT_RADIUS)
+    expect(Number(DOT_RADIUS)).toBeGreaterThan(4)
+    expect(dot.getAttribute('class')).toBe('pulse-dot')
+  })
+
   it('moves a dot along the path and removes it after DOT_MS', () => {
     const animator = createAnimator(() => 0)
     const g = layer()

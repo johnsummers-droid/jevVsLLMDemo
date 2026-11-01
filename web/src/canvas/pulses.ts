@@ -7,7 +7,7 @@ import { type Pulse, useRunStore } from '../store/runStore'
 
 export const DOT_MS = 700
 export const MAX_DOTS_PER_EDGE = 6
-const DOT_RADIUS = '4'
+export const DOT_RADIUS = '7'
 const SVG_NS = 'http://www.w3.org/2000/svg'
 
 /** The part of an SVG path element the animator uses (a fake in tests). */

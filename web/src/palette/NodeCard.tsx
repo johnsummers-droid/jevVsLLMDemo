@@ -1,5 +1,6 @@
 import type { DragEvent } from 'react'
 import { HelpButton } from '../help/HelpButton'
+import { CategoryIcon } from '../nodes/CategoryIcon'
 import type { NodeDefinition } from '../types'
 
 /** dataTransfer type for a palette drag; the canvas reads the node type from it on drop. */
@@ -20,6 +21,9 @@ export function NodeCard({ definition, onAdd, disabled = false }: NodeCardProps)
   }
   return (
     <div className={`node-card node-card--${definition.category}${disabled ? ' node-card--disabled' : ''}`}>
+      <span className="node-card__panel">
+        <CategoryIcon category={definition.category} nodeType={definition.type} />
+      </span>
       <button
         type="button"
         className="node-card__add"

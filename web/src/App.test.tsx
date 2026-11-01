@@ -75,6 +75,41 @@ describe('App pages', () => {
     expect(fetchMock.mock.calls.some(([url]) => url === '/api/graphs/default')).toBe(false)
   })
 
+  it('collapses and expands the side panels, with the carets pointing the right way', async () => {
+    useSessionStore.setState({ team })
+    window.history.replaceState(null, '', '/team')
+    stubCanvasDom()
+    mockApi({
+      'GET /api/catalog': { body: { nodes: catalogNodes } },
+      'GET /api/teams/t1/graph': { body: stored },
+      'POST /api/graphs/validate': { body: { ok: true, issues: [] } },
+    })
+    render(<App />)
+    await waitFor(() => expect(useGraphStore.getState().status).toBe('ready'))
+
+    const left = screen.getByRole('button', { name: 'Collapse node palette' })
+    const right = screen.getByRole('button', { name: 'Collapse node information panel' })
+    // Open: each caret points to its nearest outer edge.
+    expect(left.dataset.points).toBe('left')
+    expect(right.dataset.points).toBe('right')
+    expect(screen.getByRole('complementary', { name: 'Node palette' })).toBeTruthy()
+
+    fireEvent.click(left)
+    expect(screen.queryByRole('complementary', { name: 'Node palette' })).toBeNull()
+    expect(left.getAttribute('aria-label')).toBe('Expand node palette')
+    expect(left.getAttribute('aria-expanded')).toBe('false')
+    expect(left.dataset.points).toBe('right') // towards the canvas's centre
+    expect(right.dataset.points).toBe('right') // the other panel is untouched
+
+    fireEvent.click(right)
+    expect(right.dataset.points).toBe('left')
+    expect(screen.queryByRole('heading', { name: 'Pipeline check' })).toBeNull()
+
+    fireEvent.click(left)
+    expect(screen.getByRole('complementary', { name: 'Node palette' })).toBeTruthy()
+    expect(left.dataset.points).toBe('left')
+  })
+
   it('a locked graph shows the banner and disables editing', async () => {
     useSessionStore.setState({ team })
     window.history.replaceState(null, '', '/team')
@@ -87,6 +122,7 @@ describe('App pages', () => {
     render(<App />)
     expect((await screen.findByRole('alert')).textContent).toMatch(/Pencils down/)
     expect(screen.getByText('Locked')).toBeTruthy()
+    expect(screen.getByRole('img', { name: 'This graph is locked' })).toBeTruthy()
     const card = screen.getByRole('button', { name: /^Knowledge lookup/ }) as HTMLButtonElement
     expect(card.disabled).toBe(true)
     expect((screen.getByRole('button', { name: 'Reset graph' }) as HTMLButtonElement).disabled).toBe(true)
