@@ -1,9 +1,8 @@
-// TEMPORARY quick fix (2026-10-31): view the reference graphs on the team canvas. The picker shows
-// only when the page is opened with ?ref in the address. Picking a reference graph saves the team's
-// graph first, then shows the reference read-only (never saved, Run disabled); "User defined"
-// reloads the team's last saved graph. The graphs are bundled from shared/fixtures/graphs, so they
-// are in the web bundle: hide or remove this before the workshop. The proper version is the
-// facilitator view + post-run reveal task in plan1.txt (T40).
+// View the reference graphs on the team canvas. With ?ref in the address the picker shows at any
+// time; it stays for the workshop (user decision 2026-11-01). Picking a reference graph saves the
+// team's graph first, then shows the reference read-only (never saved, Run disabled); "User
+// defined" reloads the team's last saved graph. Those graphs are bundled from shared/fixtures/graphs.
+// Without ?ref the picker appears after the official run, with graphs from the server (T40).
 import defaultGraph from '../../../shared/fixtures/graphs/default.json'
 import escalateAllGraph from '../../../shared/fixtures/graphs/escalate_all.json'
 import strongGraph from '../../../shared/fixtures/graphs/strong.json'
@@ -20,8 +19,22 @@ export const REFERENCE_GRAPHS: Record<string, { label: string; graph: Graph }> =
   escalate_all: { label: 'Escalate all', graph: escalateAllGraph as Graph },
 }
 
+export const BUNDLED_REFERENCES = Object.entries(REFERENCE_GRAPHS).map(([name, { label }]) => ({ name, label }))
+
 export function referenceViewerEnabled(search: string = window.location.search): boolean {
   return new URLSearchParams(search).has('ref')
+}
+
+/** The post-run reveal (T40): the server decides, so a refusal here only leaves a notice. */
+export async function viewRevealed(name: string | null): Promise<void> {
+  const g = useGraphStore.getState()
+  if (name === null) return viewReference(null)
+  if (g.teamId === null) return
+  try {
+    useGraphStore.getState().showReference(name, await api.getTeamReferenceGraph(g.teamId, name))
+  } catch {
+    useGraphStore.getState().setNotice('Could not load that reference graph. Try again.')
+  }
 }
 
 /** Shows a reference graph (saving the team's graph first), or the team's saved graph for null. */

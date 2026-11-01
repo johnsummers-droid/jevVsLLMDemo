@@ -263,7 +263,11 @@ Stop both with Ctrl-C.
    team finishes. **Stop all** ends every team's official run (they are
    ranked on what completed, after the finished ones). Ranking: score, then
    fewer unsafe releases, then lower p95.
-6. **Show the reference graphs** for discussion:
+6. **Show the reference graphs** for discussion: pick one under **Show
+   reference graph** on the facilitator page or `/screen`. Once the official
+   run has ended and graphs are still locked, teams can open them read-only
+   on their own canvas (**View reference graph**); unlocking ends that. For
+   the numbers:
 
    ```bash
    .venv/bin/python scripts/run_headless.py default official --seeds 10

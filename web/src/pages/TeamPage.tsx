@@ -9,7 +9,8 @@ import { HelpPanel } from '../help/HelpPanel'
 import { Inspector } from '../inspector/Inspector'
 import { navigate, PATHS } from '../lib/navigation'
 import { Palette } from '../palette/Palette'
-import { REFERENCE_GRAPHS, referenceViewerEnabled } from '../lib/referenceGraphs'
+import { BUNDLED_REFERENCES, REFERENCE_GRAPHS, referenceViewerEnabled, viewReference, viewRevealed } from '../lib/referenceGraphs'
+import { useReveal } from '../reference/useReveal'
 import { ReferencePicker } from './ReferencePicker'
 import { MetricsBar } from '../run/MetricsBar'
 import { RunControls } from '../run/RunControls'
@@ -79,6 +80,7 @@ function Workbench({ team }: { team: TeamCredentials }) {
   const locked = useGraphStore((s) => s.locked)
   const reference = useGraphStore((s) => s.reference)
   const [showPicker] = useState(() => referenceViewerEnabled())
+  const revealed = useReveal(team.teamId, locked)
   const readOnly = useReadOnly()
   const signOut = useSessionStore((s) => s.signOut)
   const { screenToFlowPosition } = useReactFlow()
@@ -87,6 +89,11 @@ function Workbench({ team }: { team: TeamCredentials }) {
   const helpHeight = useHelpStore((s) => s.height)
   const { load: loadCatalog, status: catalogStatus } = catalog
   const { teamId } = team
+
+  // Unlocking ends the reveal: back to the team's own graph (?ref has its own "User defined").
+  useEffect(() => {
+    if (!showPicker && !locked && reference !== null) void viewReference(null)
+  }, [showPicker, locked, reference])
 
   useEffect(() => {
     void loadCatalog()
@@ -137,7 +144,12 @@ function Workbench({ team }: { team: TeamCredentials }) {
           {error ? `Could not reach the server: ${error}` : graphStatus === 'ready' ? <SaveIndicator /> : 'Loading…'}
         </span>
         {graphStatus === 'ready' && <ResetButton disabled={locked || reference !== null} />}
-        {graphStatus === 'ready' && showPicker && <ReferencePicker />}
+        {graphStatus === 'ready' && showPicker && (
+          <ReferencePicker label="Graph" graphs={BUNDLED_REFERENCES} onPick={viewReference} />
+        )}
+        {graphStatus === 'ready' && !showPicker && revealed.length > 0 && (
+          <ReferencePicker label="View reference graph" graphs={revealed} onPick={viewRevealed} />
+        )}
         <span className="app__team">
           <strong>{team.teamName}</strong> · session {team.sessionCode}
         </span>

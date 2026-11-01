@@ -41,6 +41,8 @@ from app.models.sessions import (
     JoinTeamRequest,
     JoinTeamResponse,
     LockRequest,
+    ReferenceGraphInfo,
+    ReferenceGraphList,
     SessionDetail,
     TeamSummary,
 )
@@ -65,6 +67,8 @@ __all__ = [
     "IssueCode",
     "JoinTeamRequest",
     "JoinTeamResponse",
+    "ReferenceGraphInfo",
+    "ReferenceGraphList",
     "LeaderboardRow",
     "OfficialRunResponse",
     "LockRequest",

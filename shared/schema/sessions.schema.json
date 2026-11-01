@@ -83,6 +83,44 @@
       "title": "LockRequest",
       "type": "object"
     },
+    "ReferenceGraphInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "label"
+      ],
+      "title": "ReferenceGraphInfo",
+      "type": "object"
+    },
+    "ReferenceGraphList": {
+      "additionalProperties": false,
+      "description": "Which reference graphs the caller may view; empty for a team until the reveal (T40).",
+      "properties": {
+        "available": {
+          "type": "boolean"
+        },
+        "graphs": {
+          "items": {
+            "$ref": "#/$defs/ReferenceGraphInfo"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "available",
+        "graphs"
+      ],
+      "title": "ReferenceGraphList",
+      "type": "object"
+    },
     "SessionDetail": {
       "additionalProperties": false,
       "properties": {

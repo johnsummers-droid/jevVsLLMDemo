@@ -49,3 +49,15 @@ class SessionDetail(CamelModel):
 
 class LockRequest(CamelModel):
     locked: bool
+
+
+class ReferenceGraphInfo(CamelModel):
+    name: str
+    label: str
+
+
+class ReferenceGraphList(CamelModel):
+    """Which reference graphs the caller may view; empty for a team until the reveal (T40)."""
+
+    available: bool
+    graphs: list[ReferenceGraphInfo]

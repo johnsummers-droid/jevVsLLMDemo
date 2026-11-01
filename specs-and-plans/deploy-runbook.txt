@@ -93,7 +93,9 @@ everyone out (teams rejoin with their names; their graphs are kept).
    https://pipeline-sim-api.onrender.com  (= API_URL below). Check:
      curl https://API_URL/api/health          -> {"status":"ok"}
 
-Plans: render.yaml starts on free plans. A free web service sleeps after
+Plans: the API service is on 1c-2g since 2026-11-01 (latency on the free plan
+broke the scoring: strong's p95 was 4.3 s, 1.25 s on 1c-2g). The database is
+still free. A free web service sleeps after
 15 minutes without traffic (about a minute to wake, in-memory state lost);
 a free database expires 30 days after creation (14 more days to upgrade
 before it is deleted). For the workshop switch both to paid plans

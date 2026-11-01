@@ -44,8 +44,8 @@ describe('FacilitatorPage', () => {
     expect(useSessionStore.getState().facilitator).toEqual({ sessionCode: 'ABC234', token: 'fac' })
     const rows = await screen.findAllByRole('row')
     expect(rows.slice(1).map((r) => within(r).getAllByRole('cell')[0].textContent)).toEqual(['Red', 'Blue'])
-    const [, sessionCall] = fetchMock.mock.calls
-    expect(authHeader(sessionCall[1])).toBe('Bearer fac')
+    const sessionCall = fetchMock.mock.calls.find(([url]) => String(url).endsWith('/api/sessions/ABC234'))
+    expect(authHeader(sessionCall?.[1])).toBe('Bearer fac')
   })
 
   it('explains a wrong facilitator code', async () => {

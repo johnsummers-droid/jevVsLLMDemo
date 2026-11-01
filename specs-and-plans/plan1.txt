@@ -2752,7 +2752,8 @@ Tasks (in order):
   reference graphs as in mock mode.
 
   T40 Reference graphs in the app (after T35-T39; user request 2026-10-31).
-      Replaces the temporary ?ref viewer below.
+      Sits alongside the ?ref viewer below, which stays (user decision
+      2026-11-01).
       A. Facilitator "Show reference graph": a facilitator-only endpoint
          (GET /api/sessions/{code}/reference-graphs/{name}) and a read-only
          canvas on the facilitator page and /screen with a picker (starter,
@@ -2760,9 +2761,28 @@ Tasks (in order):
       C. Reveal to teams after the official run: once the session is locked
          and its official run has finished, teams get "View reference graph"
          read-only on their own canvas (the server refuses before that).
-      Both read the graphs from the server, so the answer key leaves the web
-      bundle. Remove web/src/lib/referenceGraphs.ts, pages/ReferencePicker.tsx
-      and their test when this lands.
+      Both read the graphs from the server. The answer key stays in the web
+      bundle while the ?ref viewer exists, so keep
+      web/src/lib/referenceGraphs.ts, pages/ReferencePicker.tsx and their test.
+      As built (2026-11-01):
+        - Server: app/api/reference.py. GET /api/sessions/{code}/reference-graphs
+          and .../{name} (that session's facilitator, any time). GET
+          /api/teams/{id}/reference-graphs and .../{name}: revealed while the
+          session is locked and every team's latest official run has ended
+          (any end: completed, stopped, failed). Before that the list says
+          available=false and a graph answers 403 whatever its name. Labels in
+          reference_graphs.REFERENCE_LABELS; ReferenceGraphList in the schema.
+        - Web: reference/ReferenceGraphView.tsx (picker + its own read-only React
+          Flow, uncontrolled, not graphStore; hidden until picked) on /facilitator
+          and /screen, each with its own picker. reference/useReveal.ts polls every
+          5 s while locked and stops at the answer. TeamPage shows "View reference
+          graph" with the server's list; unlocking returns to the team's graph.
+        - Found on the way: on a reference graph the team's run numbers showed on
+          nodes with the same ids; NodeStatsBadge and PipelineEdge now ignore them.
+        - Known limit: unlocking and locking again after an official run reveals
+          again, before any second official run.
+        - Checked: 1078 server and 331 web tests, and the whole flow in a real
+          browser against a local server in mock mode; not yet on the deployed URLs.
 
   TEMPORARY ?ref viewer (built 2026-10-31, user request; quick and dirty):
       /team?ref shows a "Graph" drop-down in the header: "User defined" (the
@@ -2774,7 +2794,7 @@ Tasks (in order):
       it (isDirty is false and the sync poll leaves it alone), Run and Reset
       are disabled, a banner says what is shown. "User defined" reloads the
       team's saved graph from the server. Anyone who adds ?ref sees the
-      answer key: hide or remove it before the workshop (BEFORE-WORKSHOP).
+      answer key; it stays for the workshop (user decision 2026-11-01).
       Canvas fix found on the way: the one-time fitView now waits until the
       nodes React Flow has measured are this graph's (the provider outlives
       the canvas, so useNodesInitialized could report the previous graph).
