@@ -827,14 +827,21 @@
           "$ref": "#/$defs/RunStatus"
         },
         "metrics": {
-          "$ref": "#/$defs/RunMetrics"
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RunMetrics"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
         "seq",
         "simMs",
         "status",
-        "metrics",
         "type"
       ],
       "title": "RunCompleted",
@@ -949,6 +956,61 @@
       ],
       "type": "string"
     },
+    "RunPreparing": {
+      "additionalProperties": false,
+      "description": "The run was accepted and is computing; run_started follows, or run_completed if it fails\nor is stopped first (U6).",
+      "properties": {
+        "runId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "teamId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "seq": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "simMs": {
+          "minimum": 0,
+          "type": "number"
+        },
+        "type": {
+          "const": "run_preparing",
+          "type": "string"
+        },
+        "config": {
+          "$ref": "#/$defs/RunConfig"
+        },
+        "graphVersion": {
+          "default": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "seq",
+        "simMs",
+        "config",
+        "type"
+      ],
+      "title": "RunPreparing",
+      "type": "object"
+    },
     "RunStarted": {
       "additionalProperties": false,
       "properties": {
@@ -992,6 +1054,12 @@
         "graphVersion": {
           "default": 0,
           "type": "integer"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         }
       },
       "required": [
@@ -1040,6 +1108,12 @@
         "graphVersion": {
           "default": 0,
           "type": "integer"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         }
       },
       "required": [
@@ -1065,12 +1139,16 @@
           "pong": "#/$defs/Pong",
           "request_completed": "#/$defs/RequestCompleted",
           "run_completed": "#/$defs/RunCompleted",
+          "run_preparing": "#/$defs/RunPreparing",
           "run_started": "#/$defs/RunStarted",
           "state_sync": "#/$defs/StateSync"
         },
         "propertyName": "type"
       },
       "oneOf": [
+        {
+          "$ref": "#/$defs/RunPreparing"
+        },
         {
           "$ref": "#/$defs/RunStarted"
         },

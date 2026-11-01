@@ -34,7 +34,7 @@ class AnswerGeneratorRunner:
                 outputs={"text": text(reply.text, reply.taint)},
                 latency_ms=reply.measure.latency_ms, cost_usd=reply.measure.cost_usd,
                 tokens_in=reply.tokens_in, tokens_out=reply.tokens_out,
-                cached=reply.measure.replayed, decision=decision)
+                cached=reply.measure.replayed, judged=bool(reply.verdicts), decision=decision)
 
         timing = TIER_LATENCY_MS[tier]
         ttft = latency(definition, ctx, seed_params, inputs, median_ms=timing["ttft_ms"],

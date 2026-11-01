@@ -7,6 +7,8 @@ The leaderboard is pushed to the session's facilitator sockets as each team's ru
 """
 
 import asyncio
+
+import anyio
 from functools import partial
 
 from anyio import from_thread
@@ -30,7 +32,9 @@ from app.models import (
 )
 from app.models.events import LeaderboardUpdated
 from app.realtime.hub import hub
-from app.simulation.manager import OfficialRunInProgress, RunInProgress, compute, official_config, runs
+from app.api.runs import _mark_running
+from app.simulation.manager import (OfficialRunInProgress, PreparingRun, RunInProgress, compute,
+                                    official_config, runs)
 from app.simulation.scoring import Standing, rank
 
 router = APIRouter(prefix="/api/sessions", tags=["official"])
@@ -54,6 +58,11 @@ def _finish_official(app: FastAPI, session_id: str, run_id: str, status: RunStat
                      metrics: RunMetrics | None) -> None:
     with session_scope(app) as db:
         repo.finish_run(db, run_id, status, metrics)
+        _publish_leaderboard(db, session_id)
+
+
+def _publish_prepared(app: FastAPI, session_id: str) -> None:
+    with session_scope(app) as db:
         _publish_leaderboard(db, session_id)
 
 
@@ -92,6 +101,9 @@ async def start_official_run(
         # Free every team's slot: practice runs are stopped (they cannot restart: the session is locked).
         for team, _ in snapshot:
             while True:
+                if (preparing := runs.preparing_for(team.id)) is not None:
+                    await runs.stop(preparing.run_id)
+                    continue
                 if (active := runs.active(team.id)) is not None:
                     await runs.stop(active.run_id)
                     continue
@@ -114,19 +126,30 @@ async def start_official_run(
                 runs.release(team.id)
                 reserved.remove(team.id)
 
-        results = await asyncio.gather(*(
-            compute(request.app, stored.graph, config, run_id=run_id, team_id=team.id, graph_version=stored.version)
-            for team, stored, run_id in playable))
-        for (team, stored, run_id), result in zip(playable, results, strict=True):
-            row = await run_in_threadpool(repo.create_run, db, team, config, stored.graph, stored.version, run_id)
+        prepared = []
+        for team, stored, run_id in playable:
+            row = await run_in_threadpool(repo.create_run, db, team, config, stored.graph,
+                                          stored.version, run_id, "pending")
             records[team.id] = repo.run_record(row)
-        for (team, _, _), result in zip(playable, results, strict=True):
-            runs.launch(team.id, session.id, result, config,
-                        partial(_finish_official, request.app, session.id))
-            reserved.remove(team.id)
-    finally:
-        for team_id in reserved:  # setup failed before these runs were launched
+            prepared.append(PreparingRun(
+                run_id=run_id, team_id=team.id, session_id=session.id, config=config,
+                graph_version=stored.version,
+                finish=partial(_finish_official, request.app, session.id),
+                compute=partial(compute, request.app, stored.graph, config, run_id=run_id,
+                                team_id=team.id, graph_version=stored.version)))
+    except BaseException:
+        for team_id in reserved:  # setup failed before these runs were handed over
             runs.release(team_id)
+        runs.end_official_if_idle(session.id)
+        raise
+
+    async def prepared_all() -> None:
+        runs.end_official_if_idle(session.id)  # stays claimed while any run plays
+        await anyio.to_thread.run_sync(_publish_prepared, request.app, session.id)
+
+    if prepared:
+        runs.prepare(prepared, partial(_mark_running, request.app), prepared_all)
+    else:
         runs.end_official_if_idle(session.id)
     await run_in_threadpool(_publish_leaderboard, db, session.id)
     return OfficialRunResponse(seed=config.seed, runs=[records[team.id] for team, _ in snapshot])

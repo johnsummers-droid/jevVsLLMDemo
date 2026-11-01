@@ -77,12 +77,13 @@ def test_a_practice_run_plays_and_is_recorded(client: TestClient) -> None:
     res = start(client, red)
     assert res.status_code == 201, res.text
     run = res.json()
-    assert run["status"] == "running" and run["teamId"] == red["teamId"] and run["metrics"] is None
+    assert run["status"] == "pending" and run["teamId"] == red["teamId"] and run["metrics"] is None
     assert run["config"]["mode"] == "practice" and run["config"]["packId"] == "practice"
     assert run["graphVersion"] == 0
 
     events = receive_until_completed(ws)
-    assert events[0]["type"] == "run_started" and events[0]["runId"] == run["runId"]
+    assert events[0]["type"] == "run_preparing" and events[0]["runId"] == run["runId"]
+    assert events[1]["type"] == "run_started" and events[1]["warnings"] == []
     wait(client, run["runId"])
     done = latest(client, red)
     assert done["runId"] == run["runId"] and done["status"] == "completed"
@@ -159,6 +160,8 @@ def test_stop_ends_the_run_as_stopped(client: TestClient, monkeypatch: pytest.Mo
     ws = connect(client, red["token"])
     ws.receive_json()
     run = start(client, red).json()
+    assert ws.receive_json()["type"] == "run_preparing"
+    assert ws.receive_json()["type"] == "run_started"
 
     res = stop(client, run["runId"], red["token"])
     assert res.status_code == 200
@@ -204,20 +207,92 @@ def test_pencils_down_reaches_team_sockets_at_once(client: TestClient) -> None:
     assert ws.receive_json()["locked"] is False
 
 
-def test_a_failed_setup_frees_the_slot(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_run_that_cannot_be_computed_fails_and_frees_the_slot(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     code, _ = new_session(client)
     red = join(client, code, "Red")
+    ws = connect(client, red["token"])
+    ws.receive_json()
 
     async def broken(*_args: Any, **_kwargs: Any) -> None:
         raise RuntimeError("boom")
 
     monkeypatch.setattr("app.api.runs.compute", broken)
-    with pytest.raises(RuntimeError):
-        start(client, red)
+    res = start(client, red)
+    assert res.status_code == 201 and res.json()["status"] == "pending"
+    events = receive_until_completed(ws)
+    assert [e["type"] for e in events] == ["run_preparing", "run_completed"]
+    assert events[-1]["status"] == "failed" and events[-1]["metrics"] is None
+    wait(client, res.json()["runId"])
+    assert latest(client, red)["status"] == "failed"
     monkeypatch.undo()
     monkeypatch.setattr(manager, "PRACTICE_TIMING", FAST)
     assert start(client, red).status_code == 201
-    assert len([r for r in [latest(client, red)] if r]) == 1
+
+
+class SlowCompute:
+    """A compute that waits until released, like one making real calls."""
+
+    def __init__(self, real: Any) -> None:
+        self.real, self.go = real, None
+
+    async def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        import anyio
+        self.go = self.go or anyio.Event()
+        await self.go.wait()
+        return await self.real(*args, **kwargs)
+
+    async def release(self) -> None:
+        import anyio
+        self.go = self.go or anyio.Event()
+        self.go.set()
+
+
+def test_a_preparing_run_answers_at_once_and_a_reconnect_sees_it(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.api import runs as runs_api
+    code, _ = new_session(client)
+    red = join(client, code, "Red")
+    slow = SlowCompute(runs_api.compute)
+    monkeypatch.setattr("app.api.runs.compute", slow)
+    run = start(client, red).json()
+    assert run["status"] == "pending"
+    assert start(client, red).status_code == 409  # one run per team, computing included
+
+    late = connect(client, red["token"])
+    sync = late.receive_json()
+    assert sync["type"] == "state_sync" and sync["run"]["status"] == "pending"
+
+    client.portal.call(slow.release)
+    events = receive_until_completed(late)
+    assert events[-1]["status"] == "completed"
+    wait(client, run["runId"])
+    assert latest(client, red)["status"] == "completed"
+
+
+def test_stopping_a_preparing_run_ends_it_at_once(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.api import runs as runs_api
+    code, _ = new_session(client)
+    red = join(client, code, "Red")
+    ws = connect(client, red["token"])
+    ws.receive_json()
+    slow = SlowCompute(runs_api.compute)
+    monkeypatch.setattr("app.api.runs.compute", slow)
+    run = start(client, red).json()
+    stopped = stop(client, run["runId"], red["token"])
+    assert stopped.status_code == 200 and stopped.json()["status"] == "stopped"
+    events = receive_until_completed(ws)
+    assert [e["type"] for e in events] == ["run_preparing", "run_completed"]
+    assert events[-1]["status"] == "stopped"
+
+    monkeypatch.undo()
+    monkeypatch.setattr(manager, "PRACTICE_TIMING", FAST)
+    next_run = start(client, red)  # the slot is free before the old computation ends
+    assert next_run.status_code == 201
+
+    client.portal.call(slow.release)  # its late result is thrown away
+    wait(client, run["runId"])
+    wait(client, next_run.json()["runId"])
+    assert latest(client, red)["runId"] == next_run.json()["runId"]
+    assert stop(client, run["runId"], red["token"]).json()["status"] == "stopped"
 
 
 def test_shutdown_records_runs_still_playing_as_stopped(client: TestClient, db: Session,

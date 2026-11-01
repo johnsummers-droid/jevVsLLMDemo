@@ -130,15 +130,15 @@ def set_session_locked(db: Session, session_id: str, locked: bool) -> int:
 
 
 def create_run(db: Session, team: TeamRow, config: RunConfig, graph: Graph, graph_version: int,
-               run_id: str | None = None) -> RunRow:
-    """Records a run as running, with the graph snapshot it runs on. The caller may pick the id
-    (the run's events carry it before the row exists)."""
+               run_id: str | None = None, status: RunStatus = "running") -> RunRow:
+    """Records a run, with the graph snapshot it runs on. The caller may pick the id (the run's
+    events carry it before the row exists). "pending" while it computes (U6)."""
     row = RunRow(
         id=run_id or new_id(),
         session_id=team.session_id,
         team_id=team.id,
         mode=config.mode,
-        status="running",
+        status=status,
         config=config.model_dump(by_alias=True, mode="json"),
         graph=_graph_json(graph),
         graph_version=graph_version,
@@ -148,11 +148,18 @@ def create_run(db: Session, team: TeamRow, config: RunConfig, graph: Graph, grap
     return row
 
 
+def mark_run_running(db: Session, run_id: str) -> None:
+    """A prepared run starts playing (U6)."""
+    db.execute(update(RunRow).where(RunRow.id == run_id, RunRow.status == "pending")
+               .values(status="running").execution_options(synchronize_session="fetch"))
+    db.commit()
+
+
 def finish_run(db: Session, run_id: str, status: RunStatus, metrics: RunMetrics | None) -> bool:
-    """Sets the final status and metrics of a running run; False if it was not running."""
+    """Sets the final status and metrics of an unfinished run; False if it had already ended."""
     result = db.execute(
         update(RunRow)
-        .where(RunRow.id == run_id, RunRow.status == "running")
+        .where(RunRow.id == run_id, RunRow.status.in_(("pending", "running")))
         .values(
             status=status,
             metrics=metrics.model_dump(by_alias=True, mode="json") if metrics is not None else None,

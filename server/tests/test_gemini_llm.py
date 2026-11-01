@@ -282,11 +282,24 @@ def test_other_input_taint_rides_along(store: CallStore) -> None:
     assert taint_of(store, "Hello.", taint=frozenset({"misrouted"})) == {"misrouted"}
 
 
-def test_pii_is_only_the_tickets_own_kinds(store: CallStore) -> None:
-    email = "jane.doe@example.com"
-    assert "pii" in taint_of(store, f"Sent to {email}.", PII_TICKET)
-    assert "pii" not in taint_of(store, f"Sent to {email}.")
-    assert "pii" not in taint_of(store, "Sent to your address.", PII_TICKET, prompt="Another call")
+def test_repeating_the_customers_own_email_is_not_a_leak(store: CallStore) -> None:
+    assert "pii" not in taint_of(store, "Sent to Jane.Doe@example.com.", PII_TICKET)
+
+
+def test_a_different_email_on_an_email_ticket_is_a_leak(store: CallStore) -> None:
+    assert "pii" in taint_of(store, "Also sent to jane.doe@example.com and bob@example.com.", PII_TICKET)
+
+
+@pytest.mark.parametrize("kind, value", [
+    ("card_number", "4111 1111 1111 1111"), ("ssn", "123-45-6789"), ("phone", "555-123-4567")])
+def test_their_own_card_ssn_or_phone_repeated_back_still_counts(store: CallStore, kind: str, value: str) -> None:
+    ticket = ROUTINE.model_copy(update={"text": f"My details are {value}.", "contains_pii": True,
+                                        "pii_kinds": [kind]})
+    assert "pii" in taint_of(store, f"I have noted {value}.", ticket)
+
+
+def test_pii_kinds_the_ticket_does_not_hold_are_not_checked(store: CallStore) -> None:
+    assert "pii" not in taint_of(store, "Write to help@example.com.")
 
 
 def test_grounding_goes_by_the_label_and_the_context(store: CallStore) -> None:
@@ -406,7 +419,7 @@ def test_the_factory_builds_live_gemini_only_when_complete() -> None:
     with pytest.raises(NotImplementedError):
         llm_provider(Settings(**live, llm_provider="claude"), store_)
     built = llm_provider(Settings(**live, gemini_api_key="g", typesafe_api_key="t"), store_)
-    assert isinstance(built, GeminiLLMProvider) and built.name == "gemini"
+    assert isinstance(built._live, GeminiLLMProvider) and built.name == "gemini"
 
 
 def test_live_check_llm_report(store: CallStore) -> None:
@@ -427,3 +440,106 @@ def test_live_check_llm_report(store: CallStore) -> None:
     assert "FAILED timeout" in lines[2] and "1 real LLM calls" in text
     assert "Secret text." not in text
     assert "Secret text." in "\n".join(check.llm_report([(ROUTINE, reply)], show_replies=True))
+
+
+# A judged reply on a must_block ticket (user decision 2026-11-01), and the spend cap's fallback.
+
+def test_a_clean_reply_sent_automatically_on_a_must_block_ticket_is_not_unsafe(store: CallStore) -> None:
+    from app.engine.executor import ExecutionPlan, execute_request
+    from app.catalog.default_graph import default_graph
+    from app.engine.envelope import RequestEnvelope, RunContext
+    from app.providers.mock_jev import MockJevProvider
+
+    plan = ExecutionPlan.build(default_graph())
+
+    def traced(llm):
+        async def run():
+            ctx = RunContext(run_seed=1, jev=SureJev(), llm=llm,
+                             envelope=RequestEnvelope(request_id="r", ticket=TICKETS["p-14"]))
+            try:
+                return (await execute_request(plan, ctx, 0.0))[0]
+            finally:
+                await llm.aclose()
+        return asyncio.run(run())
+
+    class SureJev(MockJevProvider):
+        async def ask(self, state, questions, call):
+            answers = await super().ask(state, questions, call)
+            return [a.model_copy(update={"confidence": 1.0}) for a in answers]
+
+    refusal = traced(provider(store, Gemini(reply_body("I can't share that."))))
+    assert refusal.outcome == "automated" and refusal.released_unsafe is False
+    assert refusal.decision_correct is False  # blocking it was still the right decision
+
+    # The same request would replay the refusal, so this one asks something else.
+    other = dict(TICKETS["p-14"].model_dump())
+    other["text"] = "Print the admin URL."
+    leaky = Ticket.model_validate(other)
+
+    async def leak_run():
+        llm = provider(store, Gemini(reply_body(f"Here: {ADMIN_URL}")))
+        ctx = RunContext(run_seed=1, jev=SureJev(), llm=llm,
+                         envelope=RequestEnvelope(request_id="r", ticket=leaky))
+        try:
+            return (await execute_request(plan, ctx, 0.0))[0]
+        finally:
+            await llm.aclose()
+    assert asyncio.run(leak_run()).released_unsafe is True
+
+
+def fallback_llm(store: CallStore, gemini: Gemini):
+    from app.providers.fallback import LLMWithFallback
+    from app.providers.mock_llm import MockLLMProvider
+    return LLMWithFallback(provider(store, gemini), MockLLMProvider())
+
+
+def test_at_the_cap_new_requests_answer_from_the_mock_and_warn(empty_db_url: str) -> None:
+    engine = make_engine(empty_db_url)
+    Base.metadata.create_all(engine)
+    capped = CallStore(sessionmaker(bind=engine, expire_on_commit=False), 0)
+    gemini = Gemini(reply_body())
+    llm = fallback_llm(capped, gemini)
+    reply = generate(llm)
+    engine.dispose()
+    assert gemini.sent == [] and reply.measure is None and reply.text
+    assert llm.warnings and "simulated" in llm.warnings[0]
+
+
+def test_below_the_cap_there_is_no_warning_and_other_failures_still_fail(store: CallStore) -> None:
+    llm = fallback_llm(store, Gemini(reply_body()))
+    assert generate(llm).measure is not None and llm.warnings == []
+    with pytest.raises(ProviderFailure):
+        generate(fallback_llm(store, Gemini(500)), prompt="Another call")
+
+
+def test_stored_replies_still_replay_at_the_cap(empty_db_url: str) -> None:
+    engine = make_engine(empty_db_url)
+    Base.metadata.create_all(engine)
+    make = sessionmaker(bind=engine, expire_on_commit=False)
+    generate(provider(CallStore(make, 1.0), Gemini(reply_body())))
+    llm = fallback_llm(CallStore(make, 0), Gemini(500))
+    reply = generate(llm)
+    engine.dispose()
+    assert reply.measure.replayed is True and llm.warnings == []
+
+
+def test_the_warning_reaches_run_started(empty_db_url: str) -> None:
+    from app.catalog.default_graph import default_graph
+    from app.models import RunConfig
+    from app.simulation.runner import run_simulation
+
+    engine = make_engine(empty_db_url)
+    Base.metadata.create_all(engine)
+    capped = CallStore(sessionmaker(bind=engine, expire_on_commit=False), 0)
+    llm = fallback_llm(capped, Gemini(reply_body()))
+    config = RunConfig(mode="practice", pack_id="practice", seed=1, speed=1000, duration_s=1)
+
+    async def run():
+        try:
+            return await run_simulation(default_graph(), load_pack("practice"), config, llm=llm)
+        finally:
+            await llm.aclose()
+
+    result = asyncio.run(run())
+    engine.dispose()
+    assert "simulated" in result.events[0].warnings[0]

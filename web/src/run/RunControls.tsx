@@ -12,7 +12,7 @@ import { useValidationStore } from '../store/validationStore'
 import type { ValidationReport } from '../types'
 
 const STATUS_LABELS: Record<string, string> = {
-  pending: 'Starting…',
+  pending: 'Preparing…',
   running: 'Running',
   completed: 'Finished',
   stopped: 'Stopped',
@@ -100,9 +100,16 @@ export function RunControls({ teamId }: { teamId: string }) {
       {run && (
         <span className="run-controls__progress" role="status">
           {official && <strong className="run-controls__official">Official run</strong>}
-          {STATUS_LABELS[run.status] ?? run.status} · {done} / {total ?? '…'} requests
+          {run.status === 'pending'
+            ? `${STATUS_LABELS.pending} getting the AI's answers`
+            : `${STATUS_LABELS[run.status] ?? run.status} · ${done} / ${total ?? '…'} requests`}
         </span>
       )}
+      {run?.warnings?.map((warning) => (
+        <span key={warning} className="run-controls__error" role="alert">
+          {warning}
+        </span>
+      ))}
       {!playing && blocked && <span className="run-controls__hint">{blocked}</span>}
       {error && (
         <span className="run-controls__error" role="alert">

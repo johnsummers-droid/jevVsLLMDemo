@@ -17,7 +17,8 @@
         "injectionWave": false,
         "maxConcurrency": 32
       },
-      "graphVersion": 0
+      "graphVersion": 0,
+      "warnings": []
     },
     {
       "runId": "fixture-run",

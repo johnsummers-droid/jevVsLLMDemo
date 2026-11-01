@@ -465,6 +465,12 @@
           "default": 0,
           "type": "integer"
         },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "metrics": {
           "anyOf": [
             {
@@ -539,6 +545,12 @@
         "graphVersion": {
           "default": 0,
           "type": "integer"
+        },
+        "warnings": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         }
       },
       "required": [

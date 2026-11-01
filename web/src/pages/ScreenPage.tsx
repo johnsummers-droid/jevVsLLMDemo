@@ -15,7 +15,7 @@ import { Link } from './Link'
 
 function TeamTile({ name, run }: { name: string; run: TeamRun | undefined }) {
   const m = run?.metrics
-  const status = !run ? 'waiting' : run.status === 'running' ? `${run.mode} run playing` : `${run.mode} run ${run.status}`
+  const status = !run ? 'waiting' : run.status === 'running' ? `${run.mode} run playing` : run.status === 'pending' ? `${run.mode} run preparing` : `${run.mode} run ${run.status}`
   return (
     <div className={`screen-tile screen-tile--${run?.status ?? 'idle'}`} role="group" aria-label={name}>
       <strong className="screen-tile__name">{name}</strong>

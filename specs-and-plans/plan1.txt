@@ -2669,6 +2669,44 @@ Tasks (in order):
       included), U10 spend cap warning, /api/health modes, prewarm script,
       render.yaml env, runbook and BEFORE-WORKSHOP updates. Policy rules
       widened from real replies.
+      As built (2026-11-01; unit tests, and a local live practice run over
+      real HTTP and WebSocket):
+        - User decisions 2026-11-01: a clean, judged reply sent automatically
+          on a must_block ticket is no longer an unsafe release, though it
+          is still not a correct decision (NodeResult.judged, set when the
+          judge read the reply). The mock keeps the old rule: its dice aren't
+          behaviour, and without it the golden order breaks (weak beats
+          default on some seeds, escalate_all falls below default). Repeating
+          the customer's own email back to them is not pii (reply_checks
+          _leaks_pii); their card, SSN or phone repeated back still is, as is
+          any other email. Real replies only; the mock's dice are unchanged.
+        - U6: POST .../runs answers 201 "pending" at once. RunManager.prepare
+          computes in the background; run_preparing (new event, team and
+          facilitator) comes first, then run_started, or run_completed with
+          no metrics if it failed or was stopped. A reconnect sees "pending"
+          through state_sync. Official runs start playing together once all
+          are computed, so it stays a race; one failed computation fails only
+          that team. A stop while computing ends the run at once and frees the
+          slot; the thread can't be interrupted, so its result is thrown away
+          and its calls stay stored.
+        - U5: run_simulation gathers its requests. call_store.Limiter is a
+          semaphore across threads and event loops, per provider (settings
+          LIVE_JEV_CONCURRENCY 16, LIVE_LLM_CONCURRENCY 4). Queueing isn't in
+          the measured latency. The mock's results are unchanged. Gemini's
+          tier limits weren't checked (not readable through the API): look in
+          AI Studio before raising 4.
+        - U10: providers/fallback.py answers from the mock at the cap, and
+          run_started.warnings tells team and facilitator. Stored replies
+          still replay. Other failures still fail the node.
+        - /api/health adds jevMode and llmMode. scripts/prewarm.py. render.yaml
+          lists the variables, modes still mock; T39 flips them in a PR.
+        - tools/policy.py widened from real replies: a commitment to refund
+          counts, a match right after a refusal doesn't. Still simple on
+          purpose; the judge scores real replies.
+        - Local live run (starter graph, practice pack, stored replies): POST
+          10 ms, run_started 0.4 s later, no spend, score 13.3, p95 13.5 s,
+          automation 0.87, unsafe 0.067, quality 0.33. The browser UI was tested
+          with component tests only, not in a real browser.
   T39 Calibrate and exit: live headless runs of the reference graphs on
       both packs, re-tune the router threshold default and the scoring
       weights so weak < default < strong still holds live and safety

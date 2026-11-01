@@ -33,6 +33,7 @@ export type RunStatus = 'pending' | 'running' | 'completed' | 'stopped' | 'faile
 export type RunMode = 'practice' | 'official'
 export type Outcome = 'automated' | 'escalated' | 'blocked' | 'dropped' | 'failed'
 export type ServerEvent =
+  | RunPreparing
   | RunStarted
   | NodeStarted
   | NodeCompleted
@@ -444,6 +445,7 @@ export interface RunRecord {
   status: RunStatus
   config: RunConfig
   graphVersion?: number
+  warnings?: string[]
   metrics?: RunMetrics | null
   startedAt: string
   finishedAt?: string | null
@@ -529,7 +531,20 @@ export interface RunCompleted {
   simMs: number
   type: 'run_completed'
   status: RunStatus
-  metrics: RunMetrics
+  metrics?: RunMetrics | null
+}
+/**
+ * The run was accepted and is computing; run_started follows, or run_completed if it fails
+ * or is stopped first (U6).
+ */
+export interface RunPreparing {
+  runId?: string | null
+  teamId?: string | null
+  seq: number
+  simMs: number
+  type: 'run_preparing'
+  config: RunConfig
+  graphVersion?: number
 }
 export interface RunStarted {
   runId?: string | null
@@ -539,6 +554,7 @@ export interface RunStarted {
   type: 'run_started'
   config: RunConfig
   graphVersion?: number
+  warnings?: string[]
 }
 export interface RunSummary {
   runId: string
@@ -546,6 +562,7 @@ export interface RunSummary {
   status: RunStatus
   config: RunConfig
   graphVersion?: number
+  warnings?: string[]
 }
 /**
  * PUT /api/teams/{id}/graph: `version` is the version the client last loaded.

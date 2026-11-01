@@ -21,7 +21,7 @@ from app.db.session import get_db, session_scope
 from app.db.tables import RunRow, TeamRow
 from app.engine.validator import validate_graph
 from app.models import RunMetrics, RunRecord, RunStatus
-from app.simulation.manager import RunInProgress, compute, practice_config, runs
+from app.simulation.manager import PreparingRun, RunInProgress, compute, practice_config, runs
 
 router = APIRouter(tags=["runs"])
 
@@ -31,6 +31,11 @@ _UNAUTHORIZED = {"WWW-Authenticate": "Bearer"}
 def _finish(app: FastAPI, run_id: str, status: RunStatus, metrics: RunMetrics | None) -> None:
     with session_scope(app) as db:
         repo.finish_run(db, run_id, status, metrics)
+
+
+def _mark_running(app: FastAPI, run_id: str) -> None:
+    with session_scope(app) as db:
+        repo.mark_run_running(db, run_id)
 
 
 @router.post("/api/teams/{team_id}/runs", status_code=201, response_model=RunRecord)
@@ -53,13 +58,18 @@ async def start_practice_run(
         raise HTTPException(status_code=409, detail="a run is already in progress") from None
     try:
         config, run_id = practice_config(), new_id()
-        result = await compute(request.app, stored.graph, config, run_id=run_id, team_id=team.id, graph_version=stored.version)
-        row = await run_in_threadpool(repo.create_run, db, team, config, stored.graph, stored.version, run_id)
+        row = await run_in_threadpool(repo.create_run, db, team, config, stored.graph, stored.version,
+                                      run_id, "pending")
         record = repo.run_record(row)
     except BaseException:
         runs.release(team.id)
         raise
-    runs.launch(team.id, team.session_id, result, config, partial(_finish, request.app))
+    runs.prepare([PreparingRun(
+        run_id=run_id, team_id=team.id, session_id=team.session_id, config=config,
+        graph_version=stored.version, finish=partial(_finish, request.app),
+        compute=partial(compute, request.app, stored.graph, config, run_id=run_id, team_id=team.id,
+                        graph_version=stored.version),
+    )], partial(_mark_running, request.app))
     return record
 
 

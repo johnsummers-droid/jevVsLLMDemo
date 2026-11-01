@@ -84,13 +84,14 @@ export function reduceRun(view: RunView, event: ServerEvent): RunView {
     const nodeStats = finished ? Object.fromEntries((event.nodeStats ?? []).map((s) => [s.nodeId, s])) : {}
     return { ...EMPTY_RUN, run, seq: event.seq, metrics: event.metrics ?? null, nodeStats }
   }
-  if (event.type === 'run_started') {
+  if (event.type === 'run_preparing' || event.type === 'run_started') {
     const run: RunSummary = {
       runId: event.runId ?? '',
       teamId: event.teamId,
-      status: 'running',
+      status: event.type === 'run_started' ? 'running' : 'pending',
       config: event.config,
       graphVersion: event.graphVersion ?? 0,
+      warnings: event.type === 'run_started' ? (event.warnings ?? []) : [],
     }
     return { ...EMPTY_RUN, run, seq: event.seq }
   }
@@ -124,7 +125,7 @@ export function reduceRun(view: RunView, event: ServerEvent): RunView {
       return { ...view2, metrics: event.metrics, nodeStats }
     }
     case 'run_completed':
-      return { ...view2, run: { ...view2.run!, status: event.status }, metrics: event.metrics }
+      return { ...view2, run: { ...view2.run!, status: event.status }, metrics: event.metrics ?? null }
     default:
       return view2
   }

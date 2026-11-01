@@ -113,6 +113,22 @@ describe('RunControls', () => {
     expect(String(fetchMock.mock.calls[0][0])).toBe('/api/runs/run-1/stop')
   })
 
+  it('says the run is preparing, and it can be stopped', async () => {
+    const fetchMock = mockApi({ 'POST /api/runs/run-1/stop': { body: {} } })
+    useRunStore.setState({ run: run('pending'), connection: 'live' })
+    render(<RunControls teamId="t1" />)
+    expect(screen.getByRole('status').textContent).toContain('Preparing…')
+    expect(screen.getByRole('status').textContent).not.toContain('requests')
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
+    await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url) === '/api/runs/run-1/stop')).toBe(true))
+  })
+
+  it("shows a run's warnings", () => {
+    useRunStore.setState({ run: { ...run('running'), warnings: ['Some answers are simulated.'] }, connection: 'live' })
+    render(<RunControls teamId="t1" />)
+    expect(screen.getByRole('alert').textContent).toBe('Some answers are simulated.')
+  })
+
   it('offers no Stop for an official run', () => {
     useRunStore.setState({ run: run('running', 'official') })
     render(<RunControls teamId="t1" />)

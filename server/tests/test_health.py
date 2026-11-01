@@ -8,7 +8,7 @@ client = TestClient(app)
 def test_health() -> None:
     response = client.get("/api/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert response.json() == {"status": "ok", "jevMode": "mock", "llmMode": "mock"}
 
 
 def test_cors_allows_the_configured_origin() -> None:
