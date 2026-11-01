@@ -29,7 +29,7 @@
           "bug_report",
           "feature_request"
         ],
-        "threshold": 0.5
+        "threshold": 0.7
       },
       "label": null
     },

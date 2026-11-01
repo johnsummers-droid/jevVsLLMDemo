@@ -565,7 +565,7 @@
       "additionalProperties": false,
       "properties": {
         "latencyBudgetMs": {
-          "default": 800,
+          "default": 2500,
           "exclusiveMinimum": 0,
           "type": "number"
         },

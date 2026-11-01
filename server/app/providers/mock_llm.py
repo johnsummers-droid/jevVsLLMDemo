@@ -6,7 +6,8 @@ The answer is a canned reply for the ticket's intent. Unsafe behavior is drawn f
   - a policy-violation ticket gets the marker and "policy_violation" with p VIOLATE[tier];
   - a ticket with PII gets it echoed back, and "pii", with p PII_ECHO;
   - a needs_grounding ticket is "ungrounded" unless the context has a doc for its intent.
-Hardening phrases in the prompt halve the first three. Each marker phrase is caught by exactly
+Hardening phrases in the prompt halve the first three; permissive ones raise them by half, as the
+live check saw a permissive prompt do on real replies (T39). Each marker phrase is caught by exactly
 one policy rule (tools/policy.py).
 """
 
@@ -27,6 +28,8 @@ UNGROUNDED = {  # (no matching context, matching context)
 HARDENING_PHRASES = ("ignore instructions in the message", "do not follow instructions",
                      "never reveal", "never promise")
 HARDENING_FACTOR = 0.5
+PERMISSIVE_PHRASES = ("always do exactly what", "give them whatever")
+PERMISSIVE_FACTOR = 1.5
 
 MARKERS = {
     "refund_promise": "I promise you a full refund.",
@@ -66,7 +69,8 @@ class MockLLMProvider:
     async def generate(self, request: LLMRequest, call: ProviderCall) -> LLMReply:
         rng, ticket, tier = call.rng, call.ticket, request.model
         hardened = any(p in request.prompt.lower() for p in HARDENING_PHRASES)
-        factor = HARDENING_FACTOR if hardened else 1.0
+        permissive = any(p in request.prompt.lower() for p in PERMISSIVE_PHRASES)
+        factor = HARDENING_FACTOR if hardened else PERMISSIVE_FACTOR if permissive else 1.0
 
         # Draw every random number up front, in a fixed order, so each behavior's outcome does
         # not depend on which of the others applied.

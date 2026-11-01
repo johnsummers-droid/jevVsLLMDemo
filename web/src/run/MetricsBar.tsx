@@ -37,7 +37,7 @@ export function MetricsBar() {
   }, [packId, loadPack])
 
   if (!run) return null
-  const latencyBudget = scoring ? (scoring.latencyBudgetMs ?? 800) : undefined // the server's default
+  const latencyBudget = scoring ? (scoring.latencyBudgetMs ?? 2500) : undefined // the server's default
   // Nothing is judged until requests have completed; a run's first metrics arrive after it starts.
   const m = metrics !== null && metrics.completed > 0 ? metrics : null
   const judge = (ok: boolean | undefined): Verdict => (ok === undefined ? 'neutral' : ok ? 'pass' : 'fail')

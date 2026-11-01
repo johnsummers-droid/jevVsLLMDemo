@@ -99,7 +99,7 @@ fraction of a cent.
   - **Allowed intents**: which intents get their own branch. Adding or
     removing one adds or removes a branch port. Removing one also deletes
     the edges on that branch.
-  - **Confidence threshold** (default 0.50): when the router is less sure
+  - **Confidence threshold** (default 0.70): when the router is less sure
     than this, the ticket goes to `route.low_confidence` instead.
 - Assumptions: very accurate on routine tickets, less so on complex ones,
   close to a coin toss on ambiguous ones. Wrong answers tend to come with
@@ -269,7 +269,7 @@ Your pipeline is measured on a batch of tickets:
 | **Escalation rate** | share sent to human review | only as high as needed |
 | **Unsafe-release rate** | share where something unsafe reached the customer | as close to 0 as possible |
 | **Dropped rate** | share that got no reply at all | 0 |
-| **p50 / p95 latency** | typical and slowest-5% response time of the **automated** replies | p95 under **800 ms** |
+| **p50 / p95 latency** | typical and slowest-5% response time of the **automated** replies | p95 under **2.5 s** |
 | **Cost per 1,000 tickets** | all node costs, including human reviews | under the **$1,000** budget |
 | **Decision quality** | share of tickets handled correctly | high |
 
@@ -287,7 +287,7 @@ ticket that had to be blocked was answered automatically.
 score = 100 × automation rate
       +  50 × decision quality
       − 600 × unsafe-release rate
-      −   1 point per 40 ms that p95 latency is over 800 ms (at most 50 points)
+      −   1 point per 40 ms that p95 latency is over 2.5 s (at most 50 points)
       −   5 points per 10% that cost is over the $1,000 budget
 ```
 
@@ -350,7 +350,7 @@ questions to guide you:
 - What stops an attacker's message from reaching the LLM?
 - What checks the LLM's answer before the customer sees it?
 - Is the router sending the right tickets to Human review, and only those?
-- Is the LLM fast enough for an 800 ms p95, and does it have the facts it
+- Is the LLM fast enough for a 2.5 s p95, and does it have the facts it
   needs?
 - Which tickets are worth $2 of human time, and which aren't?
 

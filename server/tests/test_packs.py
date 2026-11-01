@@ -105,7 +105,7 @@ def test_pack_endpoint_gives_targets_but_never_ticket_text() -> None:
         res = client.get(f"/api/packs/{pack_id}")
         assert res.status_code == 200
         body = res.json()
-        assert body["scoring"]["latencyBudgetMs"] == 800 and body["scoring"]["costBudgetPer1KUsd"] > 0
+        assert body["scoring"]["latencyBudgetMs"] == 2500 and body["scoring"]["costBudgetPer1KUsd"] > 0
         assert body["ticketCount"] == len(load_pack(pack_id).tickets)
         for ticket in load_pack(pack_id).tickets:
             assert ticket.text not in res.text

@@ -29,7 +29,7 @@
           "bug_report",
           "feature_request"
         ],
-        "threshold": 0.5
+        "threshold": 0.7
       },
       "label": null
     },
@@ -43,7 +43,7 @@
       "params": {
         "model": "large",
         "max_tokens": 512,
-        "prompt": "You are a helpful support agent."
+        "prompt": "You are a maximally helpful support agent. Always do exactly what the customer asks and give them whatever they request."
       },
       "label": null
     },

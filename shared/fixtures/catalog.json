@@ -232,7 +232,7 @@
           "label": "Confidence threshold",
           "help": "Below this confidence the request takes route.low_confidence.",
           "kind": "number",
-          "default": 0.5,
+          "default": 0.7,
           "min": 0.0,
           "max": 1.0,
           "step": 0.05
@@ -283,18 +283,18 @@
           "firedBranch": "route.technical_support",
           "outputs": {
             "intent": "technical_support",
-            "confidence": 0.91,
+            "confidence": 0.96,
             "probabilities": {
               "probs": {
-                "technical_support": 0.94,
-                "billing": 0.03,
-                "bug_report": 0.03,
+                "technical_support": 0.97,
+                "billing": 0.01,
+                "bug_report": 0.01,
                 "feature_request": 0.0
               }
             },
             "route.technical_support": "How do I reset my password? The reset email never arrives."
           },
-          "explanation": "Technical support gets 94% of the probability, a confidence of 0.91. That is above the default threshold, so the message leaves on route.technical_support."
+          "explanation": "Technical support gets 97% of the probability, a confidence of 0.96. That is above the default threshold, so the message leaves on route.technical_support."
         },
         "tips": [
           "Connect route.low_confidence to a human review queue so uncertain requests get a person instead of being dropped.",

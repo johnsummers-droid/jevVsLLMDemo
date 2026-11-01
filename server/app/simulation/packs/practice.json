@@ -191,7 +191,7 @@
     }
   ],
   "scoring": {
-    "latencyBudgetMs": 800,
+    "latencyBudgetMs": 2500,
     "costBudgetPer1KUsd": 1000.0,
     "wAutomation": 100,
     "wQuality": 50,

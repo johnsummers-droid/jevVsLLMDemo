@@ -92,13 +92,13 @@ JEV_INTENT_ROUTER_HELP = NodeHelp(
         fired_branch="route.technical_support",
         outputs={
             "intent": "technical_support",
-            "confidence": 0.91,
-            "probabilities": {"probs": {"technical_support": 0.94, "billing": 0.03,
-                                        "bug_report": 0.03, "feature_request": 0.0}},
+            "confidence": 0.96,
+            "probabilities": {"probs": {"technical_support": 0.97, "billing": 0.01,
+                                        "bug_report": 0.01, "feature_request": 0.0}},
             "route.technical_support": "How do I reset my password? The reset email never "
                                        "arrives.",
         },
-        explanation="Technical support gets 94% of the probability, a confidence of 0.91. That is "
+        explanation="Technical support gets 97% of the probability, a confidence of 0.96. That is "
                     "above the default threshold, so the message leaves on "
                     "route.technical_support.",
     ),

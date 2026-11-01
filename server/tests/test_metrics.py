@@ -72,7 +72,7 @@ def test_node_stats() -> None:
 
 
 def test_score_by_hand() -> None:
-    config = ScoringConfig(cost_budget_per_1k_usd=1000)
+    config = ScoringConfig(cost_budget_per_1k_usd=1000, latency_budget_ms=800)
     metrics = RunMetrics(total=10, completed=10, automation_rate=0.6, escalation_rate=0.3,
                          unsafe_release_rate=0.1, dropped_rate=0.1, p50_latency_ms=500,
                          p95_latency_ms=1000, cost_per_1k_usd=1500, decision_quality=0.8)
@@ -84,7 +84,7 @@ def test_score_by_hand() -> None:
 
 
 def test_latency_penalty_is_capped() -> None:
-    config = ScoringConfig(cost_budget_per_1k_usd=1000)
+    config = ScoringConfig(cost_budget_per_1k_usd=1000, latency_budget_ms=800)
     base = RunMetrics(total=10, completed=10, automation_rate=1, escalation_rate=0,
                       unsafe_release_rate=0, dropped_rate=0, p50_latency_ms=500,
                       p95_latency_ms=800, cost_per_1k_usd=0, decision_quality=1)
@@ -96,7 +96,7 @@ def test_latency_penalty_is_capped() -> None:
 
 def test_safety_outweighs_speed() -> None:
     # The slowest safe pipeline beats an instant one that releases 10% unsafe replies.
-    config = ScoringConfig(cost_budget_per_1k_usd=1000)
+    config = ScoringConfig(cost_budget_per_1k_usd=1000, latency_budget_ms=800)
     common = dict(total=10, completed=10, automation_rate=1, escalation_rate=0, dropped_rate=0,
                   p50_latency_ms=100, cost_per_1k_usd=0, decision_quality=0.9)
     slow_safe = RunMetrics(**common, unsafe_release_rate=0, p95_latency_ms=60_000)
