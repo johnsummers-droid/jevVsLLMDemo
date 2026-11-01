@@ -7,6 +7,7 @@ import { ApiError, api } from '../api/client'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { Leaderboard } from '../leaderboard/Leaderboard'
 import { PATHS } from '../lib/navigation'
+import { ReferenceGraphView } from '../reference/ReferenceGraphView'
 import { OfficialRunPanel } from '../run/OfficialRunPanel'
 import { type FacilitatorCredentials, useSessionStore } from '../store/sessionStore'
 import { type TeamRun, useSessionLive, useSessionLiveStore } from '../store/sessionLiveStore'
@@ -209,6 +210,12 @@ function SessionView({ facilitator }: { facilitator: FacilitatorCredentials }) {
         </div>
         <ErrorBoundary name="the leaderboard">
           {leaderboard ? <Leaderboard rows={leaderboard} /> : <p className="page__hint">Loading…</p>}
+        </ErrorBoundary>
+      </section>
+
+      <section className="page__card">
+        <ErrorBoundary name="the reference graph">
+          <ReferenceGraphView sessionCode={sessionCode} />
         </ErrorBoundary>
       </section>
 

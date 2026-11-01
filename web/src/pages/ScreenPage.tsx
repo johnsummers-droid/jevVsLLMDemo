@@ -1,12 +1,13 @@
 // /screen: the shared screen for the room (plan1.txt T24, decision Q10). Signed in with the
 // facilitator's stored credentials (open /facilitator in the same browser first): how to join,
-// the leaderboard in large type, and one live metrics tile per team. No canvases.
+// the leaderboard in large type, a reference graph on request (T40), and one live metrics tile per team.
 import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import { Leaderboard } from '../leaderboard/Leaderboard'
 import { formatMs, formatPct, formatUsd } from '../lib/format'
 import { PATHS } from '../lib/navigation'
+import { ReferenceGraphView } from '../reference/ReferenceGraphView'
 import { REFRESH_MS } from './FacilitatorPage'
 import { type FacilitatorCredentials, useSessionStore } from '../store/sessionStore'
 import { type TeamRun, useSessionLive, useSessionLiveStore } from '../store/sessionLiveStore'
@@ -63,6 +64,11 @@ function Screen({ facilitator }: { facilitator: FacilitatorCredentials }) {
         <section className="screen__board">
           <h2>Leaderboard</h2>
           {leaderboard ? <Leaderboard rows={leaderboard} large /> : <p className="page__hint">Loading…</p>}
+        </section>
+      </ErrorBoundary>
+      <ErrorBoundary name="the reference graph">
+        <section className="screen__board">
+          <ReferenceGraphView sessionCode={sessionCode} />
         </section>
       </ErrorBoundary>
       <ErrorBoundary name="the team tiles">

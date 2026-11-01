@@ -12,6 +12,7 @@ import type {
   LeaderboardRow,
   OfficialRunResponse,
   PackSummary,
+  ReferenceGraphList,
   RunRecord,
   SaveGraphRequest,
   SessionDetail,
@@ -100,6 +101,16 @@ export const api = {
     request<OfficialRunResponse>('POST', `/api/sessions/${code(sessionCode)}/runs`, undefined, 'facilitator'),
   getLeaderboard: (sessionCode: string) =>
     request<LeaderboardRow[]>('GET', `/api/sessions/${code(sessionCode)}/leaderboard`, undefined, 'facilitator'),
+
+  getSessionReferenceGraphs: (sessionCode: string) =>
+    request<ReferenceGraphList>('GET', `/api/sessions/${code(sessionCode)}/reference-graphs`, undefined, 'facilitator'),
+  getSessionReferenceGraph: (sessionCode: string, name: string) =>
+    request<Graph>('GET', `/api/sessions/${code(sessionCode)}/reference-graphs/${encodeURIComponent(name)}`, undefined, 'facilitator'),
+  /** Empty with available=false until the session is locked and its official run has finished. */
+  getTeamReferenceGraphs: (teamId: string) =>
+    request<ReferenceGraphList>('GET', `/api/teams/${encodeURIComponent(teamId)}/reference-graphs`, undefined, 'team'),
+  getTeamReferenceGraph: (teamId: string, name: string) =>
+    request<Graph>('GET', `/api/teams/${encodeURIComponent(teamId)}/reference-graphs/${encodeURIComponent(name)}`, undefined, 'team'),
 
   getTeamGraph: (teamId: string) => request<StoredGraph>('GET', teamGraph(teamId), undefined, 'team'),
   /** 409 (stale version) carries the current StoredGraph as ApiError.body; 423 when locked. */

@@ -3,13 +3,16 @@
 import { BaseEdge, EdgeLabelRenderer, getBezierPath, type EdgeProps } from '@xyflow/react'
 import { useEffect, useRef } from 'react'
 import { worstSeverity } from '../lib/issues'
+import { useGraphStore } from '../store/graphStore'
 import { useRunStore } from '../store/runStore'
 import { useValidationStore } from '../store/validationStore'
 import { animator } from './pulses'
 
 export function PipelineEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, markerEnd, style, selected }: EdgeProps) {
   const issues = useValidationStore((s) => s.index.byEdge[id])
-  const transfers = useRunStore((s) => s.edgeCounts[id] ?? 0)
+  const viewingReference = useGraphStore((s) => s.reference !== null)
+  const runTransfers = useRunStore((s) => s.edgeCounts[id] ?? 0)
+  const transfers = viewingReference ? 0 : runTransfers
   const severity = worstSeverity(issues)
   const [path, labelX, labelY] = getBezierPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition })
   const trackRef = useRef<SVGPathElement>(null)

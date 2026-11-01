@@ -2,6 +2,7 @@
 // this node did: branch decisions, tokens, escalations, errors and skips. Shown once the team has
 // a run (live or finished); the numbers come from runStore.
 import { formatMs, formatUsd } from '../lib/format'
+import { useGraphStore } from '../store/graphStore'
 import { useRunStore } from '../store/runStore'
 
 const MAX_DECISIONS = 3
@@ -12,7 +13,9 @@ const branchLabel = (branch: string) => branch.slice(branch.indexOf('.') + 1)
 export function NodeStatsBadge({ nodeId }: { nodeId: string }) {
   const hasRun = useRunStore((s) => s.run !== null)
   const stats = useRunStore((s) => s.nodeStats[nodeId])
-  if (!hasRun) return null
+  // A reference graph has the same node ids, but the team's numbers aren't its numbers.
+  const viewingReference = useGraphStore((s) => s.reference !== null)
+  if (!hasRun || viewingReference) return null
   if (!stats || (stats.requests === 0 && stats.skipped === 0)) {
     return (
       <div className="node-stats node-stats--idle" aria-label="Run statistics">

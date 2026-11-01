@@ -55,7 +55,7 @@
   font-size: 0.9rem;
 }
 
-/* TEMPORARY ?ref reference-graph viewer (pages/ReferencePicker.tsx). */
+/* Reference graphs on the team canvas (pages/ReferencePicker.tsx) and the debrief view. */
 .app__banner--reference {
   border-bottom-color: var(--accent);
   background: var(--surface);
@@ -77,6 +77,19 @@
   border: 1px solid var(--border);
   border-radius: 4px;
   padding: 2px 4px;
+}
+
+.reference-view {
+  height: min(70vh, 640px);
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+/* Read-only and without the help panel: the "?" would open nothing. */
+.reference-view .pipeline-node__help {
+  display: none;
 }
 
 .save-status--offline,
