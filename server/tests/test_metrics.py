@@ -1,7 +1,7 @@
 import pytest
 
 from app.metrics.aggregator import compute_metrics, compute_node_stats, percentile
-from app.models import NodeExecution, RequestTrace, RunMetrics, ScoringConfig
+from app.models import NodeError, NodeExecution, RequestTrace, RunMetrics, ScoringConfig
 from app.simulation.scoring import score, with_score
 
 
@@ -51,6 +51,17 @@ def test_rates_are_over_all_requests_and_latency_over_automated_only() -> None:
 def test_partial_run_uses_the_given_total() -> None:
     m = compute_metrics([trace("automated")], total=4)
     assert (m.total, m.completed, m.automation_rate) == (4, 1, 0.25)
+
+
+def test_node_stats_count_provider_blocks_apart_from_errors() -> None:
+    def ran(code: str | None) -> NodeExecution:
+        error = NodeError(code=code, message="m", retryable=False) if code else None
+        return NodeExecution(node_id="llm", node_type="llm_answer_generator", start_ms=0,
+                             latency_ms=10, error=error)
+    traces = [trace("blocked", steps=[ran("provider_blocked")]),
+              trace("failed", steps=[ran("timeout")]), trace("automated", steps=[ran(None)])]
+    [stats] = compute_node_stats(traces, ["llm"])
+    assert (stats.requests, stats.errors, stats.provider_blocks) == (3, 1, 1)
 
 
 def test_node_stats() -> None:

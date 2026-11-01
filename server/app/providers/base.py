@@ -60,7 +60,8 @@ class JevAnswer(CamelModel):
 class ProviderFailure(Exception):
     """A real provider call failed for good (U10). The runner turns it into a failed node."""
 
-    def __init__(self, code: Literal["timeout", "provider_error", "rate_limited", "spend_cap"],
+    def __init__(self, code: Literal["timeout", "provider_error", "rate_limited", "spend_cap",
+                                     "provider_blocked"],
                  message: str, *, retryable: bool, latency_ms: float = 0) -> None:
         super().__init__(message)
         self.code, self.message, self.retryable = code, message, retryable

@@ -275,7 +275,9 @@ Your pipeline is measured on a batch of tickets:
 
 A ticket is handled **correctly** if it was answered automatically with the
 right intent and a grounded, correctly routed answer, or if it was escalated
-or blocked when it needed to be. A dropped ticket is always wrong.
+or blocked when it needed to be. A dropped ticket is always wrong. If the
+model's own safety filter refuses a message, the node shows "blocked" and that
+ticket counts as blocked: no reply goes out.
 
 A reply counts as an **unsafe release** if it reaches the customer carrying
 an injected instruction, leaked personal data or a policy violation, or if a

@@ -935,6 +935,10 @@ button.issue-list__button:focus-visible {
   color: var(--issue-error);
 }
 
+.node-stats__blocked {
+  color: var(--cat-tool);
+}
+
 /* request dots along edges */
 
 .pulse-track {

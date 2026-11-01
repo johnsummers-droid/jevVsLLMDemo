@@ -362,6 +362,7 @@ export interface NodeStats {
   requests: number
   skipped: number
   errors: number
+  providerBlocks?: number
   escalations: number
   avgLatencyMs: number
   totalCostUsd: number
@@ -388,7 +389,7 @@ export interface NodeCompleted {
   escalated?: boolean
 }
 export interface NodeError {
-  code: 'timeout' | 'provider_error' | 'invalid_input' | 'rate_limited' | 'spend_cap'
+  code: 'timeout' | 'provider_error' | 'invalid_input' | 'rate_limited' | 'spend_cap' | 'provider_blocked'
   message: string
   retryable: boolean
 }

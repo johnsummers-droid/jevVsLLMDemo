@@ -55,7 +55,8 @@
             "provider_error",
             "invalid_input",
             "rate_limited",
-            "spend_cap"
+            "spend_cap",
+            "provider_blocked"
           ],
           "type": "string"
         },
@@ -167,6 +168,11 @@
           "type": "integer"
         },
         "errors": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "providerBlocks": {
+          "default": 0,
           "minimum": 0,
           "type": "integer"
         },

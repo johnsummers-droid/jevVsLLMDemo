@@ -2,8 +2,9 @@
 
 Replies replay with the measured latency and cost of the original call. A call that still fails
 after the SDK's retry raises ProviderFailure, which fails the node. A reply with no text (a blocked
-prompt, or max_tokens spent on thinking) was still paid for, so it is stored and then fails the
-node every time, the same for every team. Logs and errors never hold message text.
+prompt, or max_tokens spent on thinking) is stored like any other, so it comes out the same every
+time, for every team. A blocked prompt counts as a blocked request (provider_blocked, see
+executor._classify); any other empty reply fails the node. Logs and errors never hold message text.
 """
 
 import time
@@ -27,6 +28,7 @@ TIMEOUT_MS = 20_000  # per attempt (U10)
 RETRY = types.HttpRetryOptions(attempts=2)  # two attempts with backoff (U10)
 # As low as each model allows (U8): gemini-4-argon has no minimal.
 THINKING_LEVEL = {"small": "MINIMAL", "large": "LOW"}
+PROMPT_BLOCKED = "prompt blocked"  # starts no_text_reason when Gemini refused the prompt itself
 
 
 def build_request(request: LLMRequest) -> dict[str, Any]:
@@ -100,7 +102,7 @@ class GeminiLLMProvider:
         finish = response.candidates[0].finish_reason if response.candidates else None
         feedback = response.prompt_feedback
         blocked = feedback.block_reason if feedback else None
-        reason = f"prompt blocked: {blocked.value}" if blocked else finish.value if finish else None
+        reason = f"{PROMPT_BLOCKED}: {blocked.value}" if blocked else finish.value if finish else None
         return Fetched(response={"text": response.text or "", "no_text_reason": reason},
                        tokens_in=tokens_in, tokens_out=tokens_out,
                        cost_usd=(tokens_in * prices["in"] + tokens_out * prices["out"]) / 1000)
@@ -112,6 +114,12 @@ class GeminiLLMProvider:
                                             partial(self._fetch, request.model, fields))
             text = stored.response["text"]
             if not text.strip():
+                if (stored.response["no_text_reason"] or "").startswith(PROMPT_BLOCKED):
+                    raise ProviderFailure(
+                        "provider_blocked",
+                        f"Gemini's safety filter refused the message "
+                        f"({stored.response['no_text_reason']})",
+                        retryable=False, latency_ms=stored.latency_ms)
                 raise ProviderFailure(
                     "provider_error",
                     f"Gemini returned no text ({stored.response['no_text_reason']})",
