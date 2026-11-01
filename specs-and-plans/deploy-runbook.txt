@@ -171,8 +171,20 @@ Going live on real AI (T38; the modes stay mock in render.yaml until T39):
       LIVE_LLM_CONCURRENCY=32 fits those; lower it if the tier drops.
   [ ] Set JEV_MODE and LLM_MODE to live in render.yaml, in a PR. A Blueprint
       sync applies these values, so a dashboard-only change wouldn't last.
-  [ ] Prewarm production: `scripts/prewarm.py` where DATABASE_URL points at it
-      (with the live modes and keys set). A rerun replays for free.
+  [ ] Prewarm production, with no session running: Render -> pipeline-sim-api
+      -> Shell, then paste this as one line:
+
+      python -c "import urllib.request as u; u.urlretrieve('https://raw.githubusercontent.com/johnsummers-droid/jevVsLLMDemo/main/server/scripts/prewarm.py', '/tmp/prewarm.py')" && python /tmp/prewarm.py
+
+      The image leaves out scripts/ and has no curl, so Python downloads the
+      script. The Shell already has the keys, modes and DATABASE_URL, and the
+      stored latencies are real Frankfurt ones, which later runs replay.
+      Spends real money once ($0.13 on 2026-11-01, with practice runs already
+      stored); a rerun replays for free. Expect some "node error:
+      code=provider_blocked" lines, which are normal, then one line per pack
+      and graph, each with "0 failed". A "stopped:" line means the spend cap
+      was reached. Reference graphs only: a team's changed prompt still makes
+      new calls.
   [ ] /api/health shows "jevMode":"live", "llmMode":"live". A practice run says
       "Preparing...", then plays with real latencies.
   [ ] LIVE_SPEND_CAP_USD (default 10 per UTC day) suits the day. At the cap, new

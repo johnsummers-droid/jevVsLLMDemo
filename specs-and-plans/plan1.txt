@@ -2805,7 +2805,8 @@ Tasks (in order):
     failed". gemini-4-argon refuses o-27 and o-29 (and p-15 in practice) with
     promptFeedback.blockReason OTHER: 9 of 9 re-sends, no message, no tokens.
     gemini-3.5-flash-lite answers all three. Not rate limits (peak 38 of 1000
-    RPM). Whether a team's own prompt changes the block is untested.
+    RPM). The system prompt changes what is blocked: o-25 is answered with the
+    default prompt and blocked with the weak graph's permissive one.
     As built (2026-11-01):
       - NodeError and ProviderFailure gain code provider_blocked, raised only
         when Gemini refused the prompt (no_text_reason starts "prompt
@@ -2844,3 +2845,44 @@ done (2026-10-31); T35 is next.
     tiles.
   - CLAUDE.md's "Open question" can be closed: the spec defines Jev nodes
     (section 0 above).
+
+9. AS-YET UNIMPLEMENTED FEATURES
+--------------------------------
+Features planned or asked for that do not exist yet, in one place (started
+2026-11-01). The task notes named here hold the details. Remove an entry when
+it is built, or when the user drops it.
+
+  Run controls (T27, T30; M5, paused)
+  - Prompt-injection wave and traffic spike. RunConfig and traffic.py already
+    support them, but the run API and the UI don't expose them. They appear in
+    the user's UI mock and stay hidden in UX iteration 1 (user decision
+    2026-11-01): they need server work, and they cost real AI calls on tickets
+    not yet stored.
+  - "Clear results" for a finished run.
+  - Pencils down stopping practice runs in progress; today it only blocks new
+    ones.
+
+  Nodes and graphs (T25; M5, paused)
+  - Urgency scorer, escalation gate, summarizer and PII redactor. The urgency
+    scorer also appears in the UI mock. T25's unfinished work is on branch t25;
+    the "gated" reference graph's R2 question is still open.
+
+  Human review (T26; M5, paused)
+  - Reviewer capacity and overflow.
+
+  Review and testing tools (T28, T29, T30, T31; M5, paused)
+  - Traces kept after a run, run history, and a per-request trace viewer.
+  - The inspector's "Test" button for a single node.
+  - The other metrics in the metrics bar and on the leaderboard: they are
+    computed, but only some are shown.
+
+  Real providers
+  - The live Claude provider. Settings accept LLM_PROVIDER=claude, but only
+    Gemini is built, so the server refuses to start in live mode with Claude.
+  - The companion Noul on the intent router: tried, left out of the MVP (user
+    decision 2026-11-01).
+
+  Hardening (M7)
+  - Load test (6 teams with a 3x spike, which needs the run controls above).
+  - Playwright smoke test in the repo. The checks so far were one-off scripts.
+  - Facilitator rehearsal.
