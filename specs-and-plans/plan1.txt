@@ -2846,11 +2846,41 @@ done (2026-10-31); T35 is next.
   - CLAUDE.md's "Open question" can be closed: the spec defines Jev nodes
     (section 0 above).
 
+UX ITERATION 1 (as built 2026-11-01; brief: UI-mocks/ui-specs.txt plus the user's follow-up changes
+the same day, which replaced parts of it; the mock is only a reference)
+  Dark only (index.css has one scheme). Colours: Jev pink #F486A1, LLM white, tools grey #5F6672,
+  human blue #517ED2, customer purple #8F57E9, system green #00FF64 for the team name, accent and
+  request dots; edges grey #575761. App.css gives each category --cat-color (fill), --cat-ink (on the
+  fill), --cat-text (as text on dark) and --cat-mix (gradient strength).
+  Nodes: every node is a rectangle with a 40 px colour panel holding its logo
+  (nodes/CategoryIcon.tsx); input rows reach under the panel so handles stay on the node's outer edge.
+  Palette and canvas nodes: Inter 400 from Google Fonts (index.html; no new dependency, falls back to the system font
+  if the network blocks it); collapsible sections (local state, all open at the start); headers keep
+  the full colour to 60% and fade to transparent, because Jev's and the LLM's dark text needs colour
+  behind it; descriptions cut to one line, the "?" has the rest.
+  Side panels: components/PanelToggle.tsx, a caret in a circle halfway down each inner edge; the panel
+  is hidden, not removed, so it keeps its state; collapsed state isn't remembered across reloads.
+  Edges are smooth-step. Dots: radius 7, halo throbs by CSS (0.4 s), off under prefers-reduced-motion.
+  Validation colours still override the edge grey. Run bar at the bottom of the page, 3 px line above
+  it, fixed minimum height so the canvas doesn't jump at a run's start. Padlock
+  (components/LockIcon.tsx) in the save status, banner and on the canvas. Logo on the team, join,
+  facilitator and screen pages; page title and favicon too. Images: web/src/assets/, made from
+  UI-mocks/ (resized; abacus: outlines white and thickened, bead fills see-through). Layouts of the
+  four graphs respaced for the wider nodes (positions only; fixtures regenerated, scores don't use
+  positions). Graphs saved before this keep their positions.
+  For the user to confirm: the logo is top left, where the mock has it (the brief says top right);
+  "Human review" and "Customer" are extra palette sections.
+  Not taken from the mock: floating metrics cards, sparklines (see section 9), router branch grouping.
+
 9. AS-YET UNIMPLEMENTED FEATURES
 --------------------------------
 Features planned or asked for that do not exist yet, in one place (started
 2026-11-01). The task notes named here hold the details. Remove an entry when
 it is built, or when the user drops it.
+
+  UI (from the mock, not in the UX iteration 1 brief)
+  - Sparklines on the metric tiles (runStore would need to keep a series).
+  - Grouping a router's branch ports, which take up a lot of room on large graphs.
 
   Run controls (T27, T30; M5, paused)
   - Prompt-injection wave and traffic spike. RunConfig and traffic.py already

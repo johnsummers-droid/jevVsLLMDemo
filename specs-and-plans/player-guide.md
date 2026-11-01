@@ -29,7 +29,7 @@ and never lets an unsafe reply reach a customer.
 | Area | What it does |
 |------|--------------|
 | **Header** (top) | Your team and session, the save status (Saved / Saving… / Offline – retrying / Locked), **Reset graph** (back to the starter graph, after a confirm) and **Sign out**. |
-| **Palette** (left) | Every node type you can use, grouped by category. Click a card to add that node at the centre of the canvas, or drag it to where you want it. |
+| **Palette** (left) | Every node type you can use, in sections by category (click a section's header to collapse it). The caret in a circle on the panel's edge hides or shows the whole panel; the inspector has one too. Click a card to add that node at the centre of the canvas, or drag it to where you want it. |
 | **Canvas** (middle) | Your pipeline. Drag nodes to move them, scroll to zoom, drag the background to pan. |
 | **Inspector** (right) | With one node selected: its description, settings (params), ports, cost and latency assumptions, problems, and a **Delete node** button. With nothing selected: the **Pipeline check**, a list of every problem in the graph. |
 | **Help panel** (bottom of the canvas) | Click the **?** on any node (in the palette, on the canvas, or in the inspector header) to open its help: what it does, where it goes, every setting and output, a worked example and tips. One panel at a time: another **?** swaps it, the same **?**, **×** or **Esc** closes it. Drag its top edge to resize it. You can keep working while it is open. |
@@ -302,7 +302,7 @@ cost runs over budget.
 
 ### Practice and official runs
 
-- **Practice runs:** press **Run traffic** (above the canvas) to run your
+- **Practice runs:** press **Run traffic** (in the bar at the bottom of the page) to run your
   saved graph on the 15-ticket practice pack. It takes about 45 seconds:
   dots move along the edges as tickets flow, each node shows what it did
   (requests, average latency, cost, routing decisions, tokens, escalations,
