@@ -38,9 +38,9 @@ services:
       # mock or live. Changed here on purpose, in a PR: a Blueprint sync applies these values.
       # Before going live: run scripts/live_check.py, then scripts/prewarm.py (see the runbook).
       - key: JEV_MODE
-        value: mock
+        value: live
       - key: LLM_MODE
-        value: mock
+        value: live
       - key: LLM_PROVIDER
         value: gemini
       - key: LIVE_SPEND_CAP_USD
