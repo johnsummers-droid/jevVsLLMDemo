@@ -137,4 +137,5 @@ def test_the_factory_builds_live_jev_only_with_a_store_and_key(monkeypatch: pyte
     assert load().live_problems() == []
     with pytest.raises(ValueError, match="call store"):
         jev_provider(load())
-    assert isinstance(jev_provider(load(), CallStore(lambda: None, 1)), TypeSafeJevProvider)
+    built = jev_provider(load(), CallStore(lambda: None, 1))
+    assert isinstance(built._live, TypeSafeJevProvider)

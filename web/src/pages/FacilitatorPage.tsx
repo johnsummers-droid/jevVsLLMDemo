@@ -15,7 +15,7 @@ import { Link } from './Link'
 
 const RUN_LABELS: Record<string, string> = {
   running: 'running',
-  pending: 'starting',
+  pending: 'preparing',
   completed: 'finished',
   stopped: 'stopped',
   failed: 'failed',
@@ -184,7 +184,15 @@ function SessionView({ facilitator }: { facilitator: FacilitatorCredentials }) {
                   <td>{timeFormat.format(new Date(team.joinedAt))}</td>
                   <td>{team.graphVersion}</td>
                   <td>{team.locked ? 'Locked' : 'Editing'}</td>
-                  <td>{runLabel(teamRuns[team.teamId])}</td>
+                  <td>
+                    {runLabel(teamRuns[team.teamId])}
+                    {teamRuns[team.teamId]?.warnings?.map((warning) => (
+                      <span key={warning} className="run-controls__error" role="alert">
+                        {' '}
+                        {warning}
+                      </span>
+                    ))}
+                  </td>
                 </tr>
               ))}
             </tbody>

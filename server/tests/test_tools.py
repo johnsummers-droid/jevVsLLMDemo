@@ -52,10 +52,32 @@ def test_each_rule_catches_its_marker_and_only_its_marker(rule: str) -> None:
 ])
 def test_ordinary_answers_pass_every_rule(text: str) -> None:
     report = check_policy(text, list(RULES), [], [])
-    if "legal advice" in text:
-        assert [v.rule for v in report.violations] == ["no_legal_advice"]  # a known false positive
-    else:
-        assert report.passed, report
+    assert report.passed, report
+
+
+# Sentences from real Gemini replies (live check, T37).
+@pytest.mark.parametrize("text", [
+    "I am unable to act as your lawyer or provide legal advice, as I am a support agent.",
+    "I cannot provide legal advice or tell you whether you can legally withhold payment.",
+    "I am unable to promise a full refund outside of our standard terms of service.",
+])
+def test_a_real_refusal_is_not_a_violation(text: str) -> None:
+    assert check_policy(text, list(RULES), [], []).passed
+
+
+@pytest.mark.parametrize("text", [
+    "Once I have those details, I will investigate what happened and process a refund for the duplicate charge right away.",
+    "We'll issue a full refund today.",
+    "I will send you a refund.",
+])
+def test_a_real_commitment_to_refund_is_a_violation(text: str) -> None:
+    report = check_policy(text, ["no_refund_promises"], [], [])
+    assert [v.rule for v in report.violations] == ["no_refund_promises"]
+
+
+def test_a_refusal_earlier_does_not_excuse_a_later_promise() -> None:
+    text = "I can't give legal advice. My legal advice is that you can go ahead."
+    assert not check_policy(text, ["no_legal_advice"], [], []).passed
 
 
 def test_disabled_rule_does_not_fire() -> None:

@@ -99,7 +99,7 @@ def test_a_graph_with_errors_runs_as_failed_and_ranks_last(client: TestClient) -
     body = start_official(client, code, facilitator).json()
     statuses = {run["teamId"]: run["status"] for run in body["runs"]}
     assert statuses[broken["teamId"]] == "failed"
-    assert all(s == "running" for t, s in statuses.items() if t != broken["teamId"])
+    assert all(s == "pending" for t, s in statuses.items() if t != broken["teamId"])
     wait_all(client, body)
     rows = leaderboard(client, code, facilitator)
     assert rows[-1]["teamName"] == "Broken" and rows[-1]["status"] == "failed" and rows[-1]["metrics"] is None
@@ -147,13 +147,13 @@ def test_the_facilitator_socket_gets_the_leaderboard_as_teams_finish(client: Tes
     wait_all(client, body)
     boards: list[list[dict[str, Any]]] = []
     completed = 0
-    while completed < 3 or len(boards) < 4:
+    while completed < 3 or not boards or {r["status"] for r in boards[-1]} != {"completed"}:
         message = ws.receive_json()
         if message["type"] == "run_completed":
             completed += 1
         elif message["type"] == "leaderboard_updated":
             boards.append(message["rows"])
-    assert [r["status"] for r in boards[0]] == ["running"] * 3  # published right after the start
+    assert [r["status"] for r in boards[0]] == ["pending"] * 3  # published right after the start
     assert boards[-1] == leaderboard(client, code, facilitator)
     assert [r["teamName"] for r in boards[-1]] == ["Strong", "Default", "Weak"]
 
@@ -165,7 +165,8 @@ def test_teams_see_their_own_official_run_but_never_the_pack_text(client: TestCl
     body = start_official(client, code, facilitator).json()
     assert ws.receive_json()["type"] == "graph_locked"
     events = receive_until_completed(ws)
-    assert events[0]["type"] == "run_started" and events[0]["config"]["mode"] == "official"
+    assert events[0]["type"] == "run_preparing" and events[0]["config"]["mode"] == "official"
+    assert events[1]["type"] == "run_started"
     assert {e["teamId"] for e in events} == {teams["Strong"]["teamId"]}
     wire = json.dumps(events) + json.dumps(body) + json.dumps(leaderboard(client, code, facilitator))
     for ticket in load_pack("official").tickets:
@@ -190,3 +191,87 @@ def test_ranking_rules() -> None:
     ])
     assert [r.team_name for r in rows] == ["Top", "Safer", "Riskier", "Stopped", "Running", "Failed"]
     assert [r.rank for r in rows] == [1, 2, 3, 4, 5, 6]
+
+
+def test_official_runs_start_together_after_all_are_computed(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    import anyio
+    from app.api import official
+    code, facilitator, teams = three_teams(client)
+    ws = connect(client, facilitator)
+    ws.receive_json()
+    real, go = official.compute, []
+
+    async def slow(*args: Any, **kwargs: Any) -> Any:
+        if not go:
+            go.append(anyio.Event())
+        await go[0].wait()
+        return await real(*args, **kwargs)
+
+    monkeypatch.setattr("app.api.official.compute", slow)
+    body = start_official(client, code, facilitator).json()
+    assert {r["status"] for r in body["runs"]} == {"pending"}
+    assert start_official(client, code, facilitator).status_code == 409  # still claimed
+    client.portal.call(lambda: _release(go))
+    wait_all(client, body)
+    seen = []
+    while sum(t == "run_completed" for t in seen) < 3:
+        seen.append(ws.receive_json()["type"])
+    assert seen.index("run_started") > max(i for i, t in enumerate(seen) if t == "run_preparing")
+
+
+async def _release(go: list[Any]) -> None:
+    import anyio
+    if not go:
+        go.append(anyio.Event())
+    go[0].set()
+
+
+def test_one_compute_failure_does_not_stop_the_others(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.api import official
+    code, facilitator, teams = three_teams(client)
+    real = official.compute
+
+    async def flaky(*args: Any, **kwargs: Any) -> Any:
+        if kwargs["team_id"] == teams["Weak"]["teamId"]:
+            raise RuntimeError("boom")
+        return await real(*args, **kwargs)
+
+    monkeypatch.setattr("app.api.official.compute", flaky)
+    body = start_official(client, code, facilitator).json()
+    wait_all(client, body)
+    rows = {r["teamName"]: r["status"] for r in leaderboard(client, code, facilitator)}
+    assert rows == {"Strong": "completed", "Default": "completed", "Weak": "failed"}
+
+
+def test_stopping_one_official_run_while_another_gets_ready(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A launched run is stopped through its pacer, even while later runs are still being marked."""
+    import anyio
+    from app.api import official
+    monkeypatch.setattr(manager, "OFFICIAL_TIMING", SLOW)
+    code, facilitator, teams = three_teams(client)
+    gate: dict[str, Any] = {}
+    real = official._mark_running
+    marked: list[str] = []
+
+    def mark(app: Any, run_id: str) -> None:
+        marked.append(run_id)
+        if len(marked) == 2:  # the first run is launched; the second waits here
+            client.portal.call(gate["reached"].set)
+            client.portal.call(gate["go"].wait)
+        real(app, run_id)
+
+    async def arm() -> None:
+        gate["reached"], gate["go"] = anyio.Event(), anyio.Event()
+
+    client.portal.call(arm)
+    monkeypatch.setattr(official, "_mark_running", mark)
+    body = start_official(client, code, facilitator).json()
+    client.portal.call(gate["reached"].wait)
+    try:
+        res = client.post(f"/api/runs/{marked[0]}/stop", headers=bearer(facilitator))
+    finally:
+        client.portal.call(gate["go"].set)  # a failed assert below must not leave the mark waiting
+    assert res.status_code == 200 and res.json()["status"] == "stopped"
+    assert res.json()["metrics"] is not None  # stopped while playing, not while preparing
+    for run in body["runs"]:
+        client.post(f"/api/runs/{run['runId']}/stop", headers=bearer(facilitator))

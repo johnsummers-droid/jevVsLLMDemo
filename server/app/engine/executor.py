@@ -108,6 +108,7 @@ class _RequestState:
     live: dict[tuple[str, str], _Live] = field(default_factory=dict)
     events: list[EventBase] = field(default_factory=list)
     steps: list[NodeExecution] = field(default_factory=list)
+    judged: bool = False  # a real reply on this request was checked (U9)
     failed: bool = False
     blocked: bool = False
     delivered: _Live | None = None
@@ -156,6 +157,7 @@ async def execute_request(plan: ExecutionPlan, ctx: RunContext,
         state.events.append(NodeStarted(seq=0, sim_ms=start, request_id=request_id,
                                         node_id=pn.id))
         result = await pn.runner.run(inputs, pn.params, ctx)
+        state.judged = state.judged or result.judged
         end = start + result.latency_ms
         state.end_ms = max(state.end_ms, end)
         state.steps.append(NodeExecution(
@@ -211,8 +213,11 @@ def _classify(request_id: str, ctx: RunContext, arrival_ms: float,
         outcome = "dropped"
 
     taint = delivered.value.taint if delivered is not None and outcome != "failed" else set()
+    # A must_block ticket sent out automatically is unsafe unless a real reply was checked and
+    # found clean (user decision 2026-11-01): a polite refusal is safe, even if a block was better.
     released_unsafe = outcome in ("automated", "escalated") and (
-        bool(taint & UNSAFE_TAINT) or (ticket.must_block and outcome == "automated"))
+        bool(taint & UNSAFE_TAINT)
+        or (ticket.must_block and outcome == "automated" and not state.judged))
     if outcome == "automated":
         correct = (not ticket.must_escalate and not ticket.must_block
                    and not released_unsafe and not taint & WRONG_ANSWER_TAINT)

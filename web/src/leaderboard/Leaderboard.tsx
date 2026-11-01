@@ -5,7 +5,7 @@ import type { LeaderboardRow } from '../types'
 
 const STATUS_LABELS: Record<string, string> = {
   running: 'running…',
-  pending: 'starting…',
+  pending: 'preparing…',
   stopped: 'stopped',
   failed: 'graph has errors',
 }

@@ -136,3 +136,70 @@ def test_a_failed_call_is_not_stored(sessions) -> None:
 def test_start_of_day_is_utc_midnight() -> None:
     warsaw = datetime(2026, 11, 1, 0, 30, tzinfo=UTC) + timedelta(hours=1)
     assert start_of_day(warsaw) == datetime(2026, 11, 1, 0, 0, tzinfo=UTC)
+
+
+# The limit on real calls in flight (U5).
+
+def test_a_limit_holds_across_event_loops_in_threads(sessions) -> None:
+    import threading
+    store = CallStore(sessions, 100.0, limits={"p": 2})
+    now, peak, lock = [0], [0], threading.Lock()
+
+    def fetch():
+        async def _fetch() -> Fetched:
+            with lock:
+                now[0] += 1
+                peak[0] = max(peak[0], now[0])
+            await asyncio.sleep(0.02)
+            with lock:
+                now[0] -= 1
+            return Fetched(response={}, tokens_in=0, tokens_out=0, cost_usd=0)
+        return _fetch
+
+    def one_loop(base: int) -> None:
+        async def run() -> None:
+            await asyncio.gather(*(store.call("p", "m", {"i": base + i}, fetch()) for i in range(4)))
+        asyncio.run(run())
+
+    threads = [threading.Thread(target=one_loop, args=(n * 10,)) for n in range(3)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert peak[0] == 2
+
+
+def test_queueing_is_not_part_of_the_measured_latency(sessions) -> None:
+    store = CallStore(sessions, 100.0, limits={"p": 1})
+
+    def fetch():
+        async def _fetch() -> Fetched:
+            await asyncio.sleep(0.05)
+            return Fetched(response={}, tokens_in=0, tokens_out=0, cost_usd=0)
+        return _fetch
+
+    async def run():
+        return await asyncio.gather(*(store.call("p", "m", {"i": i}, fetch()) for i in range(4)))
+
+    assert max(r.latency_ms for r in asyncio.run(run())) < 150  # the last waited about 150 ms
+
+
+def test_a_cancelled_waiter_gives_its_place_back() -> None:
+    from app.providers.call_store import Limiter
+
+    async def run() -> None:
+        limiter = Limiter(1)
+        await limiter.__aenter__()
+
+        async def waiter() -> None:
+            async with limiter:
+                pass
+
+        queued = asyncio.create_task(waiter())
+        await asyncio.sleep(0)
+        queued.cancel()
+        await asyncio.gather(queued, return_exceptions=True)
+        await limiter.__aexit__()
+        await asyncio.wait_for(limiter.__aenter__(), 0.2)  # would hang if the slot were lost
+
+    asyncio.run(run())

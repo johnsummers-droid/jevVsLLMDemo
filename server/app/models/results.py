@@ -22,6 +22,7 @@ class NodeResult(CamelModel):
     decision: dict[str, Any] | None = None  # e.g. {"intent": "billing", "confidence": 0.82}
     escalated: bool = False
     cached: bool = False
+    judged: bool = False  # a real reply whose content was checked (U9); see executor._classify
     error: NodeError | None = None
 
     @model_validator(mode="after")

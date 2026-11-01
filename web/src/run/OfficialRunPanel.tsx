@@ -2,7 +2,7 @@
 // graph), see it playing, stop it for every team.
 import { useState } from 'react'
 import { ApiError, api } from '../api/client'
-import { officialRunning, useSessionLiveStore } from '../store/sessionLiveStore'
+import { officialPreparing, officialRunning, useSessionLiveStore } from '../store/sessionLiveStore'
 
 interface Props {
   sessionCode: string
@@ -13,6 +13,7 @@ interface Props {
 
 export function OfficialRunPanel({ sessionCode, teamCount, onStarted }: Props) {
   const running = useSessionLiveStore(officialRunning)
+  const preparing = useSessionLiveStore(officialPreparing)
   const teamRuns = useSessionLiveStore((s) => s.teamRuns)
   const connection = useSessionLiveStore((s) => s.connection)
   const [confirming, setConfirming] = useState(false)
@@ -47,7 +48,9 @@ export function OfficialRunPanel({ sessionCode, teamCount, onStarted }: Props) {
 
   const stopAll = async () => {
     setBusy(true)
-    const playing = Object.values(teamRuns).filter((r) => r.mode === 'official' && r.status === 'running')
+    const playing = Object.values(teamRuns).filter(
+      (r) => r.mode === 'official' && (r.status === 'running' || r.status === 'pending'),
+    )
     const results = await Promise.allSettled(playing.map((r) => api.stopRun(r.runId, 'facilitator')))
     setError(results.some((r) => r.status === 'rejected') ? 'Some runs could not be stopped; try again.' : null)
     setBusy(false)
@@ -61,7 +64,7 @@ export function OfficialRunPanel({ sessionCode, teamCount, onStarted }: Props) {
         {running ? (
           <>
             <strong className="official__running" role="status">
-              Playing…
+              {preparing ? 'Preparing…' : 'Playing…'}
             </strong>
             <button type="button" className="button button--danger" onClick={() => void stopAll()} disabled={busy}>
               Stop all

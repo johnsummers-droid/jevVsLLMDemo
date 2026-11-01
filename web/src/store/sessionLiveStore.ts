@@ -13,6 +13,7 @@ export interface TeamRun {
   mode: RunMode
   status: RunStatus
   metrics: RunMetrics | null
+  warnings?: string[]
 }
 
 export interface SessionLive {
@@ -29,20 +30,36 @@ export function reduceSession(view: SessionLive, event: ServerEvent): SessionLiv
   const current = view.teamRuns[teamId]
   const put = (run: TeamRun) => ({ ...view, teamRuns: { ...view.teamRuns, [teamId]: run } })
   switch (event.type) {
+    case 'run_preparing':
+      return put({ runId: event.runId ?? '', mode: event.config.mode, status: 'pending', metrics: null })
     case 'run_started':
-      return put({ runId: event.runId ?? '', mode: event.config.mode, status: 'running', metrics: null })
+      return put({
+        runId: event.runId ?? '',
+        mode: event.config.mode,
+        status: 'running',
+        metrics: null,
+        warnings: event.warnings ?? [],
+      })
     case 'metrics_snapshot':
       return current && current.runId === event.runId ? put({ ...current, metrics: event.metrics }) : view
     case 'run_completed':
-      return current && current.runId === event.runId ? put({ ...current, status: event.status, metrics: event.metrics }) : view
+      return current && current.runId === event.runId ? put({ ...current, status: event.status, metrics: event.metrics ?? null }) : view
     default:
       return view
   }
 }
 
-/** True while any team's official run plays. */
+const unfinished = (run: TeamRun) => run.status === 'running' || run.status === 'pending'
+
+/** True while any team's official run prepares or plays. */
 export const officialRunning = (view: SessionLive): boolean =>
-  Object.values(view.teamRuns).some((run) => run.mode === 'official' && run.status === 'running')
+  Object.values(view.teamRuns).some((run) => run.mode === 'official' && unfinished(run))
+
+/** True while official runs are still being computed: none has started playing. */
+export const officialPreparing = (view: SessionLive): boolean => {
+  const official = Object.values(view.teamRuns).filter((run) => run.mode === 'official' && unfinished(run))
+  return official.length > 0 && official.every((run) => run.status === 'pending')
+}
 
 interface SessionLiveState extends SessionLive {
   connection: LiveStatus

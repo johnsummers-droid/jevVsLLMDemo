@@ -158,6 +158,25 @@ In browsers (the M3 exit criteria):
 
 If all boxes are ticked, M3 is done on the deployed URLs.
 
+Going live on real AI (T38; the modes stay mock in render.yaml until T39):
+  [ ] Render's dashboard holds working TYPESAFE_API_KEY and GEMINI_API_KEY. Both
+      modes need TypeSafe: Jev judges the real replies.
+  [ ] Locally, with the keys in server/.env: `scripts/live_check.py jev` and
+      `scripts/live_check.py llm` both answer. A bad key shows on every ticket
+      (the server's startup check only sees that a key is set).
+  [ ] Look up the Gemini key's rate limit in AI Studio. LIVE_LLM_CONCURRENCY=4 is
+      a cautious start: large-tier replies take seconds, so a first official
+      run of uncached prompts can prepare for minutes. Raise it if the tier allows.
+  [ ] Set JEV_MODE and LLM_MODE to live in render.yaml, in a PR. A Blueprint
+      sync applies these values, so a dashboard-only change wouldn't last.
+  [ ] Prewarm production: `scripts/prewarm.py` where DATABASE_URL points at it
+      (with the live modes and keys set). A rerun replays for free.
+  [ ] /api/health shows "jevMode":"live", "llmMode":"live". A practice run says
+      "Preparing...", then plays with real latencies.
+  [ ] LIVE_SPEND_CAP_USD (default 10 per UTC day) suits the day. At the cap, new
+      requests answer from the mocks and the team and facilitator see a warning;
+      their numbers can't be compared with a fully live run.
+
 Live runs (the M4 exit criteria; spec section 11 end to end):
   [ ] Two teams (two browsers) each press "Run traffic": dots move along
       the edges, node badges count up, the metrics bar fills in and is

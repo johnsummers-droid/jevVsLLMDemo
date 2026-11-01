@@ -8,6 +8,7 @@ from app.models.metrics import RunMetrics
 from app.models.results import NodeError
 
 RunMode = Literal["practice", "official"]
+# pending: computing ahead of the replay (U6). A reply from real providers can take seconds.
 RunStatus = Literal["pending", "running", "completed", "stopped", "failed"]
 Outcome = Literal["automated", "escalated", "blocked", "dropped", "failed"]
 
@@ -55,6 +56,7 @@ class RunSummary(CamelModel):
     status: RunStatus
     config: RunConfig
     graph_version: int = 0
+    warnings: list[str] = Field(default_factory=list)
 
 
 class RunRecord(RunSummary):

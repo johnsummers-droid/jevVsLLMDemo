@@ -5,6 +5,7 @@ time (t5-plan.txt decision 1), metrics snapshots are inserted at most every SNAP
 wall-clock time at the run's speed, and every event is numbered.
 """
 
+import asyncio
 from dataclasses import dataclass
 
 from app.engine.envelope import RequestEnvelope, RunContext
@@ -28,10 +29,11 @@ from app.models.events import (
     RunStarted,
 )
 from app.providers.base import JevProvider, LLMProvider
+from app.providers.factory import provider_warnings
 from app.providers.mock_jev import MockJevProvider
 from app.providers.mock_llm import MockLLMProvider
 from app.simulation.scoring import with_score
-from app.simulation.traffic import schedule
+from app.simulation.traffic import Arrival, schedule
 
 SNAPSHOT_WALL_MS = 250  # metrics_snapshot at most 4 times per wall-clock second
 
@@ -57,20 +59,27 @@ async def run_simulation(graph: Graph, pack: ScenarioPack, config: RunConfig, *,
     llm = llm or MockLLMProvider()
     node_ids = [pn.id for pn in plan.nodes]
 
-    traces: list[RequestTrace] = []
-    timed: list[tuple[float, int, int, EventBase]] = []
-    for index, arrival in enumerate(schedule(pack, config)):
+    arrivals = schedule(pack, config)
+
+    async def one_request(arrival: Arrival) -> tuple[RequestTrace, list[EventBase]]:
         ctx = RunContext(run_seed=config.seed, jev=jev, llm=llm,
                          envelope=RequestEnvelope(request_id=arrival.request_id,
                                                   ticket=arrival.ticket))
-        trace, events = await execute_request(plan, ctx, arrival.arrival_ms)
-        traces.append(trace)
-        timed += [(e.sim_ms, index, order, e) for order, e in enumerate(events)]
+        return await execute_request(plan, ctx, arrival.arrival_ms)
+
+    # At once (U5): real calls take seconds and the call store limits how many are in flight.
+    # gather keeps arrival order, so a run on the mocks comes out the same as one by one.
+    outcomes = await asyncio.gather(*(one_request(a) for a in arrivals))
+    traces = [trace for trace, _ in outcomes]
+    timed: list[tuple[float, int, int, EventBase]] = [
+        (e.sim_ms, index, order, e)
+        for index, (_, events) in enumerate(outcomes) for order, e in enumerate(events)]
     timed.sort(key=lambda item: item[:3])
 
     metrics = with_score(compute_metrics(traces), pack.scoring)
     stream: list[EventBase] = [RunStarted(seq=0, sim_ms=0, config=config,
-                                          graph_version=graph_version)]
+                                          graph_version=graph_version,
+                                          warnings=provider_warnings(jev, llm))]
     by_request = {t.request_id: t for t in traces}
     done: list[RequestTrace] = []
     interval = SNAPSHOT_WALL_MS * config.speed

@@ -18,10 +18,20 @@ class EventBase(CamelModel):
     sim_ms: float = Field(ge=0)
 
 
+class RunPreparing(EventBase):
+    """The run was accepted and is computing; run_started follows, or run_completed if it fails
+    or is stopped first (U6)."""
+
+    type: Literal["run_preparing"] = "run_preparing"
+    config: RunConfig
+    graph_version: int = 0
+
+
 class RunStarted(EventBase):
     type: Literal["run_started"] = "run_started"
     config: RunConfig
     graph_version: int = 0
+    warnings: list[str] = Field(default_factory=list)  # e.g. the spend cap fell back to mocks (U10)
 
 
 class NodeStarted(EventBase):
@@ -76,7 +86,7 @@ class MetricsSnapshot(EventBase):
 class RunCompleted(EventBase):
     type: Literal["run_completed"] = "run_completed"
     status: RunStatus
-    metrics: RunMetrics
+    metrics: RunMetrics | None = None  # None: the run ended before it played (U6)
 
 
 class GraphLocked(EventBase):
@@ -116,7 +126,7 @@ class Pong(EventBase):
 
 
 ServerEvent = Annotated[
-    RunStarted | NodeStarted | NodeCompleted | NodeFailed | EdgeTransferred | RequestCompleted
+    RunPreparing | RunStarted | NodeStarted | NodeCompleted | NodeFailed | EdgeTransferred | RequestCompleted
     | MetricsSnapshot | RunCompleted | GraphLocked | LeaderboardUpdated | StateSync | Closing | Pong,
     Field(discriminator="type"),
 ]

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import fixture from '../../../shared/fixtures/run-events.json'
 import { FakeWebSocket } from '../test/fakeSocket'
-import type { NodeStats, RunMetrics, ServerEvent, StoredGraph } from '../types'
+import type { NodeStats, RunMetrics, RunSummary, ServerEvent, StoredGraph } from '../types'
 import { useGraphStore } from './graphStore'
 import { EMPTY_RUN, MAX_PULSES, reduceRun, type RunView, startLive, useRunStore } from './runStore'
 import { useSessionStore } from './sessionStore'
@@ -87,6 +87,25 @@ describe('reduceRun', () => {
     expectStatsToMatch(view.nodeStats, FINAL_STATS)
     expect(reduceRun(view, last)).toBe(view) // nothing after it is applied twice
     expect(reduceRun(view, { type: 'state_sync', seq: 0, simMs: 0, run: null } as ServerEvent)).toBe(EMPTY_RUN)
+  })
+
+  it('run_preparing shows a pending run, then run_started takes over with its warnings', () => {
+    const config = { mode: 'practice', packId: 'practice', seed: 1 } as RunSummary['config']
+    const preparing = reduceRun(EMPTY_RUN, { type: 'run_preparing', runId: 'p', teamId: 't', seq: 0, simMs: 0, config })
+    expect(preparing.run?.status).toBe('pending')
+    const started = reduceRun(preparing, {
+      type: 'run_started', runId: 'p', teamId: 't', seq: 0, simMs: 0, config, warnings: ['simulated'],
+    })
+    expect(started.run?.status).toBe('running')
+    expect(started.run?.warnings).toEqual(['simulated'])
+  })
+
+  it('a run that ends while preparing has no metrics', () => {
+    const config = { mode: 'practice', packId: 'practice', seed: 1 } as RunSummary['config']
+    const preparing = reduceRun(EMPTY_RUN, { type: 'run_preparing', runId: 'p', teamId: 't', seq: 0, simMs: 0, config })
+    const failed = reduceRun(preparing, { type: 'run_completed', runId: 'p', teamId: 't', seq: 1, simMs: 0, status: 'failed' })
+    expect(failed.run?.status).toBe('failed')
+    expect(failed.metrics).toBeNull()
   })
 
   it('a new run_started starts from zero', () => {

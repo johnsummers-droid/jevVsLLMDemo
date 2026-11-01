@@ -18,13 +18,14 @@ from app.models.events import (
     GraphLocked,
     MetricsSnapshot,
     RunCompleted,
+    RunPreparing,
     RunStarted,
     StateSync,
 )
 from app.models.metrics import NodeStats, RunMetrics
 from app.models.runs import RunSummary
 
-FACILITATOR_EVENTS = frozenset({"run_started", "metrics_snapshot", "run_completed", "leaderboard_updated"})
+FACILITATOR_EVENTS = frozenset({"run_preparing", "run_started", "metrics_snapshot", "run_completed", "leaderboard_updated"})
 
 # More than a whole run (about 1,800 events at spike 3x) plus its replay on reconnect.
 QUEUE_LIMIT = 4096
@@ -47,9 +48,14 @@ class TeamView:
     events: list[EventBase] = field(default_factory=list)  # while running: every event so far
 
     def apply(self, event: EventBase) -> None:
-        if isinstance(event, RunStarted):
-            self.run = RunSummary(run_id=event.run_id or "", team_id=event.team_id, status="running",
+        if isinstance(event, RunPreparing):
+            self.run = RunSummary(run_id=event.run_id or "", team_id=event.team_id, status="pending",
                                   config=event.config, graph_version=event.graph_version)
+            self.metrics, self.node_stats, self.events = None, [], []
+        elif isinstance(event, RunStarted):
+            self.run = RunSummary(run_id=event.run_id or "", team_id=event.team_id, status="running",
+                                  config=event.config, graph_version=event.graph_version,
+                                  warnings=event.warnings)
             self.metrics, self.node_stats, self.events = None, [], []
         if self.run is None or event.run_id != self.run.run_id:
             return  # not part of the current run (e.g. graph_locked)

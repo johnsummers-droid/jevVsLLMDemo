@@ -57,7 +57,12 @@ THE WEEK BEFORE
 [ ] 6. Check the deployments match main:
        - Render: the latest deploy is "live" and shows the newest commit.
        - Vercel: the production deployment shows the newest commit.
-       - curl https://pipeline-sim-api.onrender.com/api/health -> {"status":"ok"}
+       - curl https://pipeline-sim-api.onrender.com/api/health -> "status":"ok",
+         and on real AI "jevMode":"live", "llmMode":"live".
+
+[ ] 6b. Real AI (once T39 has switched it on): fill the call store so runs
+       start at once and cost little on the day. See "Going live" in
+       specs-and-plans/deploy-runbook.txt.
 
 [ ] 7. Check the Render instance count is still 1. Runs and the live
        updates live in the server's memory; more instances would split them.

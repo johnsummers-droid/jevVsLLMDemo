@@ -59,6 +59,10 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = None
     # Real (uncached) calls may spend at most this much per UTC day (U10).
     live_spend_cap_usd: float = Field(default=10, ge=0)
+    # Real calls in flight per provider, across all runs (U5). Jev: 16 at ~0.2 s stays under the
+    # org's 80 req/s. Gemini: raise it if the key's tier allows and official runs prepare slowly.
+    live_jev_concurrency: int = Field(default=16, ge=1)
+    live_llm_concurrency: int = Field(default=4, ge=1)
 
     @field_validator("database_url")
     @classmethod

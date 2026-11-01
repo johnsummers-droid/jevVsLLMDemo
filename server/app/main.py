@@ -53,4 +53,5 @@ app.include_router(ws.router)
 
 @app.get("/api/health")
 def health() -> dict[str, str]:
-    return {"status": "ok"}
+    current = get_settings()
+    return {"status": "ok", "jevMode": current.jev_mode, "llmMode": current.llm_mode}
