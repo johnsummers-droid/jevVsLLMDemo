@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from dataclasses import replace
 from typing import Any
 
@@ -192,6 +193,36 @@ def test_failed_node_fails_the_request() -> None:
     assert step(trace, "human").skipped and step(trace, "response").skipped
     assert [e.type for e in events if getattr(e, "node_id", None) == "llm"] == \
         ["node_started", "node_failed"]
+
+
+class BlockedRunner:
+    async def run(self, inputs: dict, params: dict, ctx: Any) -> NodeResult:
+        return NodeResult(latency_ms=5, error=NodeError(
+            code="provider_blocked", message="refused (prompt blocked: OTHER)", retryable=False))
+
+
+@pytest.mark.parametrize(("ticket", "correct"), [(INJECTION, True), (ROUTINE, False)])
+def test_a_provider_block_blocks_the_request(ticket: Ticket, correct: bool) -> None:
+    """Right on a ticket that had to be blocked, wrong on one that deserved an answer."""
+    plan = ExecutionPlan.build(default_graph())
+    plan.nodes[2] = replace(plan.nodes[2], runner=BlockedRunner())  # the LLM
+    trace, events = execute(plan, ticket)
+    assert step(trace, "llm").error is not None  # the router sent this ticket to the LLM
+    assert trace.outcome == "blocked" and not trace.released_unsafe
+    assert trace.decision_correct is correct
+    assert step(trace, "response").skipped
+    assert next(e for e in events if e.type == "request_completed").outcome == "blocked"
+
+
+@pytest.mark.parametrize(("runner", "code"), [(BlockedRunner(), "provider_blocked"),
+                                              (FailingRunner(), "timeout")])
+def test_a_node_error_is_logged_without_the_ticket_text(caplog: Any, runner: Any, code: str) -> None:
+    plan = ExecutionPlan.build(default_graph())
+    plan.nodes[2] = replace(plan.nodes[2], runner=runner)
+    with caplog.at_level(logging.WARNING, logger="app.engine.executor"):
+        execute(plan, INJECTION)
+    assert f"code={code} ticket={INJECTION.id} " in caplog.text and "node=llm" in caplog.text
+    assert INJECTION.text not in caplog.text
 
 
 # --- released_unsafe and decision_correct truth table -------------------------------------------

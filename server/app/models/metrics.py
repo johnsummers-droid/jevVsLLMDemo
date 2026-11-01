@@ -8,6 +8,7 @@ class NodeStats(CamelModel):
     requests: int = Field(ge=0)  # times the node ran
     skipped: int = Field(ge=0)
     errors: int = Field(ge=0)
+    provider_blocks: int = Field(default=0, ge=0)  # refused by the provider's safety filter
     escalations: int = Field(ge=0)
     avg_latency_ms: float = Field(ge=0)
     total_cost_usd: float = Field(ge=0)

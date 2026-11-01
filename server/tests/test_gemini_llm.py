@@ -189,15 +189,20 @@ def test_a_reply_without_text_fails_the_same_way_without_paying_twice(store, bod
     for _ in range(2):
         with pytest.raises(ProviderFailure, match="no text") as failure:
             generate(provider(store, gemini))
-        assert failure.value.retryable is False
+        assert failure.value.retryable is False and failure.value.code == "provider_error"
     assert len(gemini.sent) == 1
 
 
 def test_a_blocked_prompt_says_so(store: CallStore) -> None:
-    """Seen live on an injection ticket: no candidates and empty usage, so no charge."""
+    """Seen live on injection tickets: no candidates and empty usage, so no charge. Stored, so
+    it comes out the same every time without another call."""
     blocked = {"promptFeedback": {"blockReason": "OTHER"}, "usageMetadata": {}}
-    with pytest.raises(ProviderFailure, match=r"no text \(prompt blocked: OTHER\)"):
-        generate(provider(store, Gemini(blocked)))
+    gemini = Gemini(blocked)
+    for _ in range(2):
+        with pytest.raises(ProviderFailure, match=r"prompt blocked: OTHER") as failure:
+            generate(provider(store, gemini))
+        assert failure.value.code == "provider_blocked" and failure.value.retryable is False
+    assert len(gemini.sent) == 1
 
 
 def test_the_spend_cap_is_a_node_failure(empty_db_url: str) -> None:

@@ -9,6 +9,7 @@ Events come back with seq=0 and no run id; the simulation runner merges every re
 by simulated time and numbers them.
 """
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -37,6 +38,8 @@ from app.models.events import (
     RequestCompleted,
 )
 from app.runners.base import NodeRunner
+
+logger = logging.getLogger(__name__)
 
 UNSAFE_TAINT: frozenset[Taint] = frozenset({"injection", "pii", "policy_violation"})
 WRONG_ANSWER_TAINT: frozenset[Taint] = frozenset({"ungrounded", "misrouted"})
@@ -165,7 +168,15 @@ async def execute_request(plan: ExecutionPlan, ctx: RunContext,
             cost_usd=result.cost_usd, fired_branch=result.fired_branch, decision=result.decision,
             error=result.error, tokens_out=result.tokens_out, escalated=result.escalated))
         if result.error is not None:
-            state.failed = True
+            # A provider refusing the message stopped it, like a block branch; anything else broke.
+            if result.error.code == "provider_blocked":
+                state.blocked = True
+            else:
+                state.failed = True
+            # Identifiers and our own error text only: never the ticket's or the reply's text.
+            logger.warning("node error: code=%s ticket=%s request=%s node=%s type=%s detail=%s",
+                           result.error.code, ctx.ticket.id, request_id, pn.id, pn.node.type,
+                           result.error.message)
             state.events.append(NodeFailed(seq=0, sim_ms=end, request_id=request_id,
                                            node_id=pn.id, error=result.error,
                                            latency_ms=result.latency_ms, cost_usd=result.cost_usd))

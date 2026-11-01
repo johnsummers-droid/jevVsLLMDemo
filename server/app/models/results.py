@@ -7,7 +7,8 @@ from app.models.values import PortValue
 
 
 class NodeError(CamelModel):
-    code: Literal["timeout", "provider_error", "invalid_input", "rate_limited", "spend_cap"]
+    code: Literal["timeout", "provider_error", "invalid_input", "rate_limited", "spend_cap",
+                  "provider_blocked"]  # provider_blocked: its safety filter refused the message
     message: str
     retryable: bool
 

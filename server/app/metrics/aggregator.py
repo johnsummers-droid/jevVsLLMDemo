@@ -51,7 +51,9 @@ def compute_node_stats(traces: list[RequestTrace], node_ids: list[str]) -> list[
             node_id=node_id,
             requests=len(ran),
             skipped=len(steps) - len(ran),
-            errors=sum(s.error is not None for s in ran),
+            errors=sum(s.error is not None and s.error.code != "provider_blocked" for s in ran),
+            provider_blocks=sum(s.error is not None and s.error.code == "provider_blocked"
+                                for s in ran),
             escalations=sum(s.escalated for s in ran),
             avg_latency_ms=sum(s.latency_ms for s in ran) / len(ran) if ran else 0.0,
             total_cost_usd=sum(s.cost_usd for s in ran),
