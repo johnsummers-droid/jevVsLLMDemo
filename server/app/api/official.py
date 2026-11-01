@@ -115,7 +115,7 @@ async def start_official_run(
                 reserved.remove(team.id)
 
         results = await asyncio.gather(*(
-            compute(stored.graph, config, run_id=run_id, team_id=team.id, graph_version=stored.version)
+            compute(request.app, stored.graph, config, run_id=run_id, team_id=team.id, graph_version=stored.version)
             for team, stored, run_id in playable))
         for (team, stored, run_id), result in zip(playable, results, strict=True):
             row = await run_in_threadpool(repo.create_run, db, team, config, stored.graph, stored.version, run_id)

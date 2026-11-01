@@ -10,6 +10,7 @@ from typing import Any, Protocol
 from app.engine.envelope import RunContext
 from app.engine.latency import sample_latency
 from app.models import NodeDefinition, NodeError, NodeResult, PortValue, Taint
+from app.providers.base import CallMeasure, ProviderFailure
 
 
 class NodeRunner(Protocol):
@@ -35,3 +36,20 @@ def missing_input(definition: NodeDefinition, port: str) -> NodeResult:
     return NodeResult(latency_ms=0, error=NodeError(
         code="invalid_input", message=f"{definition.type}: no value on input {port!r}",
         retryable=False))
+
+
+def provider_failed(failure: ProviderFailure) -> NodeResult:
+    return NodeResult(latency_ms=failure.latency_ms, error=NodeError(
+        code=failure.code, message=failure.message, retryable=failure.retryable))
+
+
+def measured(measure: CallMeasure | None, definition: NodeDefinition, ctx: RunContext,
+             seed_params: dict[str, Any], inputs: dict[str, PortValue]) -> dict[str, Any]:
+    """A provider node's latency, cost, tokens and cached flag: measured on a real call (U4),
+    else sampled from the node's cost model (the mocks)."""
+    if measure is None:
+        return {"latency_ms": latency(definition, ctx, seed_params, inputs),
+                "cost_usd": definition.cost_model.cost_per_call_usd}
+    return {"latency_ms": measure.latency_ms, "cost_usd": measure.cost_usd,
+            "tokens_in": measure.tokens_in, "tokens_out": measure.tokens_out,
+            "cached": measure.replayed}

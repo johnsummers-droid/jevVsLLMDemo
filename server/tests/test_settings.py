@@ -76,7 +76,8 @@ def test_live_mode_needs_its_key_and_its_provider(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setenv("LLM_MODE", "live")
     problems = " | ".join(load().live_problems())
     assert "TYPESAFE_API_KEY" in problems and "GEMINI_API_KEY" in problems
-    assert "not built yet" in problems
+    assert "not built yet" in problems  # the LLM, until T37
+    assert "Jev provider is not built" not in problems
     monkeypatch.setenv("LLM_PROVIDER", "claude")
     assert "ANTHROPIC_API_KEY" in " | ".join(load().live_problems())
 
@@ -117,3 +118,18 @@ def test_the_factory_builds_mocks_billed_as_the_configured_llm(monkeypatch: pyte
     settings = load()
     assert isinstance(jev_provider(settings), MockJevProvider)
     assert llm_provider(settings).name == "claude"
+
+
+def test_the_factory_builds_live_jev_only_with_a_store_and_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.providers.call_store import CallStore
+    from app.providers.factory import jev_provider
+    from app.providers.typesafe_jev import TypeSafeJevProvider
+
+    monkeypatch.setenv("JEV_MODE", "live")
+    with pytest.raises(ValueError, match="TYPESAFE_API_KEY"):
+        jev_provider(load(), CallStore(lambda: None, 1))
+    monkeypatch.setenv("TYPESAFE_API_KEY", "test-key")
+    assert load().live_problems() == []
+    with pytest.raises(ValueError, match="call store"):
+        jev_provider(load())
+    assert isinstance(jev_provider(load(), CallStore(lambda: None, 1)), TypeSafeJevProvider)

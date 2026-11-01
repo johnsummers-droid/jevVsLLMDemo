@@ -12,11 +12,12 @@ import anyio
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import partial
+from typing import Any
 
 from app.config import get_settings
 from app.engine.pacer import Pacer
 from app.models import Graph, RunConfig, RunMetrics, RunStatus
-from app.providers.factory import jev_provider, llm_provider
+from app.providers.factory import call_store_for, close_provider, jev_provider, llm_provider
 from app.models.events import RunCompleted
 from app.realtime.hub import hub
 from app.simulation.loader import load_pack
@@ -54,13 +55,24 @@ def official_config() -> RunConfig:
     return RunConfig(mode="official", pack_id="official", seed=new_seed(), **OFFICIAL_TIMING)
 
 
-async def compute(graph: Graph, config: RunConfig, *, run_id: str, team_id: str, graph_version: int) -> RunResult:
+async def compute(app: Any, graph: Graph, config: RunConfig, *, run_id: str, team_id: str,
+                  graph_version: int) -> RunResult:
     """The whole run, computed in a worker thread so the event loop keeps serving (Q1)."""
     pack = load_pack(config.pack_id)
     settings = get_settings()
-    return await asyncio.to_thread(asyncio.run, run_simulation(
-        graph, pack, config, run_id=run_id, team_id=team_id, graph_version=graph_version,
-        jev=jev_provider(settings), llm=llm_provider(settings)))
+    store = call_store_for(app) if settings.jev_mode == "live" else None
+
+    async def run_on_own_loop() -> RunResult:
+        # Built and closed here: a live provider's HTTP connections belong to this event loop.
+        jev = jev_provider(settings, store)
+        try:
+            return await run_simulation(
+                graph, pack, config, run_id=run_id, team_id=team_id, graph_version=graph_version,
+                jev=jev, llm=llm_provider(settings))
+        finally:
+            await close_provider(jev)
+
+    return await asyncio.to_thread(asyncio.run, run_on_own_loop())
 
 
 @dataclass
