@@ -5,7 +5,7 @@
       "id": "customer_message",
       "type": "customer_message",
       "position": {
-        "x": 0.0,
+        "x": -50.0,
         "y": 0.0
       },
       "params": {
@@ -19,7 +19,7 @@
       "id": "router",
       "type": "jev_intent_router",
       "position": {
-        "x": 280.0,
+        "x": 270.0,
         "y": 0.0
       },
       "params": {
@@ -37,7 +37,7 @@
       "id": "llm",
       "type": "llm_answer_generator",
       "position": {
-        "x": 560.0,
+        "x": 610.0,
         "y": 0.0
       },
       "params": {
@@ -51,7 +51,7 @@
       "id": "llm_rewrite",
       "type": "llm_answer_generator",
       "position": {
-        "x": 840.0,
+        "x": 930.0,
         "y": 0.0
       },
       "params": {
@@ -65,7 +65,7 @@
       "id": "response",
       "type": "customer_response",
       "position": {
-        "x": 1120.0,
+        "x": 1250.0,
         "y": 0.0
       },
       "params": {

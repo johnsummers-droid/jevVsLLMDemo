@@ -21,11 +21,11 @@ NodeSpec = tuple[str, str, float] | tuple[str, str, float, float]
 EdgeSpec = tuple[str, str, str, str]
 
 _NODES: list[NodeSpec] = [
-    ("customer_message", "customer_message", 0),
-    ("router", "jev_intent_router", 280),
-    ("llm", "llm_answer_generator", 560),
-    ("human", "human_review_queue", 560, 250),
-    ("response", "customer_response", 840),
+    ("customer_message", "customer_message", -50),
+    ("router", "jev_intent_router", 270),
+    ("llm", "llm_answer_generator", 610),
+    ("human", "human_review_queue", 610, 250),
+    ("response", "customer_response", 930),
 ]
 
 _EDGES: list[EdgeSpec] = [
