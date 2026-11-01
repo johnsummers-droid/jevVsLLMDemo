@@ -18,7 +18,7 @@ services:
     dockerContext: .
     branch: main
     region: frankfurt
-    plan: free
+    plan: 1c-2g
     # Exactly one instance: runs and the WebSocket hub live in memory (decision D8).
     numInstances: 1
     healthCheckPath: /api/health
