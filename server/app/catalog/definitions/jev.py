@@ -22,7 +22,7 @@ JEV_INTENT_ROUTER = NodeDefinition(
     params=[
         MultiEnumParam(key="allowed_intents", label="Allowed intents", default=INTENTS[:4],
                        options=INTENTS),
-        NumberParam(key="threshold", label="Confidence threshold", default=0.50, min=0, max=1,
+        NumberParam(key="threshold", label="Confidence threshold", default=0.70, min=0, max=1,
                     help="Below this confidence the request takes route.low_confidence."),
     ],
     help=JEV_INTENT_ROUTER_HELP,

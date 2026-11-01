@@ -164,9 +164,9 @@ Going live on real AI (T38; the modes stay mock in render.yaml until T39):
   [ ] Locally, with the keys in server/.env: `scripts/live_check.py jev` and
       `scripts/live_check.py llm` both answer. A bad key shows on every ticket
       (the server's startup check only sees that a key is set).
-  [ ] Look up the Gemini key's rate limit in AI Studio. LIVE_LLM_CONCURRENCY=4 is
-      a cautious start: large-tier replies take seconds, so a first official
-      run of uncached prompts can prepare for minutes. Raise it if the tier allows.
+  [ ] Look up the Gemini key's rate limit in AI Studio. On 2026-11-01: 1000 RPM,
+      2M TPM (gemini-4-argon) and 4000 RPM, 4M TPM (flash-lite).
+      LIVE_LLM_CONCURRENCY=32 fits those; lower it if the tier drops.
   [ ] Set JEV_MODE and LLM_MODE to live in render.yaml, in a PR. A Blueprint
       sync applies these values, so a dashboard-only change wouldn't last.
   [ ] Prewarm production: `scripts/prewarm.py` where DATABASE_URL points at it

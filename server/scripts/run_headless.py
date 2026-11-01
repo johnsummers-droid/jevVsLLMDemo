@@ -7,6 +7,10 @@ Usage (from server/):
 
 GRAPH is a reference graph name (default, weak, strong, escalate_all) or a path to a graph
 JSON file. Used to tune the mocks and scoring weights (plan1.txt M1).
+
+--live uses real Jev and Gemini through the call store: it spends real money on anything not stored
+yet, within the daily cap. A real answer doesn't depend on the seed, but simulated latency of
+tools and human review does.
 """
 
 import argparse
@@ -14,10 +18,14 @@ import asyncio
 import json
 import statistics
 import sys
+from functools import partial
 from pathlib import Path
 
+from app.config import get_settings
+from app.db.session import session_scope
 from app.engine.executor import InvalidGraphError
 from app.models import Graph, RunConfig
+from app.providers.factory import close_provider, jev_provider, llm_provider, new_call_store
 from app.simulation.loader import PACK_IDS, load_pack
 from app.simulation.reference_graphs import REFERENCE_GRAPHS
 from app.simulation.runner import RunResult, run_simulation
@@ -33,9 +41,22 @@ def load_graph(name_or_path: str) -> Graph:
     return Graph.model_validate(json.loads(Path(name_or_path).read_text()))
 
 
-def run(graph: Graph, pack_id: str, seed: int) -> RunResult:
+def run(graph: Graph, pack_id: str, seed: int, live: bool = False) -> RunResult:
     config = RunConfig(mode="practice", pack_id=pack_id, seed=seed)
-    return asyncio.run(run_simulation(graph, load_pack(pack_id), config))
+    if not live:
+        return asyncio.run(run_simulation(graph, load_pack(pack_id), config))
+
+    async def run_live() -> RunResult:
+        settings = get_settings().model_copy(update={"jev_mode": "live", "llm_mode": "live"})
+        store = new_call_store(settings, partial(session_scope))
+        jev, llm = jev_provider(settings, store), llm_provider(settings, store)
+        try:
+            return await run_simulation(graph, load_pack(pack_id), config, jev=jev, llm=llm)
+        finally:
+            await close_provider(jev)
+            await close_provider(llm)
+
+    return asyncio.run(run_live())
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -45,12 +66,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--seeds", type=int, help="average over seeds 0..N-1")
     parser.add_argument("--json", action="store_true", help="print metrics as JSON")
+    parser.add_argument("--live", action="store_true", help="real providers; spends real money")
     args = parser.parse_args(argv)
 
     graph = load_graph(args.graph)
     seeds = list(range(args.seeds)) if args.seeds else [args.seed]
     try:
-        results = [run(graph, args.pack, seed) for seed in seeds]
+        results = [run(graph, args.pack, seed, args.live) for seed in seeds]
     except InvalidGraphError as exc:
         print(exc, file=sys.stderr)
         return 2

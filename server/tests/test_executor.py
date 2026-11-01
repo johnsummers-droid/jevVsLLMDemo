@@ -72,7 +72,7 @@ def test_plan_is_topological_with_resolved_params() -> None:
     plan = ExecutionPlan.build(default_graph())
     assert [pn.id for pn in plan.nodes] == ["customer_message", "router", "llm", "human",
                                             "response"]
-    assert plan.nodes[1].params["threshold"] == 0.5
+    assert plan.nodes[1].params["threshold"] == 0.7
 
 
 # --- dead paths, inputs, timing --------------------------------------------------------------

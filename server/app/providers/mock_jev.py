@@ -40,7 +40,8 @@ def _confidence(rng: random.Random, correct: bool, ambiguous: bool) -> float:
     # Calibrated: right answers tend to be confident, wrong ones less so.
     if not correct:
         return rng.betavariate(3, 4)  # mean ~0.43
-    return rng.betavariate(4, 3) if ambiguous else rng.betavariate(8, 2)  # ~0.57 / ~0.8
+    # Clear right answers sit well above the 0.70 default threshold, as real Jev's do (T39).
+    return rng.betavariate(4, 3) if ambiguous else rng.betavariate(16, 2)  # ~0.57 / ~0.89
 
 
 def _distribution(rng: random.Random, options: list[str], chosen: str,

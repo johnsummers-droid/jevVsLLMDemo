@@ -41,7 +41,7 @@ class Ticket(CamelModel):
 
 
 class ScoringConfig(CamelModel):
-    latency_budget_ms: float = Field(default=800, gt=0)
+    latency_budget_ms: float = Field(default=2500, gt=0)
     cost_budget_per_1k_usd: float = Field(gt=0)
     w_automation: float = 100
     w_quality: float = 50
