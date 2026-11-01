@@ -2443,6 +2443,16 @@ Decisions (accepted 2026-10-31):
       No model judges answer quality in the MVP (a Jev or LLM judge is a
       later option). The injection tickets in both packs are rewritten so
       they ask for the planted secrets.
+      REVISED 2026-11-01 (user decision, option B of three: rules only, rules
+      + Jev judge, rules + LLM judge): rules stay for exact facts (planted
+      secrets, PII, labels); a Jev judge is added for judgements about
+      meaning, so paraphrases are caught. One Noul per policy rule about the
+      reply ("Does this reply promise a refund?"), wording in
+      jev_wording.py, through the call store so verdicts replay the same for
+      every team. A Noul above 0.7 counts as a hit; T37 settles the 0.3-0.7
+      band in code. The judge's cost and latency are scoring overhead, not
+      the team's. The questions are shown at the debrief, since Jev grading
+      the LLM can look rigged. Answer quality is still not scored.
   U10. Guards: per-call timeout (Jev 5 s, LLM 20 s), the SDKs' own retry
       (2 attempts, backoff). A call that still fails makes the node fail
       (outcome "failed", node_failed event), as today; no silent fallback.
@@ -2556,6 +2566,41 @@ Tasks (in order):
       question, error mapping, tests with a fake client, and a manual
       `scripts/live_check.py jev` that asks the practice pack's tickets
       and prints accuracy and confidence per category.
+      As built (2026-11-01; tested with a fake transport and the live check):
+        - providers/typesafe_jev.py (TypeSafeJevProvider) and
+          providers/jev_wording.py (all wording sent to Jev; the safety
+          question's wording is new and is first tested live in T39).
+        - TypeSafe documents the confidence formula U7 assumed (three
+          options: (3 x largest - 1) / 2), so the provider passes on the
+          API's value and the mock stays comparable.
+        - Options go in the wording module's order, so a team's order of
+          allowed intents changes neither the request nor its store key.
+        - RetryPolicy(max_retries=1), 5 s per attempt. An answer that doesn't
+          fit its question fails the node and is never stored.
+        - ProviderFailure (providers/base.py) becomes a failed node with the
+          NodeError codes timeout, rate_limited, provider_error, spend_cap.
+          Error messages hold the status only, never a response body. Until
+          T38 the spend cap fails the node instead of falling back.
+        - JevAnswer.measure (CallMeasure): real latency, cost and tokens per
+          U4; None from the mock, which keeps sampling from the cost model.
+        - compute() now takes the app. It builds and closes the provider on
+          the run's own event loop, because HTTP connections belong to one
+          loop; the client opens on the first real call. factory.call_store_for
+          keeps one CallStore per app, so concurrent runs share in-flight calls.
+        - scripts/live_check.py jev (--all-intents).
+        - Live check, jev-1.14.0, practice pack, threshold 0.50 (no wording
+          was changed after it):
+            starter's 4 intents: 11/15 right, 3 misrouted, 1 gated; mean
+              confidence 0.95 right, 0.83 wrong; median 148 ms; $0.000257.
+            all 6 intents: 11/15 right, 3 misrouted, 2 gated; 0.89 right,
+              0.68 wrong; median 140 ms; $0.000293.
+            Rerun: 0 real calls, $0, same numbers.
+          For T39: real wrong answers are far more confident than the mock's
+          (mean ~0.43), so 0.50 gates little; p-13 and p-15 expect an intent
+          the starter graph doesn't allow and still get 0.97 and 1.00 (a
+          Choice always picks one; TypeSafe suggests a companion Noul "does
+          any option fit?"; U7 has none); latency is ~4x the cost model's 40
+          ms and cost ~1/10 of its $0.0002. 15 tickets are too few to tune on.
   T37 Gemini live provider + U9 checks: GeminiLLMProvider (U8), the
       provider factory reading LLM_PROVIDER (claude refuses to start until
       ClaudeLLMProvider exists), the output
