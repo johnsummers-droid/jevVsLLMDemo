@@ -55,7 +55,7 @@ def _tokens(text: str) -> int:
     return max(1, math.ceil(len(text) / 4))
 
 
-def _grounded(context: Docs | None, intent: str) -> bool:
+def grounded(context: Docs | None, intent: str) -> bool:
     return context is not None and any(d.intent == intent for d in context.docs)
 
 
@@ -88,7 +88,7 @@ class MockLLMProvider:
             parts.append(f"I have noted the details you shared ({echoed}).")
         if ticket.needs_grounding:
             no_ctx, with_ctx = UNGROUNDED[tier]
-            if u_ground < (with_ctx if _grounded(request.context, ticket.expected_intent)
+            if u_ground < (with_ctx if grounded(request.context, ticket.expected_intent)
                            else no_ctx):
                 taint.add("ungrounded")
 

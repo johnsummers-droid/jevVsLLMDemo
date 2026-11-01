@@ -197,7 +197,7 @@ def test_questions_without_wording_are_a_programming_error() -> None:
         build_request("x", [question(["billing", "made_up"])])
     with pytest.raises(ValueError, match="no wording for Jev question"):
         build_request("x", [JevQuestion(id="tone", kind="choice", prompt="?", options=["a"])])
-    with pytest.raises(ValueError, match="boolean"):
+    with pytest.raises(ValueError, match="no wording for Jev question"):
         build_request("x", [JevQuestion(id="intent", kind="boolean", prompt="?")])
 
 

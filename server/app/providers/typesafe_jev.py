@@ -14,6 +14,7 @@ import httpx2
 from typesafe_sdk import (
     AsyncTypeSafeClient,
     Choice,
+    Noul,
     RetryPolicy,
     SystemOneResponse,
     TypeSafeAPIConnectionError,
@@ -28,7 +29,7 @@ from app.config import JEV_MODEL, JEV_PRICE_PER_1K_INPUT_USD
 from app.models import Distribution
 from app.providers.base import CallMeasure, JevAnswer, JevQuestion, ProviderCall, ProviderFailure
 from app.providers.call_store import CallStore, Fetched, SpendCapReached, StoredCall
-from app.providers.jev_wording import CRITERIA_BY_QUESTION
+from app.providers.jev_wording import CRITERIA_BY_QUESTION, JUDGE_QUESTIONS
 
 PROVIDER = "typesafe"
 TIMEOUT_S = 5.0  # per attempt (U10)
@@ -42,8 +43,12 @@ def build_request(state: str, questions: list[JevQuestion]) -> dict[str, Any]:
 
 
 def _question_fields(question: JevQuestion) -> dict[str, Any]:
-    if question.kind != "choice":
-        raise ValueError(f"no runner asks Jev a {question.kind!r} question")
+    if question.kind == "boolean":
+        wording = JUDGE_QUESTIONS.get(question.id)
+        if wording is None:
+            raise ValueError(f"no wording for Jev question {question.id!r}")
+        return {"id": question.id, "kind": "boolean", "instructions": question.prompt,
+                "true": wording["true"], "false": wording["false"]}
     known = CRITERIA_BY_QUESTION.get(question.id)
     if known is None:
         raise ValueError(f"no wording for Jev question {question.id!r}")
@@ -55,11 +60,31 @@ def _question_fields(question: JevQuestion) -> dict[str, Any]:
             "criteria": [[name, text] for name, text in known.items() if name in chosen]}
 
 
+def _sdk_question(question: dict[str, Any]) -> Choice | Noul:
+    if question.get("kind") == "boolean":
+        return Noul(instructions=question["instructions"],
+                    criteria={"true": question["true"], "false": question["false"]})
+    return Choice(instructions=question["instructions"], criteria=dict(question["criteria"]))
+
+
+def _parse_noul(response: SystemOneResponse, question_id: str) -> dict[str, Any]:
+    answer = response.nouls.get(question_id)
+    if answer is None or not 0 <= answer.noul <= 1:
+        raise ValueError(f"answer does not fit question {question_id!r}")
+    # A Noul has no confidence of its own; this is the two-option form of the Choice formula.
+    return {"value": "true" if answer.noul >= 0.5 else "false",
+            "confidence": abs(2 * answer.noul - 1),
+            "probabilities": {"true": answer.noul, "false": 1 - answer.noul}}
+
+
 def _parse(response: SystemOneResponse, request: dict[str, Any]) -> dict[str, Any]:
     """What the store keeps. Raises ValueError on an answer that doesn't fit the question, so a
     bad answer fails the node and is never stored and replayed."""
     answers = {}
     for question in request["questions"]:
+        if question.get("kind") == "boolean":
+            answers[question["id"]] = _parse_noul(response, question["id"])
+            continue
         answer = response.choices.get(question["id"])
         options = {name for name, _ in question["criteria"]}
         if answer is None or set(answer.probabilities) != options or answer.choice not in options:
@@ -127,8 +152,7 @@ class TypeSafeJevProvider:
 
     async def _fetch(self, request: dict[str, Any]) -> Fetched:
         started = self._clock()
-        questions = {q["id"]: Choice(instructions=q["instructions"], criteria=dict(q["criteria"]))
-                     for q in request["questions"]}
+        questions = {q["id"]: _sdk_question(q) for q in request["questions"]}
         try:
             response = await self._get_client().system_one(
                 state=request["state"], questions=questions, model=JEV_MODEL)

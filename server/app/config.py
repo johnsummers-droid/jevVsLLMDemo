@@ -35,7 +35,7 @@ JEV_PRICE_PER_1K_INPUT_USD = 0.000042
 ProviderMode = Literal["mock", "live"]
 # Live providers that exist so far; live mode for anything else refuses to start (U2).
 LIVE_JEV_AVAILABLE = True
-LIVE_LLM_AVAILABLE: frozenset[str] = frozenset()  # T37 adds "gemini"
+LIVE_LLM_AVAILABLE: frozenset[str] = frozenset({"gemini"})
 
 
 class Settings(BaseSettings):
@@ -101,6 +101,8 @@ class Settings(BaseSettings):
             if not self.llm_api_key():
                 key = "GEMINI_API_KEY" if self.llm_provider == "gemini" else "ANTHROPIC_API_KEY"
                 problems.append(f"LLM_MODE=live with LLM_PROVIDER={self.llm_provider} needs {key}")
+            if not self.typesafe_api_key:
+                problems.append("LLM_MODE=live needs TYPESAFE_API_KEY: Jev judges the real replies")
         return problems
 
 
