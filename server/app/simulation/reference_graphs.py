@@ -106,8 +106,14 @@ REFERENCE_GRAPHS = {
     "strong": strong_graph,
     "escalate_all": escalate_all_graph,
 }
+REFERENCE_LABELS = {
+    "default": "Starter (default)",
+    "weak": "Weak",
+    "strong": "Strong",
+    "escalate_all": "Escalate all",
+}
 # Only these are written to shared/fixtures (default.json comes from default_graph.py); the web
-# app's temporary reference-graph viewer (?ref) bundles them.
+# app's reference-graph viewer (?ref) bundles them.
 FIXTURE_GRAPHS = ("weak", "strong", "escalate_all")
 
 

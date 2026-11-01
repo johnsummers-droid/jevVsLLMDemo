@@ -502,6 +502,17 @@ export interface Pong {
   simMs: number
   type: 'pong'
 }
+export interface ReferenceGraphInfo {
+  name: string
+  label: string
+}
+/**
+ * Which reference graphs the caller may view; empty for a team until the reveal (T40).
+ */
+export interface ReferenceGraphList {
+  available: boolean
+  graphs: ReferenceGraphInfo[]
+}
 export interface RequestCompleted {
   runId?: string | null
   teamId?: string | null
