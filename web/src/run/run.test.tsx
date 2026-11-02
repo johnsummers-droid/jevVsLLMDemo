@@ -185,6 +185,20 @@ describe('MetricsBar', () => {
     rerender(<MetricsBar />)
     expect(tile('Score').textContent).toContain('87')
   })
+
+  it.each([
+    [-0.127, '-0.13'],
+    [0.5, '0.50'],
+    [-0.001, '0.00'],
+    [0, '0.00'],
+    [-0.999, '-1.00'],
+    [1, '1'],
+    [-40.9, '-41'],
+  ])('shows a score of %s as %s', (score, shown) => {
+    useRunStore.setState({ run: run('completed'), metrics: metrics({ score }) })
+    render(<MetricsBar />)
+    expect(tile('Score').querySelector('.metric__value')?.textContent).toBe(shown)
+  })
 })
 
 describe('NodeStatsBadge', () => {

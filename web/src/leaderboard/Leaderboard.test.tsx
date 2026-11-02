@@ -30,6 +30,20 @@ describe('Leaderboard', () => {
     expect(screen.getByText('Strong').closest('tr')!.className).toContain('leaderboard__row--first')
   })
 
+  it.each([
+    [-0.127, '−0.13', true],
+    [0.5, '+0.50', false],
+    [-0.001, '0.00', false],
+    [0, '0.00', false],
+    [-0.999, '−1.00', true],
+    [1, '+1', false],
+    [-40.9, '−41', true],
+  ])('shows a score of %s as %s', (score, shown, negative) => {
+    const row: LeaderboardRow = { teamId: 'a', teamName: 'A', runId: '1', status: 'completed', rank: 1, metrics: metrics(score) }
+    render(<Leaderboard rows={[row]} />)
+    expect(screen.getByText(shown).className.includes('leaderboard__score--negative')).toBe(negative)
+  })
+
   it('says when there is no official run yet', () => {
     render(<Leaderboard rows={[]} />)
     expect(screen.getByText('No official run yet.')).toBeTruthy()

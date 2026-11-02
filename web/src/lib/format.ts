@@ -13,3 +13,10 @@ export function formatUsd(usd: number): string {
 export function formatPct(rate: number): string {
   return `${Math.round(rate * 100)}%`
 }
+
+// A score between -1 and 1 keeps two decimals, so a real small score doesn't read as "no score".
+export function formatRunScore(score: number): string {
+  if (Math.abs(score) >= 1) return score.toFixed(0)
+  const text = score.toFixed(2)
+  return Number(text) === 0 ? '0.00' : text // toFixed keeps the sign: -0.001 would print "-0.00"
+}

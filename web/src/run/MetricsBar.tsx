@@ -2,7 +2,7 @@
 // mission target from the pack's scoring: p95 latency and cost per 1,000 within budget, no unsafe
 // releases. Automation rate has no target (higher is better). The score shows once the run ends.
 import { useEffect } from 'react'
-import { formatMs, formatPct, formatUsd } from '../lib/format'
+import { formatMs, formatPct, formatRunScore, formatUsd } from '../lib/format'
 import { usePackStore } from '../store/packStore'
 import { useRunStore } from '../store/runStore'
 
@@ -74,7 +74,7 @@ export function MetricsBar() {
         <MetricTile key={tile.label} {...tile} />
       ))}
       {finished && metrics && (
-        <MetricTile label="Score" value={(metrics.score ?? 0).toFixed(0)} target={run.status === 'stopped' ? 'partial run' : undefined} verdict="neutral" />
+        <MetricTile label="Score" value={formatRunScore(metrics.score ?? 0)} target={run.status === 'stopped' ? 'partial run' : undefined} verdict="neutral" />
       )}
     </div>
   )
