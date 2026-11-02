@@ -1,4 +1,4 @@
-from app.catalog.help import JEV_INTENT_ROUTER_HELP, JEV_SAFETY_CHECK_HELP
+from app.catalog.help_text import JEV_INTENT_ROUTER_HELP, JEV_SAFETY_CHECK_HELP
 from app.models import CostModel, MultiEnumParam, NodeDefinition, NumberParam, Port
 
 INTENTS = ["billing", "technical_support", "bug_report", "feature_request", "account", "other"]

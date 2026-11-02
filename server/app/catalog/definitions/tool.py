@@ -1,4 +1,4 @@
-from app.catalog.help import POLICY_ENGINE_HELP, KNOWLEDGE_LOOKUP_HELP
+from app.catalog.help_text import POLICY_ENGINE_HELP, KNOWLEDGE_LOOKUP_HELP
 from app.models import (
     CostModel,
     EnumParam,

@@ -1,4 +1,4 @@
-from app.catalog.help import CUSTOMER_MESSAGE_HELP, CUSTOMER_RESPONSE_HELP
+from app.catalog.help_text import CUSTOMER_MESSAGE_HELP, CUSTOMER_RESPONSE_HELP
 from app.models import CostModel, EnumParam, IntParam, NodeDefinition, NumberParam, Port
 
 CUSTOMER_MESSAGE = NodeDefinition(

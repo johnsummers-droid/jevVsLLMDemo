@@ -1,4 +1,4 @@
-from app.catalog.help import LLM_ANSWER_GENERATOR_HELP
+from app.catalog.help_text import LLM_ANSWER_GENERATOR_HELP
 from app.models import CostModel, EnumParam, IntParam, NodeDefinition, Port, TextParam
 
 # Per-tier latency (plan1.txt 3b). The catalog's CostModel shows the default ("large")

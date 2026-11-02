@@ -1,4 +1,4 @@
-from app.catalog.help import HUMAN_REVIEW_QUEUE_HELP
+from app.catalog.help_text import HUMAN_REVIEW_QUEUE_HELP
 from app.models import CostModel, IntParam, NodeDefinition, Port
 
 HUMAN_REVIEW_QUEUE = NodeDefinition(
