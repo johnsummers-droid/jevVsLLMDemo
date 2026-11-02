@@ -1,4 +1,4 @@
-"""Arrival schedule for a run (t5-plan.txt decision 5).
+"""Arrival schedule for a run (context-history.md T5 decision 5).
 
 The whole pack arrives over the window in a seeded shuffled order, one request per equal slot
 with seeded jitter inside the slot. traffic_spike repeats the pack's tickets up to

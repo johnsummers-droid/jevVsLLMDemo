@@ -1,7 +1,7 @@
 """Runs a graph against a pack in memory: schedule, execute, aggregate, emit (no DB or WS yet).
 
 Each request is simulated on its own; the events of all requests are then merged by simulated
-time (t5-plan.txt decision 1), metrics snapshots are inserted at most every SNAPSHOT_WALL_MS of
+time (context-history.md T5 decision 1), metrics snapshots are inserted at most every SNAPSHOT_WALL_MS of
 wall-clock time at the run's speed, and every event is numbered.
 """
 

@@ -1,6 +1,6 @@
 PIPELINE SIMULATOR - IMPLEMENTATION PLAN (plan1)
 ==================================================
-Source spec : specs-and-plans/pipeline-simulator-spec.pdf
+Source spec : docs/pipeline-simulator-spec.pdf
 Baseline    : commit b81a3b2 (scaffold only: Vite/React/TS in web/, FastAPI
               /api/health in server/, devcontainer). See CLAUDE.md.
 Date        : 2026-10-21
@@ -1066,7 +1066,7 @@ T4. Scenario packs, mock providers, tools, node runners    [depends on: T2]
       policy-engine table tests.
     Done when: each runner can be unit-run on any ticket with deterministic
                output.
-    As built (decisions in specs-and-plans/t4-plan.txt):
+    As built (decisions in context-history.md, T4):
       - Seeds cover only the params the provider sees plus a fingerprint of
         the inputs and their taint (refines D6), so the router threshold is
         monotonic per ticket. engine/latency.py moved here from T5.
@@ -1097,7 +1097,7 @@ T5. Executor, metrics, scoring, headless run, golden tests [depends on: T3, T4]
       they pass.
     Done when: M1's exit criteria are met. The schema export (M2's first
                task) can start.
-    As built (decisions in specs-and-plans/t5-plan.txt):
+    As built (decisions in context-history.md, T5):
       - Requests are simulated one at a time; the run merges all events by
         simulated time and numbers them. Concurrency waits for M5 capacity.
       - The cost budget is $1000 per 1k requests: it has to absorb human
@@ -1486,7 +1486,7 @@ T17. Deployment and M3 exit                               [depends on: T15, T16]
       migrations included), start command from section 6, railway.json
       (health check /api/health, 1 replica).
     - web/vercel.json (SPA rewrite); vite proxy gets ws: true for M4.
-    - specs-and-plans/deploy-runbook.txt: create the Railway project and
+    - docs/deploy-runbook.txt: create the Railway project and
       PostgreSQL, set the variables (section 6), create the Vercel project
       (root web/, VITE_API_BASE_URL), and the post-deploy checks.
     - Exit checks, automated: API test with two teams (isolation, 403
@@ -1501,7 +1501,7 @@ T17. Deployment and M3 exit                               [depends on: T15, T16]
     server/railway.json (Dockerfile builder, numReplicas 1, health check
     /api/health, restart ON_FAILURE; the start command lives in the
     Dockerfile only), web/vercel.json (vite, dist, rewrite to
-    /index.html), vite proxy ws: true. specs-and-plans/deploy-runbook.txt
+    /index.html), vite proxy ws: true. docs/deploy-runbook.txt
     is the account-side checklist (Railway config path /server/railway.json,
     DATABASE_URL as a ${{Postgres.DATABASE_URL}} reference, Vercel root
     web/ with files outside the root included because the build imports
@@ -2154,7 +2154,7 @@ MVP work, in order:
   longer blocks the real-provider work or prod.
 
 Help panel decisions, accepted 2026-10-31 (the critique and the user's
-answers are in specs-and-plans/help-panel-conversation.txt):
+answers are summarised in context-history.md):
   S1. Every node shows a "?" help button (a circle with "?") in three
       places: its palette card, its node on the canvas (in the header), and
       the Inspector header when it is selected. The buttons stay enabled
@@ -2239,9 +2239,10 @@ T32. Node help content on the server                       [depends on: T24]
         covered exactly, inputs and example params may only name real
         ones). Param keys and port ids stay snake_case on the wire; only
         field names are camelCased.
-      - catalog/help.py holds the 8 texts (one constant per node); the
+      - catalog/help_text/ holds the 8 texts (one file per node, split from
+        help.py on 2026-11-02); the
         definitions import them. The panel adds defaults, ports and the
-        cost model from the definition, so help.py repeats no numbers.
+        cost model from the definition, so the texts repeat no numbers.
       - HelpExample: ticket_id is a practice ticket (pattern ^p-), the
         input is that ticket's customer message with its taint (or
         input_text with the same taint), params override the defaults,
@@ -2874,11 +2875,32 @@ the same day, which replaced parts of it; the mock is only a reference)
   top right); "Human review" and "Customer" stay as extra palette sections.
   Not taken from the mock: floating metrics cards, sparklines (see section 9), router branch grouping.
 
+UX ITERATION 2 (in progress; UX iteration 1 merged in PR #26, 2026-11-02)
+  Leaderboard, first pass, iterated on /leaderboard-temp (temporary, sample rows, no sign-in; the page
+  renders the real leaderboard/Leaderboard.tsx, so /screen and /facilitator change with it): signed
+  scores, larger and red below zero; rank 1 in system green; right-aligned numbers; runs with no
+  numbers yet are smaller and muted, with one status cell in place of five dashes.
+  A rounded border on both sizes: 80% wide and centred on /screen; the full page width on /facilitator
+  (its card is `page__card--full`).
+  Inspector: sections Parameters, Inputs, Outputs, Notes, Cost and latency assumptions, purple titles,
+  a line between each, no node id. A param with one possible value is hidden there and in the help
+  panel (lib/params.ts isFixedParam; today only Language); it stays in the graph and is still validated.
+  ParamSpec.hidden (catalog) hides params with no effect on a run: Traffic mix, Attack rate, Reviewers,
+  Channel, SLA (user decision 2026-11-02). docs/future-ideas.md holds what each would need.
+  Port.hidden does the same for outputs nothing can use (Meta, Intent, Probabilities, both Confidences,
+  Is safe, Categories, Passed, Report) and inputs nothing reads (Context on Policy engine and Human
+  review queue), on the canvas too; one a graph already connects still shows
+  (lib/ports.ts visibleOutputs). Each port has a description beside its name in the Inspector: it is
+  NodeHelp.inputs/outputs (100 characters at most, checked), which the help panel shows too.
+  A branch's description fills in its name ("Carries billing messages."). The Inspector no longer shows a
+  port's type, flags or payload fields; option values read as plain English (lib/params.ts optionLabel).
+
 9. AS-YET UNIMPLEMENTED FEATURES
 --------------------------------
 Features planned or asked for that do not exist yet, in one place (started
 2026-11-01). The task notes named here hold the details. Remove an entry when
 it is built, or when the user drops it.
+Ideas not yet agreed as features are in docs/future-ideas.md.
 
   UI (from the mock, not in the UX iteration 1 brief)
   - Sparklines on the metric tiles (runStore would need to keep a series).

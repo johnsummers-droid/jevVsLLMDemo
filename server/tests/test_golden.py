@@ -1,4 +1,4 @@
-"""Pedagogy guardrails (plan1.txt section 5, t5-plan.txt decision 7).
+"""Pedagogy guardrails (plan1.txt section 5, context-history.md T5 decision 7).
 
 On the official pack, the reference graphs must separate the way the workshop needs. Orderings
 and latency budgets are checked on every seed; the strong graph's unsafe and automation rates

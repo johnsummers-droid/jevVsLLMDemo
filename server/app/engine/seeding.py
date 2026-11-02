@@ -1,4 +1,4 @@
-"""Deterministic per-call seeds (plan1.txt D6, refined by t4-plan.txt decision 1).
+"""Deterministic per-call seeds (plan1.txt D6, refined by context-history.md T4 decision 1).
 
 The seed covers the run seed, the ticket, the node type, the params the provider actually sees
 and the node's input values with their taint. Node ids are not part of it, so two teams with the

@@ -18,7 +18,7 @@ The script prints live facts (git, GitHub, deployed URLs) and the saved to-do no
 - Live facts win. The notes can be out of date, so check each to-do against the live output. For example, a PR listed as open may have merged.
 - If a to-do has clearly changed, update `session-start-reminders.md` in memory and say so. Change nothing else: no commits, no pushes, no other edits.
 - A web or API line that shows `000`, or no answer, may only be the free Render service asleep. Say that rather than calling it down.
-- If the script's output doesn't answer something, read `CLAUDE.md` ("Current status") or `specs-and-plans/plan1.txt` §7. Don't guess.
+- If the script's output doesn't answer something, read `CLAUDE.md` ("Current status") or `ai-context/plan1.txt` §7. Don't guess.
 
 ## Output
 

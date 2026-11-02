@@ -1,4 +1,4 @@
-"""Per-request execution (plan1.txt 3e, refined by t5-plan.txt decisions 3 and 4).
+"""Per-request execution (plan1.txt 3e, refined by context-history.md T5 decisions 3 and 4).
 
 Nodes run in topological order on a simulated clock. A node runs once every incoming edge has
 resolved; with a required input that received no live value it is skipped, emits nothing, and
