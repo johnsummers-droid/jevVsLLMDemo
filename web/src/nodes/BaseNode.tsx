@@ -89,13 +89,15 @@ export function BaseNode({ id, data, selected, category, children }: BaseNodePro
         .join(' ')}
     >
       {badge}
-      <span className="pipeline-node__panel" title={categoryLabel}>
-        <CategoryIcon category={category} nodeType={data.nodeType} alt={categoryLabel} />
-      </span>
       <header className="pipeline-node__header">
-        <strong className="pipeline-node__title">{title}</strong>
-        <span className="pipeline-node__id">{id}</span>
-        {children}
+        <span className="pipeline-node__icon" title={categoryLabel}>
+          <CategoryIcon category={category} nodeType={data.nodeType} alt={categoryLabel} />
+        </span>
+        <div className="pipeline-node__heading">
+          <strong className="pipeline-node__title">{title}</strong>
+          <span className="pipeline-node__id">{id}</span>
+          {children}
+        </div>
         {help}
       </header>
       {ports}

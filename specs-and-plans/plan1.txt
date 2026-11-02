@@ -2852,12 +2852,14 @@ the same day, which replaced parts of it; the mock is only a reference)
   human blue #517ED2, customer purple #8F57E9, system green #00FF64 for the team name, accent and
   request dots; edges grey #575761. App.css gives each category --cat-color (fill), --cat-ink (on the
   fill), --cat-text (as text on dark) and --cat-mix (gradient strength).
-  Nodes: every node is a rectangle with a 40 px colour panel holding its logo
-  (nodes/CategoryIcon.tsx); input rows reach under the panel so handles stay on the node's outer edge.
+  Nodes: every node is a rectangle with a 4 px border. On the canvas the category colour is a bar
+  across the top, behind the logo (nodes/CategoryIcon.tsx), title and id; the logo sits left of the
+  title. It replaced a 40 px left panel, which left a gap between input handles and their labels.
+  Palette cards keep the left panel. Human review's icon is an inline SVG: a person and a magnifying glass.
   Palette and canvas nodes: Inter 400 from Google Fonts (index.html; no new dependency, falls back to the system font
   if the network blocks it); collapsible sections (local state, all open at the start); headers keep
-  the full colour to 60% and fade to transparent, because Jev's and the LLM's dark text needs colour
-  behind it; descriptions cut to one line, the "?" has the rest.
+  the category colour under the icon and fade to transparent by 55% of the width, so the panel shows through;
+  text is light, except the first word on the LLM's white fill, which is dark; descriptions cut to one line, the "?" has the rest.
   Side panels: components/PanelToggle.tsx, a caret in a circle halfway down each inner edge; the panel
   is hidden, not removed, so it keeps its state; collapsed state isn't remembered across reloads.
   Edges are smooth-step. Dots: radius 7, halo throbs by CSS (0.4 s), off under prefers-reduced-motion.

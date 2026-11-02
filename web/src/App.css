@@ -10,7 +10,7 @@
   align-items: center;
   gap: 8px 16px;
   padding: 6px 16px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 3px solid var(--edge); /* same line as .run-bar */
   background: var(--surface);
 }
 
@@ -397,12 +397,20 @@
 
 .palette__heading {
   margin: 0;
+  border-radius: 8px;
+  /* The category's colour, solid under the icon (the Jev and Gemini logos have opaque backgrounds),
+     then almost gone by the middle, with the panel showing through. */
+  background: linear-gradient(to right, var(--cat-color) 15%, transparent 55%);
   font-size: 0.9rem;
   font-weight: 400;
 }
 
-/* A section header: the category's colour fading out to the right. It holds the full colour behind
-   the text, because Jev's and the LLM's dark ink would be lost on the dark panel. */
+/* The LLM's white fill reaches half strength at its text's colour switch (see below), where dark and
+   light text are equally readable. */
+.palette__group--llm .palette__heading {
+  background: linear-gradient(to right, var(--cat-color) 15%, color-mix(in srgb, var(--cat-color) 50%, transparent) 28%, transparent 55%);
+}
+
 .palette__toggle {
   display: flex;
   align-items: center;
@@ -411,11 +419,19 @@
   padding: 7px 10px;
   border: 0;
   border-radius: 8px;
-  background: linear-gradient(to right, var(--cat-color) 60%, transparent);
-  color: var(--cat-ink);
+  background: none;
+  color: var(--text);
   font: inherit;
   text-align: left;
   cursor: pointer;
+}
+
+/* White fill: dark text while the fill is light, then light text, switching in the gap after the
+   first word so that no letter is split. */
+.palette__group--llm .palette__toggle {
+  background: linear-gradient(to right, var(--cat-ink) 28%, var(--text) 28%);
+  background-clip: text;
+  color: transparent;
 }
 
 .palette__toggle:focus-visible {
@@ -584,14 +600,10 @@
   --on-node-muted: rgb(255 255 255 / 0.78);
 }
 
-/* The colour panel is taken out of the flow; input rows reach under it so that their handles sit on
-   the node's outer edge. */
 .pipeline-node {
-  --panel-width: 40px;
   position: relative;
   min-width: 200px;
-  padding-left: var(--panel-width);
-  border: 1px solid var(--border);
+  border: 4px solid var(--border);
   border-radius: 10px;
   background: var(--node-gradient);
   color: var(--text);
@@ -601,23 +613,14 @@
   font-synthesis: none; /* only Inter 400 is loaded: no browser-made bold */
 }
 
-.pipeline-node__panel {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: var(--panel-width);
-  border-radius: 9px 0 0 9px;
-  background: var(--cat-color);
-  color: var(--cat-ink);
+.pipeline-node__icon {
+  flex-shrink: 0;
+  line-height: 0;
 }
 
-.pipeline-node__panel .category-icon {
-  width: 28px;
-  height: 28px;
+.pipeline-node__icon .category-icon {
+  width: 20px;
+  height: 20px;
   object-fit: contain;
 }
 
@@ -626,12 +629,22 @@
   outline-offset: 1px;
 }
 
+/* The category's colour bar: the icon, then the title and description on top of it. */
 .pipeline-node__header {
+  --on-node-muted: color-mix(in srgb, var(--cat-ink) 78%, transparent);
   position: relative;
   display: flex;
-  flex-direction: column;
+  gap: 8px;
   padding: 6px 32px 6px 10px;
-  border-bottom: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 6px 6px 0 0; /* the node's radius less its border */
+  background: var(--cat-color);
+  color: var(--cat-ink);
+}
+
+.pipeline-node__heading {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .pipeline-node__title {
@@ -671,11 +684,6 @@
   white-space: nowrap;
 }
 
-.port--target {
-  margin-left: calc(-1 * var(--panel-width));
-  padding-left: calc(var(--panel-width) + 10px);
-}
-
 .port--source {
   justify-content: flex-end;
 }
@@ -703,6 +711,10 @@
   background: var(--port-color);
   box-shadow: 0 0 0 1.5px var(--bg);
 }
+
+/* Centred on the node's 4 px border, not on its inner edge. */
+.typed-handle.react-flow__handle-left { left: -2px; }
+.typed-handle.react-flow__handle-right { right: -2px; }
 
 .typed-handle--text { --port-color: var(--port-text); border-radius: 50%; }
 .typed-handle--json { --port-color: var(--port-json); border-radius: 2px; }
@@ -973,9 +985,8 @@
 .pipeline-node--error { border-color: var(--issue-error); }
 .pipeline-node--warning { border-color: var(--issue-warning); }
 
-/* Only the part of the row right of the colour panel. */
-.port--error { background: linear-gradient(to right, transparent var(--panel-width), var(--issue-error-bg) var(--panel-width)); }
-.port--warning { background: linear-gradient(to right, transparent var(--panel-width), var(--issue-warning-bg) var(--panel-width)); }
+.port--error { background: var(--issue-error-bg); }
+.port--warning { background: var(--issue-warning-bg); }
 
 .react-flow__edge-path.pipeline-edge--error { stroke: var(--issue-error); stroke-width: 2; }
 .react-flow__edge-path.pipeline-edge--warning { stroke: var(--issue-warning); stroke-width: 2; stroke-dasharray: 6 3; }
