@@ -279,6 +279,11 @@
   max-width: 720px;
 }
 
+/* The leaderboard's card takes the page's full width. */
+.page--wide .page__card--full {
+  max-width: none;
+}
+
 .page__card h1,
 .page__card h2 {
   margin: 0;
@@ -1246,48 +1251,132 @@ button.issue-list__button:focus-visible {
   color: var(--accent);
 }
 
+/* Separate borders, because a collapsed table can't have rounded corners. */
 .leaderboard {
   width: 100%;
-  border-collapse: collapse;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-family: var(--font-inter);
   font-variant-numeric: tabular-nums;
+}
+
+.leaderboard tbody tr:last-child td {
+  border-bottom: 0;
 }
 
 .leaderboard th,
 .leaderboard td {
-  padding: 4px 8px;
+  padding: 6px 10px;
   border-bottom: 1px solid var(--border);
   text-align: left;
 }
 
 .leaderboard th {
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.leaderboard .leaderboard__num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.leaderboard__rank {
+  width: 2.5em;
+  color: var(--muted);
+}
+
+/* break-word, not anywhere: a name wraps between words, and only a single very long word splits. */
+.leaderboard__team {
+  overflow-wrap: break-word;
 }
 
 .leaderboard__score {
+  font-size: 1.25em;
   font-weight: 700;
 }
 
-.leaderboard__status {
-  color: var(--muted);
-  font-size: 0.85em;
-}
-
+.leaderboard__score--negative,
 .leaderboard__unsafe {
   color: var(--issue-error);
 }
 
-.leaderboard__row--failed {
+.leaderboard__safe {
   color: var(--muted);
 }
 
+/* The winner: the one row the room should find from across it. */
+.leaderboard__row--first td {
+  background: color-mix(in srgb, var(--system-green) 12%, transparent);
+}
+
+.leaderboard__row--first .leaderboard__rank {
+  box-shadow: inset 4px 0 0 var(--system-green);
+  color: var(--system-green);
+  font-weight: 700;
+}
+
+.leaderboard__row--first .leaderboard__team,
+.leaderboard__row--first .leaderboard__score {
+  color: var(--system-green);
+  font-weight: 700;
+}
+
+/* Runs with no result yet stay out of the way of the ranking. */
+.leaderboard__row--running,
+.leaderboard__row--pending,
+.leaderboard__row--stopped,
+.leaderboard__row--failed {
+  color: var(--muted);
+  font-size: 0.8em;
+}
+
+.leaderboard__team .leaderboard__status {
+  margin-left: 0.75em;
+}
+
+.leaderboard__status {
+  color: var(--muted);
+}
+
+.leaderboard__status--running::before {
+  content: '';
+  display: inline-block;
+  width: 0.6em;
+  height: 0.6em;
+  margin-right: 0.5em;
+  border-radius: 50%;
+  background: var(--system-green);
+  animation: leaderboard-pulse 1.2s ease-in-out infinite;
+}
+
+.leaderboard__status--failed {
+  color: var(--issue-error);
+}
+
+@keyframes leaderboard-pulse {
+  50% { opacity: 0.25; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .leaderboard__status--running::before { animation: none; }
+}
+
 .leaderboard--large {
+  width: 80%;
+  margin-inline: auto;
   font-size: 1.6rem;
 }
 
 .leaderboard--large th {
-  font-size: 1rem;
+  font-size: 0.9rem;
 }
 
 .leaderboard--large td {

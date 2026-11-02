@@ -108,7 +108,7 @@ describe('facilitator official run', () => {
     await screen.findByText('No official run yet.')
     act(() => ws.receive({ type: 'leaderboard_updated', seq: 0, simMs: 0, rows: board }))
     const table = screen.getAllByRole('table').find((t) => t.className.includes('leaderboard'))!
-    expect(within(table).getAllByRole('row')[1].textContent).toContain('Red77')
+    expect(within(table).getAllByRole('row')[1].textContent).toContain('Red+77')
   })
 })
 

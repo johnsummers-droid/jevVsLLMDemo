@@ -20,11 +20,14 @@ describe('Leaderboard', () => {
     ]
     render(<Leaderboard rows={rows} />)
     const body = screen.getAllByRole('row').slice(1).map((r) => r.textContent)
-    expect(body[0]).toBe('1Strong82640 ms$91273%0%')
+    expect(body[0]).toBe('1Strong+82640 ms$91273%0%')
     expect(body[1]).toContain('Weak')
-    expect(body[2]).toBe('–Late running…—————') // no metrics yet: five dashes
+    expect(body[2]).toBe('–Laterunning…') // no metrics yet: one status cell
     expect(body[3]).toContain('graph has errors')
-    expect(screen.getByText('10%').className).toBe('leaderboard__unsafe')
+    expect(body[1]).toContain('−12')
+    expect(screen.getByText('10%').className).toContain('leaderboard__unsafe')
+    expect(screen.getByText('−12').className).toContain('leaderboard__score--negative')
+    expect(screen.getByText('Strong').closest('tr')!.className).toContain('leaderboard__row--first')
   })
 
   it('says when there is no official run yet', () => {
