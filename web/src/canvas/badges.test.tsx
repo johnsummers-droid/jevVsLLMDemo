@@ -87,7 +87,7 @@ describe('node badges', () => {
 
   it('shows nothing on a node without issues', () => {
     const { container } = renderRouter('other')
-    expect(screen.queryByRole('img')).toBeNull()
+    expect(screen.queryByRole('img', { name: /on this (node|connection)/ })).toBeNull()
     expect(container.querySelector('.pipeline-node--error, .pipeline-node--warning')).toBeNull()
   })
 })

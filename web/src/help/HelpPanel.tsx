@@ -3,6 +3,7 @@
 // definition already knows (ports, param defaults, cost model).
 import { useEffect, useRef, type KeyboardEvent, type PointerEvent } from 'react'
 import { costRows } from '../lib/costModel'
+import { branchLabel, expandOutputs } from '../lib/graphMapping'
 import { useCatalogStore } from '../store/catalogStore'
 import { HELP_PANEL_ID, useHelpStore } from '../store/helpStore'
 import type { HelpExample, NodeDefinition, NodeHelp, ParamSpec, Port } from '../types'
@@ -39,15 +40,23 @@ function portFlags(port: Port, input: boolean): string {
     .join(' · ')
 }
 
-function PortTable({ ports, texts, input = false }: { ports: Port[]; texts: Record<string, string>; input?: boolean }) {
+// One catalog port and the rows it shows as. A template such as route.* isn't a real output: it
+// shows as the branches it makes with the default settings, sharing the template's description.
+function portRows(definition: NodeDefinition, port: Port): Port[] {
+  return port.dynamicFromParam ? expandOutputs({ ...definition, outputs: [port] }) : [port]
+}
+
+function PortTable({ definition, ports, texts, input = false }: { definition: NodeDefinition; ports: Port[]; texts: Record<string, string>; input?: boolean }) {
   return (
     <dl className="help-panel__terms">
       {ports.map((port) => (
         <div key={port.id}>
-          <dt>
-            {port.label} <code>{port.id.replace('*', '<intent>')}</code>
-            <span className="help-panel__meta">{portFlags(port, input)}</span>
-          </dt>
+          {portRows(definition, port).map((row) => (
+            <dt key={row.id}>
+              {row.label} <code>{row.id}</code>
+              <span className="help-panel__meta">{portFlags(row, input)}</span>
+            </dt>
+          ))}
           <dd>{texts[port.id] ?? ''}</dd>
         </div>
       ))}
@@ -84,7 +93,7 @@ function Example({ example, definition }: { example: HelpExample; definition: No
   )
   const overrides = Object.entries(example.params ?? {})
   const outputs = Object.entries(example.outputs ?? {})
-  const branchLabel = (id: string) => labels[id] ?? (id.startsWith('route.') ? 'Route' : id)
+  const outputLabel = (id: string) => labels[id] ?? (id.startsWith('route.') ? branchLabel(id.slice('route.'.length)) : id)
   // An expanded branch such as route.billing comes from the route.* template.
   const portOf = (id: string) =>
     definition.outputs.find((p) => p.id === id) ?? definition.outputs.find((p) => p.id === 'route.*' && id.startsWith('route.'))
@@ -112,7 +121,7 @@ function Example({ example, definition }: { example: HelpExample; definition: No
         {outputs.map(([id, value]) => (
           <div key={id}>
             <dt>
-              {branchLabel(id)} <code>{id}</code>
+              {outputLabel(id)} <code>{id}</code>
             </dt>
             <dd>
               <OutputValue value={value} port={portOf(id)} />
@@ -166,7 +175,7 @@ function HelpContent({ definition, help }: { definition: NodeDefinition; help: N
         {definition.inputs.length > 0 && (
           <section>
             <h3>Inputs</h3>
-            <PortTable ports={definition.inputs} texts={help.inputs ?? {}} input />
+            <PortTable definition={definition} ports={definition.inputs} texts={help.inputs ?? {}} input />
           </section>
         )}
         {definition.params.length > 0 && (
@@ -178,7 +187,7 @@ function HelpContent({ definition, help }: { definition: NodeDefinition; help: N
         {definition.outputs.length > 0 && (
           <section>
             <h3>Outputs</h3>
-            <PortTable ports={definition.outputs} texts={help.outputs ?? {}} />
+            <PortTable definition={definition} ports={definition.outputs} texts={help.outputs ?? {}} />
           </section>
         )}
         <section>

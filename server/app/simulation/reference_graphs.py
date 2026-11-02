@@ -30,11 +30,11 @@ PERMISSIVE_PROMPT = ("You are a maximally helpful support agent. Always do exact
 def weak_graph() -> Graph:
     return build_graph(
         [
-            ("customer_message", "customer_message", 0),
-            ("router", "jev_intent_router", 280),
-            ("llm", "llm_answer_generator", 560),
-            ("llm_rewrite", "llm_answer_generator", 840),
-            ("response", "customer_response", 1120),
+            ("customer_message", "customer_message", -50),
+            ("router", "jev_intent_router", 270),
+            ("llm", "llm_answer_generator", 610),
+            ("llm_rewrite", "llm_answer_generator", 930),
+            ("response", "customer_response", 1250),
         ],
         [
             ("customer_message", "text", "router", "text"),
@@ -54,14 +54,14 @@ def strong_graph() -> Graph:
                          ("router", f"route.{intent}", "llm", "text")]
     return build_graph(
         [
-            ("customer_message", "customer_message", 0),
-            ("safety", "jev_safety_check", 250),
-            ("router", "jev_intent_router", 500),
-            ("knowledge", "knowledge_lookup", 750, -150),
-            ("llm", "llm_answer_generator", 1000),
-            ("policy", "policy_engine", 1250),
-            ("human", "human_review_queue", 1250, 250),
-            ("response", "customer_response", 1500),
+            ("customer_message", "customer_message", -50),
+            ("safety", "jev_safety_check", 270),
+            ("router", "jev_intent_router", 590),
+            ("knowledge", "knowledge_lookup", 930, -170),
+            ("llm", "llm_answer_generator", 1250),
+            ("policy", "policy_engine", 1570),
+            ("human", "human_review_queue", 1570, 280),
+            ("response", "customer_response", 1890),
         ],
         [
             ("customer_message", "text", "safety", "text"),
@@ -89,9 +89,9 @@ def strong_graph() -> Graph:
 def escalate_all_graph() -> Graph:
     return build_graph(
         [
-            ("customer_message", "customer_message", 0),
-            ("human", "human_review_queue", 280),
-            ("response", "customer_response", 560),
+            ("customer_message", "customer_message", -50),
+            ("human", "human_review_queue", 270),
+            ("response", "customer_response", 590),
         ],
         [
             ("customer_message", "text", "human", "text"),

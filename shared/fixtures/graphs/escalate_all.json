@@ -5,7 +5,7 @@
       "id": "customer_message",
       "type": "customer_message",
       "position": {
-        "x": 0.0,
+        "x": -50.0,
         "y": 0.0
       },
       "params": {
@@ -19,7 +19,7 @@
       "id": "human",
       "type": "human_review_queue",
       "position": {
-        "x": 280.0,
+        "x": 270.0,
         "y": 0.0
       },
       "params": {
@@ -32,7 +32,7 @@
       "id": "response",
       "type": "customer_response",
       "position": {
-        "x": 560.0,
+        "x": 590.0,
         "y": 0.0
       },
       "params": {

@@ -4,6 +4,7 @@ import './App.css'
 import { navigate, pageFromPath, PATHS, usePathname } from './lib/navigation'
 import { FacilitatorPage } from './pages/FacilitatorPage'
 import { JoinPage } from './pages/JoinPage'
+import { LeaderboardTempPage } from './pages/LeaderboardTempPage'
 import { ScreenPage } from './pages/ScreenPage'
 import { TeamPage } from './pages/TeamPage'
 import { useSessionStore } from './store/sessionStore'
@@ -21,6 +22,7 @@ export default function App() {
   if (redirect) return null
   if (page === 'facilitator') return <FacilitatorPage />
   if (page === 'screen') return <ScreenPage />
+  if (page === 'leaderboardTemp') return <LeaderboardTempPage />
   if (page === 'team' && team) return <TeamPage team={team} />
   return <JoinPage />
 }

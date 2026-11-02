@@ -7,6 +7,7 @@ export const PATHS = {
   team: '/team',
   facilitator: '/facilitator',
   screen: '/screen',
+  leaderboardTemp: '/leaderboard-temp', // TEMPORARY: see pages/LeaderboardTempPage.tsx
 } as const
 
 export type Page = keyof typeof PATHS

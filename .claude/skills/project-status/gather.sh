@@ -51,7 +51,7 @@ probe "api" "https://pipeline-sim-api.onrender.com/api/health"
 section "To-do list (saved notes; may be out of date)"
 notes="$HOME/.claude/projects/$(printf '%s' "$root" | sed 's#/#-#g')/memory/session-start-reminders.md"
 if [ -f "$notes" ]; then
-  sed -n '/^State at end/,/^Keep this list/p' "$notes"
+  sed -n '/^## State at /,/^Keep this list/p' "$notes"
 else
   echo "no notes file at $notes"
 fi

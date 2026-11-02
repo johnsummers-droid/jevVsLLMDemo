@@ -12,6 +12,7 @@ import { REFRESH_MS } from './FacilitatorPage'
 import { type FacilitatorCredentials, useSessionStore } from '../store/sessionStore'
 import { type TeamRun, useSessionLive, useSessionLiveStore } from '../store/sessionLiveStore'
 import type { TeamSummary } from '../types'
+import { Logo } from '../components/Logo'
 import { Link } from './Link'
 
 function TeamTile({ name, run }: { name: string; run: TeamRun | undefined }) {
@@ -54,7 +55,9 @@ function Screen({ facilitator }: { facilitator: FacilitatorCredentials }) {
   return (
     <div className="screen">
       <header className="screen__header">
-        <h1>Pipeline Simulator</h1>
+        <h1 className="screen__logo">
+          <Logo />
+        </h1>
         <p>
           Join at <strong>{window.location.host}{PATHS.join}</strong> with code{' '}
           <strong className="screen__code">{sessionCode}</strong>

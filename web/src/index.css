@@ -1,65 +1,54 @@
 :root {
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   line-height: 1.4;
-  color-scheme: light dark;
+  color-scheme: dark; /* dark only: every screen uses this one scheme */
 
-  --bg: #f6f7f9;
-  --surface: #ffffff;
-  --border: #d5d9e0;
-  --text: #1c2230;
-  --muted: #5d6677;
-  --accent: #3b6fd8;
-  --notice-bg: #2b2f38;
-  --notice-text: #ffffff;
+  --bg: #0b0f1a;
+  --surface: #151a28;
+  --raised: #1d2334;
+  --border: #303850;
+  --text: #e9ecf3;
+  --muted: #a3adc0;
+  --system-green: #00ff64;
+  --accent: var(--system-green);
+  --edge: #575761;
+  --font-inter: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --on-accent: #04210f;
+  --notice-bg: #e9ecf3;
+  --notice-text: #0b0f1a;
 
-  /* node categories */
-  --cat-io: #6b7280;
-  --cat-jev: #7c4dcc;
-  --cat-llm: #2f80b8;
-  --cat-tool: #2e8b57;
-  --cat-human: #c77a1a;
-  --cat-unknown: #c0392b;
+  /* node categories: the fill of a colour panel */
+  --cat-io: #8f57e9; /* purple */
+  --cat-jev: #f486a1; /* jev pink */
+  --cat-llm: #ffffff;
+  --cat-tool: #5f6672; /* grey */
+  --cat-human: #517ed2;
+  --cat-unknown: #e5484d;
+
+  /* category colour as text on the dark surfaces, where the panel fills are too dark to read */
+  --cat-io-text: #bc9bf5;
+  --cat-tool-text: #b9bfca;
+  --cat-human-text: #9dbbf0;
 
   /* port types */
-  --port-text: #3b82f6;
+  --port-text: #5b9bff;
   --port-json: #f59e0b;
-  --port-enum: #a855f7;
-  --port-score: #ef4444;
+  --port-enum: #b67cff;
+  --port-score: #ff6b6b;
   --port-boolean: #10b981;
-  --port-probability: #ec4899;
-  --port-image: #14b8a6;
-  --port-any: #9ca3af;
+  --port-probability: #f472b6;
+  --port-image: #2dd4bf;
+  --port-any: #a3adc0;
 
   /* validation */
-  --issue-error: #d92d20;
-  --issue-error-bg: #fde8e7;
-  --issue-warning: #b25e09;
-  --issue-warning-bg: #fef3e2;
-  --ok: #157a3c;
-  --ok-bg: #e3f4e9;
-  --live: #22e05a;
-  --pulse: #3b6fd8;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #15181e;
-    --surface: #1f232b;
-    --border: #363c48;
-    --text: #e6e9ef;
-    --muted: #9aa3b2;
-    --accent: #6d9cf2;
-    --notice-bg: #e6e9ef;
-    --notice-text: #15181e;
-    --issue-error: #f97066;
-    --issue-error-bg: #3d1d1b;
-    --issue-warning: #fdb022;
-    --issue-warning-bg: #3a2a12;
-    --ok: #4ade80;
-    --ok-bg: #16301f;
-    --live: #5cff8a;
-    --pulse: #8fb4ff;
-  }
+  --issue-error: #ff7a70;
+  --issue-error-bg: #3d1d1b;
+  --issue-warning: #fdb022;
+  --issue-warning-bg: #3a2a12;
+  --ok: #4ade80;
+  --ok-bg: #12301e;
+  --live: var(--system-green);
+  --pulse: var(--system-green);
 }
 
 * {

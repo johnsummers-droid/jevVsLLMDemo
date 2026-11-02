@@ -1,8 +1,9 @@
 // "Show reference graph" for the debrief (T40), on /facilitator and /screen: a picker and a
 // read-only canvas of its own. It doesn't touch graphStore, which holds a team's graph.
-import { Background, Controls, ReactFlow, ReactFlowProvider, useNodesInitialized, useReactFlow } from '@xyflow/react'
+import { Controls, ReactFlow, ReactFlowProvider, useNodesInitialized, useReactFlow } from '@xyflow/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { api } from '../api/client'
+import { CanvasGrid } from '../canvas/CanvasGrid'
 import { PipelineEdge } from '../canvas/PipelineEdge'
 import { graphToFlow } from '../lib/graphMapping'
 import { nodeTypes } from '../nodes/nodeTypes'
@@ -39,8 +40,9 @@ function ReadOnlyFlow({ graph }: { graph: Graph }) {
       elementsSelectable={false}
       deleteKeyCode={null}
       minZoom={MIN_ZOOM}
+      colorMode="dark"
     >
-      <Background />
+      <CanvasGrid />
       <Controls showInteractive={false} />
     </ReactFlow>
   )

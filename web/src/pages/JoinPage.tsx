@@ -4,6 +4,7 @@ import { type FormEvent, useState } from 'react'
 import { ApiError, api } from '../api/client'
 import { navigate, PATHS } from '../lib/navigation'
 import { useSessionStore } from '../store/sessionStore'
+import { Logo } from '../components/Logo'
 import { Link } from './Link'
 
 const MAX_NAME = 30
@@ -55,6 +56,7 @@ export function JoinPage() {
 
   return (
     <div className="page">
+      <Logo className="page__logo" />
       <form className="page__card" onSubmit={submit}>
         <h1>Join the workshop</h1>
         {team && (
