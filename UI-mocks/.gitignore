@@ -1,0 +1,4 @@
+# Reference images stay local; the app's own copies are in web/src/assets/.
+*.png
+*.jpg
+*.jpeg

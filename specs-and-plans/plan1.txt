@@ -2870,8 +2870,8 @@ the same day, which replaced parts of it; the mock is only a reference)
   UI-mocks/ (resized; abacus: outlines white and thickened, bead fills see-through). Layouts of the
   four graphs respaced for the wider nodes (positions only; fixtures regenerated, scores don't use
   positions). Graphs saved before this keep their positions.
-  For the user to confirm: the logo is top left, where the mock has it (the brief says top right);
-  "Human review" and "Customer" are extra palette sections.
+  Confirmed by the user (2026-11-02): the logo stays top left, where the mock has it (the brief says
+  top right); "Human review" and "Customer" stay as extra palette sections.
   Not taken from the mock: floating metrics cards, sparklines (see section 9), router branch grouping.
 
 9. AS-YET UNIMPLEMENTED FEATURES
