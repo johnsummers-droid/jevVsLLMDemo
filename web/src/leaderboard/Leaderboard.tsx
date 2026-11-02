@@ -12,10 +12,12 @@ const STATUS_LABELS: Record<string, string> = {
 }
 const METRIC_COLUMNS = 4
 
+// A score between -1 and 1 keeps two decimals, so a real small score doesn't read as "no score".
 function formatScore(score: number): string {
-  const rounded = Math.round(score)
-  if (rounded === 0) return '0'
-  return rounded > 0 ? `+${rounded}` : `−${-rounded}`
+  const size = Math.abs(score)
+  const digits = size >= 1 ? String(Math.abs(Math.round(score))) : size.toFixed(2)
+  if (Number(digits) === 0) return '0.00'
+  return `${score > 0 ? '+' : '−'}${digits}`
 }
 
 function Status({ status }: { status: string }) {
@@ -55,7 +57,7 @@ export function Leaderboard({ rows, large = false }: { rows: LeaderboardRow[]; l
               </td>
               {m ? (
                 <>
-                  <td className={`leaderboard__num leaderboard__score${(m.score ?? 0) < -0.5 ? ' leaderboard__score--negative' : ''}`}>
+                  <td className={`leaderboard__num leaderboard__score${formatScore(m.score ?? 0).startsWith('−') ? ' leaderboard__score--negative' : ''}`}>
                     {formatScore(m.score ?? 0)}
                   </td>
                   <td className="leaderboard__num">{formatMs(m.p95LatencyMs)}</td>

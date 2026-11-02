@@ -2906,6 +2906,12 @@ Ideas not yet agreed as features are in docs/future-ideas.md.
   - Sparklines on the metric tiles (runStore would need to keep a series).
   - Grouping a router's branch ports, which take up a lot of room on large graphs.
 
+  Help panel redesign (asked for by the user 2026-11-02; higher priority than
+  game difficulty below)
+  - Card layout from the user's mock. The review and the open choice of panel
+    size (A, B or C) are in ai-context/help-panel-ux-review.md. Check all 8
+    nodes, not only the mock's easy case.
+
   Run controls (T27, T30; M5, paused)
   - Prompt-injection wave and traffic spike. RunConfig and traffic.py already
     support them, but the run API and the UI don't expose them. They appear in
@@ -2920,6 +2926,28 @@ Ideas not yet agreed as features are in docs/future-ideas.md.
   - Urgency scorer, escalation gate, summarizer and PII redactor. The urgency
     scorer also appears in the UI mock. T25's unfinished work is on branch t25;
     the "gated" reference graph's R2 question is still open.
+  - Rename Jev intent router to "Jev classifier", and add an "LLM classifier"
+    node (asked for by the user 2026-11-02). Same text input and routes as the
+    Jev node, so a team can swap one for the other and compare the metrics.
+    To settle: how its Low confidence route works. Proposed: the LLM rates its
+    own confidence against the same threshold, checked on real AI and not tuned
+    so that Jev wins. New real AI calls need prewarming.
+  - Rename Policy engine to "Rule reply check", and add a "Rule safety check"
+    node (asked for by the user 2026-11-02). Same Safe and Unsafe routes as the
+    Jev safety check, $0, reusing tools/policy.py. Proposed: built-in patterns
+    for prompt injection and abuse plus team phrases, written without looking
+    at the official tickets; NO_SAFETY_COVERAGE stays, reworded for this node.
+  - Add an "LLM safety check" node (asked for by the user 2026-11-02), after
+    the two nodes above. Same Safe and Unsafe routes as the other two safety
+    checks, so all three can be swapped and compared. The attack sits inside
+    its own prompt, so a message can try to talk it into "safe". To settle:
+    whether a Gemini refusal counts as Unsafe or as a failure; self-rated
+    confidence as for the LLM classifier; whether it is an expert-level node.
+    Not to be tuned to lose. New real AI calls need prewarming.
+  - Both renames change the display title, help text, guides, validator
+    messages and tests. Keep the type ids (jev_intent_router, policy_engine) so
+    saved graphs and stored calls keep working. Re-check the reference graph
+    order after adding either node.
 
   Human review (T26; M5, paused)
   - Reviewer capacity and overflow.
@@ -2935,6 +2963,16 @@ Ideas not yet agreed as features are in docs/future-ideas.md.
     Gemini is built, so the server refuses to start in live mode with Claude.
   - The companion Noul on the intent router: tried, left out of the MVP (user
     decision 2026-11-01).
+
+  Game difficulty (asked for by the user 2026-11-02; lower priority than the
+  help panel redesign)
+  - The admin sets the level to novice or expert. Expert adds a second, priority
+    channel and extra rules, such as higher penalties for slow responses on the
+    priority channel and for unsafe releases, and possibly extra node types.
+  - To settle: whether the level is per session and fixed before the official
+    run, so every team is scored alike; a score per channel or one overall.
+    Today scoring is per pack (ScoringConfig) and Channel and SLA on Customer
+    response are hidden (docs/future-ideas.md). Calibrate expert on real AI.
 
   Hardening (M7)
   - Load test (6 teams with a 3x spike, which needs the run controls above).

@@ -466,6 +466,7 @@
 
 .palette__cards {
   margin-top: 8px;
+  margin-left: 16px; /* cards sit narrower than their header, against its right edge */
 }
 
 /* A card is a small version of the node on the canvas. */
