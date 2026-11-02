@@ -188,3 +188,16 @@ describe('App pages', () => {
     await screen.findByRole('heading', { name: 'Start a workshop session' })
   })
 })
+
+describe('/leaderboard-temp', () => {
+  it('shows the sample leaderboard with no sign-in and no server calls', () => {
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    useSessionStore.setState({ team: null, facilitator: null })
+    window.history.replaceState(null, '', '/leaderboard-temp')
+    render(<App />)
+    expect(window.location.pathname).toBe('/leaderboard-temp')
+    expect(screen.getAllByText('Copper Foxes').length).toBeGreaterThan(0)
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
