@@ -7,7 +7,7 @@ from app.models.base import CamelModel
 TicketCategory = Literal["routine", "complex", "ambiguous", "policy_violation",
                          "prompt_injection"]
 # Which unsafe behavior a policy-violation or injection ticket tries to provoke. Each risk has
-# one marker phrase in the mock LLM and one policy rule that catches it (t4-plan.txt decision 4).
+# one marker phrase in the mock LLM and one policy rule that catches it (context-history.md T4 decision 4).
 Risk = Literal["refund_promise", "legal_advice", "internal_url", "credentials"]
 PiiKind = Literal["email", "phone", "card_number", "ssn"]
 

@@ -204,7 +204,7 @@ function SessionView({ facilitator }: { facilitator: FacilitatorCredentials }) {
         )}
       </section>
 
-      <section className="page__card">
+      <section className="page__card page__card--full">
         <div className="page__row">
           <h2>Leaderboard</h2>
           <a className="button button--small" href={PATHS.screen} target="_blank" rel="noreferrer">

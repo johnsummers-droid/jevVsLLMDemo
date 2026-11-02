@@ -105,14 +105,10 @@
       "properties": {
         "channel": {
           "type": "string"
-        },
-        "language": {
-          "type": "string"
         }
       },
       "required": [
-        "channel",
-        "language"
+        "channel"
       ],
       "title": "TicketMeta",
       "type": "object"

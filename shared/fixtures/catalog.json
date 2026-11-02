@@ -14,6 +14,7 @@
           "required": true,
           "multi": false,
           "branch": false,
+          "hidden": false,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": null,
@@ -26,6 +27,7 @@
           "required": true,
           "multi": false,
           "branch": false,
+          "hidden": true,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": "TicketMeta",
@@ -37,6 +39,7 @@
           "key": "traffic_mix",
           "label": "Traffic mix",
           "help": "",
+          "hidden": true,
           "kind": "enum",
           "default": "realistic",
           "options": [
@@ -49,6 +52,7 @@
           "key": "language",
           "label": "Language",
           "help": "",
+          "hidden": false,
           "kind": "enum",
           "default": "en",
           "options": [
@@ -59,6 +63,7 @@
           "key": "attack_rate",
           "label": "Attack rate",
           "help": "",
+          "hidden": true,
           "kind": "number",
           "default": 0.1,
           "min": 0.0,
@@ -85,7 +90,7 @@
         "placement": "Exactly one per graph, on the far left. Connect its Text output to the first node that should read the message, such as a router or a safety check.",
         "howItWorks": [
           "A run sends a stream of tickets through the graph; this node emits one per request.",
-          "Text is the customer's message. Meta carries the channel and language.",
+          "Text is the customer's message.",
           "Some tickets are routine, some are complex or vague, and some try to trick the pipeline into doing something it shouldn't."
         ],
         "inputs": {},
@@ -95,8 +100,8 @@
           "attack_rate": "The intended share of manipulative tickets. Not used yet, like the traffic mix."
         },
         "outputs": {
-          "text": "The customer's message.",
-          "meta": "Channel and language of the ticket, as JSON."
+          "text": "The customer's message, passed on word for word.",
+          "meta": "The ticket's channel, as JSON."
         },
         "example": {
           "ticketId": "p-01",
@@ -106,8 +111,7 @@
           "outputs": {
             "text": "I was charged twice for my March invoice. Can you check what happened?",
             "meta": {
-              "channel": "chat",
-              "language": "en"
+              "channel": "chat"
             }
           },
           "explanation": "A billing ticket arrives. Its text goes to whatever the Text output is connected to."
@@ -130,6 +134,7 @@
           "required": true,
           "multi": true,
           "branch": false,
+          "hidden": false,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": null,
@@ -144,6 +149,7 @@
           "required": true,
           "multi": false,
           "branch": false,
+          "hidden": true,
           "enumValues": [
             "billing",
             "technical_support",
@@ -163,6 +169,7 @@
           "required": true,
           "multi": false,
           "branch": false,
+          "hidden": true,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": "Distribution",
@@ -175,6 +182,7 @@
           "required": true,
           "multi": false,
           "branch": false,
+          "hidden": true,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": null,
@@ -187,6 +195,7 @@
           "required": true,
           "multi": false,
           "branch": true,
+          "hidden": false,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": null,
@@ -199,6 +208,7 @@
           "required": true,
           "multi": false,
           "branch": true,
+          "hidden": false,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": null,
@@ -210,6 +220,7 @@
           "key": "allowed_intents",
           "label": "Allowed intents",
           "help": "",
+          "hidden": false,
           "kind": "multi_enum",
           "default": [
             "billing",
@@ -231,6 +242,7 @@
           "key": "threshold",
           "label": "Confidence threshold",
           "help": "Below this confidence the request takes route.low_confidence.",
+          "hidden": false,
           "kind": "number",
           "default": 0.7,
           "min": 0.0,
@@ -270,11 +282,11 @@
           "threshold": "The confidence the router needs to trust its choice. Raise it to send more uncertain messages to route.low_confidence; lower it to automate more."
         },
         "outputs": {
-          "intent": "The chosen intent.",
-          "probabilities": "The probability of every allowed intent, as JSON.",
-          "confidence": "How sure the router is about its choice, from 0 (all options equally likely) to 1 (certain).",
-          "route.*": "One branch per allowed intent; the default intents are listed here. The message leaves on the chosen one when the confidence clears the threshold.",
-          "route.low_confidence": "Where the message goes when the router isn't sure enough."
+          "intent": "The chosen intent, as a value.",
+          "probabilities": "How likely each allowed intent is, as JSON.",
+          "confidence": "How sure Jev is, from 0 to 1.",
+          "route.*": "Carries {branch} messages.",
+          "route.low_confidence": "Carries the message when the router isn't sure enough of any intent."
         },
         "example": {
           "ticketId": "p-02",
@@ -315,6 +327,7 @@
           "required": true,
           "multi": true,
           "branch": false,
+          "hidden": false,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": null,
@@ -329,6 +342,7 @@
           "required": true,
           "multi": false,
           "branch": false,
+          "hidden": true,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": null,
@@ -341,6 +355,7 @@
           "required": true,
           "multi": false,
           "branch": false,
+          "hidden": true,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": null,
@@ -353,6 +368,7 @@
           "required": true,
           "multi": false,
           "branch": false,
+          "hidden": true,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": null,
@@ -365,6 +381,7 @@
           "required": true,
           "multi": false,
           "branch": true,
+          "hidden": false,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": null,
@@ -377,6 +394,7 @@
           "required": true,
           "multi": false,
           "branch": true,
+          "hidden": false,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": null,
@@ -388,6 +406,7 @@
           "key": "categories",
           "label": "Categories",
           "help": "",
+          "hidden": false,
           "kind": "multi_enum",
           "default": [
             "prompt_injection",
@@ -406,6 +425,7 @@
           "key": "threshold",
           "label": "Threshold",
           "help": "",
+          "hidden": false,
           "kind": "number",
           "default": 0.5,
           "min": 0.0,
@@ -432,25 +452,25 @@
         "placement": "Usually first, right after the customer message, so risky messages never reach an LLM. Connect route.unsafe to a human review queue, or leave it unconnected to block those messages.",
         "howItWorks": [
           "Jev scores the message against the categories you enable and returns a risk score for each.",
-          "If the overall risk is at or above the threshold, the message is flagged: it leaves on route.unsafe and the top category is reported. Otherwise it leaves on route.safe.",
+          "If the overall risk is at or above the threshold, the message is flagged: it leaves on route.unsafe. Otherwise it leaves on route.safe.",
           "It only looks for the categories you enable.",
           "The check doesn't change the message; it only decides where it goes.",
           "A flagged message on an unconnected route.unsafe counts as blocked, not dropped.",
           "The same message with the same settings always gets the same answer, so you can compare runs fairly."
         ],
         "inputs": {
-          "text": "The message to check."
+          "text": "The message to check for risk."
         },
         "params": {
           "categories": "Which kinds of risk to look for: prompt injection, abuse, fraud, requests for personal data, self-harm.",
           "threshold": "How much risk it takes to flag a message. Lower catches more but also flags more harmless messages."
         },
         "outputs": {
-          "is_safe": "True when the message was not flagged.",
+          "is_safe": "True if the message was not flagged.",
           "confidence": "How sure the check is of its verdict, from 0 to 1.",
-          "categories": "The flagged category (if any) and the score of every enabled category, as JSON.",
-          "route.safe": "Messages that passed.",
-          "route.unsafe": "Messages that were flagged."
+          "categories": "The flagged category and each category's score, as JSON.",
+          "route.safe": "Carries the message when it passes the check.",
+          "route.unsafe": "Carries the message when it's flagged. Unconnected, the message is blocked."
         },
         "example": {
           "ticketId": "p-14",
@@ -485,6 +505,7 @@
           "required": true,
           "multi": true,
           "branch": false,
+          "hidden": false,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": null,
@@ -497,6 +518,7 @@
           "required": false,
           "multi": false,
           "branch": false,
+          "hidden": false,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": "Docs",
@@ -511,6 +533,7 @@
           "required": true,
           "multi": false,
           "branch": false,
+          "hidden": false,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": null,
@@ -522,6 +545,7 @@
           "key": "model",
           "label": "Model tier",
           "help": "",
+          "hidden": false,
           "kind": "enum",
           "default": "large",
           "options": [
@@ -533,6 +557,7 @@
           "key": "max_tokens",
           "label": "Max tokens",
           "help": "",
+          "hidden": false,
           "kind": "int",
           "default": 512,
           "min": 64,
@@ -542,6 +567,7 @@
           "key": "prompt",
           "label": "System prompt",
           "help": "",
+          "hidden": false,
           "kind": "text",
           "default": "You are a helpful support agent.",
           "maxLen": 500
@@ -573,8 +599,8 @@
           "The same message with the same settings always gets the same answer, so you can compare runs fairly."
         ],
         "inputs": {
-          "text": "The customer's message.",
-          "context": "Optional help-center docs from a knowledge lookup."
+          "text": "The customer's message to answer.",
+          "context": "Optional help-center articles, from a knowledge lookup, to base the answer on."
         },
         "params": {
           "model": "Small is faster and cheaper; large is slower, costs more per token and is generally more reliable.",
@@ -582,7 +608,7 @@
           "prompt": "The system prompt: instructions on how to behave. What you write here affects how it handles tricky messages."
         },
         "outputs": {
-          "text": "The answer it wrote."
+          "text": "The reply the model wrote. It can be wrong or unsafe, so check it."
         },
         "example": {
           "ticketId": "p-01",
@@ -613,6 +639,7 @@
           "required": true,
           "multi": true,
           "branch": false,
+          "hidden": false,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": null,
@@ -625,6 +652,7 @@
           "required": false,
           "multi": false,
           "branch": false,
+          "hidden": true,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": null,
@@ -639,6 +667,7 @@
           "required": true,
           "multi": false,
           "branch": false,
+          "hidden": true,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": null,
@@ -651,6 +680,7 @@
           "required": true,
           "multi": false,
           "branch": false,
+          "hidden": true,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": "PolicyReport",
@@ -663,6 +693,7 @@
           "required": true,
           "multi": false,
           "branch": true,
+          "hidden": false,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": null,
@@ -675,6 +706,7 @@
           "required": true,
           "multi": false,
           "branch": true,
+          "hidden": false,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": null,
@@ -686,6 +718,7 @@
           "key": "rules",
           "label": "Rules",
           "help": "",
+          "hidden": false,
           "kind": "multi_enum",
           "default": [
             "no_refund_promises"
@@ -702,6 +735,7 @@
           "key": "blocked_phrases",
           "label": "Blocked phrases",
           "help": "",
+          "hidden": false,
           "kind": "string_list",
           "default": [],
           "maxItems": 20,
@@ -711,6 +745,7 @@
           "key": "data_classes",
           "label": "Data classes",
           "help": "",
+          "hidden": false,
           "kind": "multi_enum",
           "default": [],
           "options": [
@@ -741,25 +776,25 @@
         "placement": "After the LLM, before the customer response. Connect route.pass to the response and route.block to a human review queue (or leave it unconnected to block).",
         "howItWorks": [
           "Every enabled rule, every blocked phrase and every selected data class is checked against the text.",
-          "Any match blocks the text: it leaves on route.block, and the report lists each match. No match: it leaves on route.pass.",
+          "Any match blocks the text: it leaves on route.block. No match: it leaves on route.pass.",
           "The text itself is never changed; only its route.",
           "Rules look for patterns, so they catch the wording they were written for and can miss the same idea phrased differently.",
           "Blocked text on an unconnected route.block counts as blocked, not dropped."
         ],
         "inputs": {
-          "text": "The text to check, usually the LLM's answer.",
-          "context": "Optional; not used by the rules."
+          "text": "The text to check, usually the LLM's reply.",
+          "context": "Optional. The rules don't use it yet."
         },
         "params": {
-          "rules": "Built-in rules. no_refund_promises: promising or guaranteeing a refund. no_legal_advice: giving a legal opinion. no_internal_urls: links to internal or admin sites. no_credentials: stating a password, API key, secret or token.",
+          "rules": "Built-in rules. No refund promises: promising or guaranteeing a refund. No legal advice: giving a legal opinion. No internal URLs: links to internal or admin sites. No credentials: stating a password, API key, secret or token.",
           "blocked_phrases": "Your own phrases. Each is matched anywhere in the text, ignoring case.",
           "data_classes": "Personal data that must not go out: email addresses, phone numbers, card numbers, social security numbers."
         },
         "outputs": {
-          "passed": "True when nothing matched.",
-          "report": "Every match: which rule and the text it matched, as JSON.",
-          "route.pass": "Text that passed.",
-          "route.block": "Text that was blocked."
+          "passed": "True if no rule matched.",
+          "report": "Every rule that matched and the text it matched, as JSON.",
+          "route.pass": "Carries the text when no rule matched.",
+          "route.block": "Carries the text when a rule matched. Unconnected, the text is blocked."
         },
         "example": {
           "ticketId": "p-01",
@@ -778,7 +813,7 @@
               ]
             }
           },
-          "explanation": "The answer guarantees a refund, which the default rule forbids, so it leaves on route.block with the match in the report."
+          "explanation": "The answer guarantees a refund, which the default rule forbids, so it leaves on route.block."
         },
         "tips": [
           "Only one rule is on by default. Think about which kinds of answer you never want to send, and turn on the rules that cover them.",
@@ -799,6 +834,7 @@
           "required": true,
           "multi": true,
           "branch": false,
+          "hidden": false,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": null,
@@ -813,6 +849,7 @@
           "required": true,
           "multi": false,
           "branch": false,
+          "hidden": false,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": "Docs",
@@ -824,6 +861,7 @@
           "key": "source",
           "label": "Source",
           "help": "",
+          "hidden": false,
           "kind": "enum",
           "default": "kb",
           "options": [
@@ -836,6 +874,7 @@
           "key": "top_k",
           "label": "Top k",
           "help": "",
+          "hidden": false,
           "kind": "int",
           "default": 3,
           "min": 1,
@@ -873,7 +912,7 @@
           "top_k": "How many articles to return at most."
         },
         "outputs": {
-          "docs": "The matching articles (id, title, snippet, intent, match score), as JSON."
+          "docs": "The best matching help-center articles. Connect to an LLM's Context."
         },
         "example": {
           "ticketId": "p-07",
@@ -918,6 +957,7 @@
           "required": true,
           "multi": true,
           "branch": false,
+          "hidden": false,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": null,
@@ -930,6 +970,7 @@
           "required": false,
           "multi": false,
           "branch": false,
+          "hidden": true,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": null,
@@ -944,6 +985,7 @@
           "required": true,
           "multi": false,
           "branch": false,
+          "hidden": false,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": null,
@@ -955,6 +997,7 @@
           "key": "capacity",
           "label": "Reviewers",
           "help": "",
+          "hidden": true,
           "kind": "int",
           "default": 2,
           "min": 1,
@@ -964,6 +1007,7 @@
           "key": "reviewer_latency_s",
           "label": "Review time (s)",
           "help": "",
+          "hidden": false,
           "kind": "int",
           "default": 120,
           "min": 30,
@@ -994,15 +1038,15 @@
           "Each review has a fixed cost, which adds up quickly against the cost budget."
         ],
         "inputs": {
-          "text": "The request or draft answer to review. Several branches can feed it.",
-          "context": "Optional extra information for the reviewer."
+          "text": "The request or draft reply for a person to review.",
+          "context": "Optional. The reviewer doesn't use it yet."
         },
         "params": {
           "capacity": "How many reviewers work this queue. Queueing isn't simulated yet, so it doesn't change a run today.",
           "reviewer_latency_s": "How long a typical review takes, in seconds."
         },
         "outputs": {
-          "text": "The reviewed text, safe to send."
+          "text": "The reviewed text, almost always safe to send."
         },
         "example": {
           "ticketId": "p-11",
@@ -1032,6 +1076,7 @@
           "required": true,
           "multi": true,
           "branch": false,
+          "hidden": false,
           "enumValues": null,
           "scoreRange": null,
           "jsonSchemaRef": null,
@@ -1044,6 +1089,7 @@
           "key": "channel",
           "label": "Channel",
           "help": "",
+          "hidden": true,
           "kind": "enum",
           "default": "chat",
           "options": [
@@ -1055,6 +1101,7 @@
           "key": "sla_ms",
           "label": "SLA (ms, display only)",
           "help": "",
+          "hidden": true,
           "kind": "int",
           "default": 800,
           "min": 100,
@@ -1085,7 +1132,7 @@
           "When several branches can reach it on the same request, the first to arrive wins."
         ],
         "inputs": {
-          "text": "The answer to send. Several branches can connect to it."
+          "text": "The reply sent to the customer, whatever it says."
         },
         "params": {
           "channel": "How the answer is delivered: email or chat. Display only for now.",

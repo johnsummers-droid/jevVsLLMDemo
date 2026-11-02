@@ -1,4 +1,4 @@
-"""Simulated latency sampling (pulled forward from T5; t4-plan.txt decision 2)."""
+"""Simulated latency sampling (pulled forward from T5; context-history.md T4 decision 2)."""
 
 import math
 import random

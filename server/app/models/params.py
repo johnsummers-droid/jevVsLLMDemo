@@ -9,6 +9,7 @@ class _ParamBase(CamelModel):
     key: str
     label: str
     help: str = ""
+    hidden: bool = False  # not offered in the UI, because it has no effect on a run yet
 
     def check(self, value: Any) -> Any:
         """Return the value if it is valid for this param, else raise ValueError."""

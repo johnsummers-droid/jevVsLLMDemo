@@ -75,14 +75,13 @@ shows them for each node. For the full explanation of any node, click its **?**.
 ### Input and output
 
 **Customer message** (source, exactly one per graph)
-- Outputs: `text` (the ticket) and `meta` (json: channel and language).
-- Params: traffic mix, language, attack rate. In official runs the game
-  admin overrides these so every team gets identical traffic.
+- Output: `text` (the ticket).
+- No params to change: every team gets the same tickets.
 
 **Customer response** (sink, at least one per graph)
 - Input: `text` (multi). Whatever arrives here is sent to the customer, so
   make sure only safe text gets here.
-- Params: channel and an SLA display value (display only, not scored).
+- No params to change.
 
 ### Jev nodes: fast, cheap, bounded decisions
 
@@ -92,8 +91,7 @@ fraction of a cent.
 
 **Jev intent router**
 - Input: `text` (multi).
-- Outputs: `intent` (enum), `probabilities` (json), `confidence`
-  (probability), plus one branch per allowed intent (`route.billing`,
+- Outputs: one branch per allowed intent (`route.billing`,
   `route.technical_support`, ...) and `route.low_confidence`.
 - Params:
   - **Allowed intents**: which intents get their own branch. Adding or
@@ -109,8 +107,7 @@ fraction of a cent.
 
 **Jev safety check**
 - Input: `text` (multi).
-- Outputs: `is_safe` (boolean), `confidence`, `categories` (json), and the
-  branches `route.safe` and `route.unsafe`.
+- Outputs: the branches `route.safe` and `route.unsafe`.
 - Params: **Categories** to look for (prompt injection, abuse, fraud, PII
   requests, self-harm) and a **Threshold**.
 - Assumptions: catches roughly 9 in 10 risky messages in the enabled
@@ -147,9 +144,8 @@ fraction of a cent.
 - 25 ms + 5 ms per article, about $0.00001 per call.
 
 **Policy engine**
-- Inputs: `text` (multi), optional `context` (json).
-- Outputs: `passed` (boolean), `report` (json), and the branches `route.pass`
-  and `route.block`.
+- Input: `text` (multi).
+- Outputs: the branches `route.pass` and `route.block`.
 - Params: **Rules** (no refund promises, no legal advice, no internal URLs,
   no credentials), your own **Blocked phrases**, and **Data classes** to
   detect (email, phone, card number, SSN).
@@ -161,8 +157,8 @@ fraction of a cent.
 ### Human
 
 **Human review queue**
-- Inputs: `text` (multi), optional `context` (json). Output: `text`.
-- Params: **Reviewers** and **Review time**.
+- Input: `text` (multi). Output: `text`.
+- Param: **Review time**.
 - Assumptions: a person fixes almost every problem (98%), but each review
   costs **$2.00**, which is thousands of times more than an automated step.
   Every ticket through here counts as **escalated**, not automated. Review

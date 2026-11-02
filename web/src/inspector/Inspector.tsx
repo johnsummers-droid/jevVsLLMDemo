@@ -4,7 +4,8 @@ import { useMemo } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { HelpButton } from '../help/HelpButton'
 import { costRows } from '../lib/costModel'
-import { expandOutputs } from '../lib/graphMapping'
+import { isHiddenParam } from '../lib/params'
+import { portDescription, visibleInputs, visibleOutputs } from '../lib/ports'
 import { countBySeverity } from '../lib/issues'
 import { useCatalogStore } from '../store/catalogStore'
 import { useGraphStore } from '../store/graphStore'
@@ -13,17 +14,15 @@ import { useValidationStore } from '../store/validationStore'
 import type { NodeDefinition, Port } from '../types'
 import { IssueList } from './IssueList'
 import { ParamField } from './ParamField'
-import { SchemaPreview } from './SchemaPreview'
 
-function PortItem({ port, input = false }: { port: Port; input?: boolean }) {
-  const flags = [input && port.required && 'required', port.multi && 'accepts several', port.branch && 'branch'].filter(Boolean)
+function PortItem({ definition, port, input = false }: { definition: NodeDefinition; port: Port; input?: boolean }) {
   return (
     <li className="inspector__port">
-      <span className={`inspector__swatch typed-handle--${port.type}`} aria-hidden="true" />
-      <span>{port.label}</span>
-      <code className="inspector__port-type">{port.jsonSchemaRef ?? port.type}</code>
-      {flags.length > 0 && <span className="inspector__flags">{flags.join(', ')}</span>}
-      {port.jsonSchemaRef && <SchemaPreview name={port.jsonSchemaRef} />}
+      <div className="inspector__port-name">
+        <span className={`inspector__swatch typed-handle--${port.type}`} aria-hidden="true" />
+        <span>{port.label}</span>
+      </div>
+      <p className="inspector__port-text">{portDescription(definition, port, input)}</p>
     </li>
   )
 }
@@ -34,9 +33,16 @@ function NodeDetails({ nodeId, definition }: { nodeId: string; definition: NodeD
   const deleteNode = useGraphStore((s) => s.deleteNode)
   const locked = useReadOnly()
   const params = node?.data.params
-  const outputs = useMemo(() => expandOutputs(definition, params), [definition, params])
   const index = useValidationStore((s) => s.index)
   const edges = useGraphStore((s) => s.edges)
+  const inputs = useMemo(
+    () => visibleInputs(definition, new Set(edges.filter((e) => e.target === nodeId).map((e) => e.targetHandle ?? ''))),
+    [definition, edges, nodeId],
+  )
+  const outputs = useMemo(
+    () => visibleOutputs(definition, params, new Set(edges.filter((e) => e.source === nodeId).map((e) => e.sourceHandle ?? ''))),
+    [definition, params, edges, nodeId],
+  )
   const issues = useMemo(
     () => [
       ...(index.byNode[nodeId] ?? []),
@@ -45,6 +51,7 @@ function NodeDetails({ nodeId, definition }: { nodeId: string; definition: NodeD
     [index, edges, nodeId],
   )
   if (!node) return null
+  const shownParams = definition.params.filter((spec) => !isHiddenParam(spec))
 
   return (
     <>
@@ -54,7 +61,6 @@ function NodeDetails({ nodeId, definition }: { nodeId: string; definition: NodeD
           <h2>{definition.title}</h2>
           {definition.help && <HelpButton definition={definition} />}
         </div>
-        <code>{node.id}</code>
         <p>{definition.description}</p>
       </header>
 
@@ -65,12 +71,12 @@ function NodeDetails({ nodeId, definition }: { nodeId: string; definition: NodeD
         </section>
       )}
 
-      {definition.params.length > 0 && (
+      {shownParams.length > 0 && (
         <section className="inspector__section">
           <h3>Parameters</h3>
           {/* A disabled fieldset disables every control inside it. */}
           <fieldset className="inspector__params" disabled={locked}>
-            {definition.params.map((spec) => (
+            {shownParams.map((spec) => (
               <ParamField
                 key={`${node.id}:${spec.key}`}
                 spec={spec}
@@ -84,19 +90,28 @@ function NodeDetails({ nodeId, definition }: { nodeId: string; definition: NodeD
 
       <section className="inspector__section">
         <h3>Inputs</h3>
-        {definition.inputs.length ? (
-          <ul className="inspector__ports">{definition.inputs.map((p) => <PortItem key={p.id} port={p} input />)}</ul>
+        {inputs.length ? (
+          <ul className="inspector__ports">{inputs.map((p) => <PortItem key={p.id} definition={definition} port={p} input />)}</ul>
         ) : (
           <p className="inspector__empty">None (entry point)</p>
         )}
+      </section>
+
+      <section className="inspector__section">
         <h3>Outputs</h3>
         {outputs.length ? (
-          <ul className="inspector__ports">{outputs.map((p) => <PortItem key={p.id} port={p} />)}</ul>
+          <ul className="inspector__ports">{outputs.map((p) => <PortItem key={p.id} definition={definition} port={p} />)}</ul>
         ) : (
           <p className="inspector__empty">None (exit point)</p>
         )}
-        <p className="inspector__note">Each output can feed up to {definition.maxFanOut ?? 4} connections.</p>
       </section>
+
+      {outputs.length > 0 && (
+        <section className="inspector__section">
+          <h3>Notes</h3>
+          <p className="inspector__note">Each output can feed up to {definition.maxFanOut ?? 4} connections.</p>
+        </section>
+      )}
 
       <section className="inspector__section">
         <h3>Cost and latency assumptions</h3>

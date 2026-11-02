@@ -1,5 +1,5 @@
 # Render Blueprint: Pipeline Simulator API + PostgreSQL (plan1.txt section 6; runbook
-# specs-and-plans/deploy-runbook.txt). Render reads this file from the repo root:
+# docs/deploy-runbook.txt). Render reads this file from the repo root:
 # Dashboard -> New -> Blueprint -> pick the repo. The web app is on Vercel, not here.
 #
 # Plans start free so nothing is billed by surprise. Free web services sleep when idle (and

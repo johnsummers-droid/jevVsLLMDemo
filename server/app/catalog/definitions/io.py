@@ -1,4 +1,4 @@
-from app.catalog.help import CUSTOMER_MESSAGE_HELP, CUSTOMER_RESPONSE_HELP
+from app.catalog.help_text import CUSTOMER_MESSAGE_HELP, CUSTOMER_RESPONSE_HELP
 from app.models import CostModel, EnumParam, IntParam, NodeDefinition, NumberParam, Port
 
 CUSTOMER_MESSAGE = NodeDefinition(
@@ -9,14 +9,14 @@ CUSTOMER_MESSAGE = NodeDefinition(
     inputs=[],
     outputs=[
         Port(id="text", label="Text", type="text"),
-        Port(id="meta", label="Meta", type="json", json_schema_ref="TicketMeta"),
+        Port(id="meta", label="Meta", type="json", json_schema_ref="TicketMeta", hidden=True),
     ],
     params=[
         # All three are overridden by the facilitator in official runs (plan1.txt D9).
         EnumParam(key="traffic_mix", label="Traffic mix", default="realistic",
-                  options=["realistic", "routine_heavy", "adversarial"]),
+                  options=["realistic", "routine_heavy", "adversarial"], hidden=True),
         EnumParam(key="language", label="Language", default="en", options=["en"]),
-        NumberParam(key="attack_rate", label="Attack rate", default=0.10, min=0, max=0.5),
+        NumberParam(key="attack_rate", label="Attack rate", default=0.10, min=0, max=0.5, hidden=True),
     ],
     help=CUSTOMER_MESSAGE_HELP,
     cost_model=CostModel(latency_ms=0),
@@ -31,8 +31,9 @@ CUSTOMER_RESPONSE = NodeDefinition(
     inputs=[Port(id="text", label="Text", type="text", multi=True)],
     outputs=[],
     params=[
-        EnumParam(key="channel", label="Channel", default="chat", options=["email", "chat"]),
-        IntParam(key="sla_ms", label="SLA (ms, display only)", default=800, min=100, max=10_000),
+        EnumParam(key="channel", label="Channel", default="chat", options=["email", "chat"], hidden=True),
+        IntParam(key="sla_ms", label="SLA (ms, display only)", default=800, min=100, max=10_000,
+                 hidden=True),
     ],
     help=CUSTOMER_RESPONSE_HELP,
     cost_model=CostModel(latency_ms=0),

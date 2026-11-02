@@ -1,4 +1,4 @@
-from app.catalog.help import JEV_INTENT_ROUTER_HELP, JEV_SAFETY_CHECK_HELP
+from app.catalog.help_text import JEV_INTENT_ROUTER_HELP, JEV_SAFETY_CHECK_HELP
 from app.models import CostModel, MultiEnumParam, NodeDefinition, NumberParam, Port
 
 INTENTS = ["billing", "technical_support", "bug_report", "feature_request", "account", "other"]
@@ -11,10 +11,10 @@ JEV_INTENT_ROUTER = NodeDefinition(
                 "Low-confidence decisions go to their own branch.",
     inputs=[Port(id="text", label="Text", type="text", multi=True)],
     outputs=[
-        Port(id="intent", label="Intent", type="enum", enum_values=INTENTS),
+        Port(id="intent", label="Intent", type="enum", enum_values=INTENTS, hidden=True),
         Port(id="probabilities", label="Probabilities", type="json",
-             json_schema_ref="Distribution"),
-        Port(id="confidence", label="Confidence", type="probability"),
+             json_schema_ref="Distribution", hidden=True),
+        Port(id="confidence", label="Confidence", type="probability", hidden=True),
         Port(id="route.*", label="Route", type="text", branch=True,
              dynamic_from_param="allowed_intents"),
         Port(id="route.low_confidence", label="Low confidence", type="text", branch=True),
@@ -37,9 +37,9 @@ JEV_SAFETY_CHECK = NodeDefinition(
                 "categories.",
     inputs=[Port(id="text", label="Text", type="text", multi=True)],
     outputs=[
-        Port(id="is_safe", label="Is safe", type="boolean"),
-        Port(id="confidence", label="Confidence", type="probability"),
-        Port(id="categories", label="Categories", type="json"),
+        Port(id="is_safe", label="Is safe", type="boolean", hidden=True),
+        Port(id="confidence", label="Confidence", type="probability", hidden=True),
+        Port(id="categories", label="Categories", type="json", hidden=True),
         Port(id="route.safe", label="Safe", type="text", branch=True),
         Port(id="route.unsafe", label="Unsafe", type="text", branch=True),
     ],

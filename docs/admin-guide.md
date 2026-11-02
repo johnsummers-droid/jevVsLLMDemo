@@ -231,7 +231,7 @@ check: `curl localhost:8000/api/health` returns `{"status":"ok"}`.
 Stop both with Ctrl-C.
 
 > For a real workshop, deploy it: web on Vercel, server and PostgreSQL on
-> Railway. `specs-and-plans/deploy-runbook.txt` walks through it (about 20
+> Railway. `docs/deploy-runbook.txt` walks through it (about 20
 > minutes, once). Without a deployment, every player browser must reach your
 > dev server, for example through Codespace port forwarding with port 5173
 > set to **Public** visibility.

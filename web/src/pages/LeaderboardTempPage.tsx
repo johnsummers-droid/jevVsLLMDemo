@@ -35,7 +35,7 @@ const SAMPLE_ROWS: LeaderboardRow[] = [
   row(6, 'Human in the Loop', 'completed', metrics(4, 0.2, 0.8, 0, 1900, 1610, 0.53)),
   row(7, 'Blue Herons', 'completed', metrics(-20, 0.73, 0, 0.1, 15700, 4, 0.33)),
   row(8, 'Escalate Everything', 'completed', metrics(-30, 0, 1, 0, 0, 2000, 0.4)),
-  row(9, 'A Team With a Rather Long Name Indeed', 'stopped'),
+  row(9, 'A Rather Long Team Name Indeed', 'stopped'),
   row(10, 'Late Starters', 'running'),
   row(11, 'Still Warming Up', 'pending'),
   row(12, 'Broken Graph', 'failed'),
@@ -49,10 +49,12 @@ export function LeaderboardTempPage() {
         <h2>Leaderboard</h2>
         <Leaderboard rows={SAMPLE_ROWS} large />
       </section>
-      <section className="screen__board">
-        <h2>Facilitator page size</h2>
-        <Leaderboard rows={SAMPLE_ROWS} />
-      </section>
+      <div className="page--wide">
+        <section className="page__card page__card--full">
+          <h2>Facilitator page size</h2>
+          <Leaderboard rows={SAMPLE_ROWS} />
+        </section>
+      </div>
       <section className="screen__board">
         <h2>Before the official run</h2>
         <Leaderboard rows={[]} />

@@ -4,6 +4,8 @@
 import { useEffect, useRef, type KeyboardEvent, type PointerEvent } from 'react'
 import { costRows } from '../lib/costModel'
 import { branchLabel, expandOutputs } from '../lib/graphMapping'
+import { isHiddenParam, optionLabel } from '../lib/params'
+import { portDescription } from '../lib/ports'
 import { useCatalogStore } from '../store/catalogStore'
 import { HELP_PANEL_ID, useHelpStore } from '../store/helpStore'
 import type { HelpExample, NodeDefinition, NodeHelp, ParamSpec, Port } from '../types'
@@ -29,6 +31,12 @@ function formatValue(value: unknown): string {
   return String(value)
 }
 
+function formatDefault(spec: ParamSpec): string {
+  if (spec.kind === 'enum') return optionLabel(spec.default)
+  if (spec.kind === 'multi_enum') return formatValue(spec.default.map(optionLabel))
+  return formatValue(spec.default)
+}
+
 function portFlags(port: Port, input: boolean): string {
   return [
     port.jsonSchemaRef ?? port.type,
@@ -41,25 +49,25 @@ function portFlags(port: Port, input: boolean): string {
 }
 
 // One catalog port and the rows it shows as. A template such as route.* isn't a real output: it
-// shows as the branches it makes with the default settings, sharing the template's description.
+// shows as the branches it makes with the default settings.
 function portRows(definition: NodeDefinition, port: Port): Port[] {
   return port.dynamicFromParam ? expandOutputs({ ...definition, outputs: [port] }) : [port]
 }
 
-function PortTable({ definition, ports, texts, input = false }: { definition: NodeDefinition; ports: Port[]; texts: Record<string, string>; input?: boolean }) {
+function PortTable({ definition, ports, input = false }: { definition: NodeDefinition; ports: Port[]; input?: boolean }) {
   return (
     <dl className="help-panel__terms">
-      {ports.map((port) => (
-        <div key={port.id}>
-          {portRows(definition, port).map((row) => (
-            <dt key={row.id}>
+      {ports
+        .flatMap((port) => portRows(definition, port))
+        .map((row) => (
+          <div key={row.id}>
+            <dt>
               {row.label} <code>{row.id}</code>
               <span className="help-panel__meta">{portFlags(row, input)}</span>
             </dt>
-          ))}
-          <dd>{texts[port.id] ?? ''}</dd>
-        </div>
-      ))}
+            <dd>{portDescription(definition, row, input)}</dd>
+          </div>
+        ))}
     </dl>
   )
 }
@@ -71,7 +79,7 @@ function ParamTable({ params, texts }: { params: ParamSpec[]; texts: Record<stri
         <div key={spec.key}>
           <dt>
             {spec.label} <code>{spec.key}</code>
-            <span className="help-panel__meta">default: {formatValue(spec.default)}</span>
+            <span className="help-panel__meta">default: {formatDefault(spec)}</span>
           </dt>
           <dd>{texts[spec.key] ?? ''}</dd>
         </div>
@@ -92,7 +100,8 @@ function Example({ example, definition }: { example: HelpExample; definition: No
     [...definition.outputs, ...definition.params.map((p) => ({ id: p.key, label: p.label }))].map((p) => [p.id, p.label]),
   )
   const overrides = Object.entries(example.params ?? {})
-  const outputs = Object.entries(example.outputs ?? {})
+  const hidden = new Set(definition.outputs.filter((p) => p.hidden).map((p) => p.id))
+  const outputs = Object.entries(example.outputs ?? {}).filter(([id]) => !hidden.has(id))
   const outputLabel = (id: string) => labels[id] ?? (id.startsWith('route.') ? branchLabel(id.slice('route.'.length)) : id)
   // An expanded branch such as route.billing comes from the route.* template.
   const portOf = (id: string) =>
@@ -137,6 +146,9 @@ function Example({ example, definition }: { example: HelpExample; definition: No
 // Two columns, stacking on a narrow canvas: the explanation (with the example) on the left, the
 // reference (ports, settings, cost) on the right.
 function HelpContent({ definition, help }: { definition: NodeDefinition; help: NodeHelp }) {
+  const shownParams = definition.params.filter((spec) => !isHiddenParam(spec))
+  const shownInputs = definition.inputs.filter((port) => !port.hidden)
+  const shownOutputs = definition.outputs.filter((port) => !port.hidden)
   return (
     <div className="help-panel__body">
       <div className="help-panel__column">
@@ -172,22 +184,22 @@ function HelpContent({ definition, help }: { definition: NodeDefinition; help: N
         )}
       </div>
       <div className="help-panel__column">
-        {definition.inputs.length > 0 && (
+        {shownInputs.length > 0 && (
           <section>
             <h3>Inputs</h3>
-            <PortTable definition={definition} ports={definition.inputs} texts={help.inputs ?? {}} input />
+            <PortTable definition={definition} ports={shownInputs} input />
           </section>
         )}
-        {definition.params.length > 0 && (
+        {shownParams.length > 0 && (
           <section>
             <h3>Settings</h3>
-            <ParamTable params={definition.params} texts={help.params ?? {}} />
+            <ParamTable params={shownParams} texts={help.params ?? {}} />
           </section>
         )}
-        {definition.outputs.length > 0 && (
+        {shownOutputs.length > 0 && (
           <section>
             <h3>Outputs</h3>
-            <PortTable definition={definition} ports={definition.outputs} texts={help.outputs ?? {}} />
+            <PortTable definition={definition} ports={shownOutputs} />
           </section>
         )}
         <section>
