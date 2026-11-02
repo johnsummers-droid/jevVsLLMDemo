@@ -12,8 +12,10 @@ must match what is written here.
 
 from app.models import HelpExample, NodeHelp
 
-MOCK_NOTE = ("In this simulation the service is simulated: it behaves like the real one, and "
-             "the same message with the same settings always gets the same answer.")
+# True whether a run uses the mock or the real service: mocks are seeded, real answers are stored
+# and replayed.
+REPEAT_NOTE = ("The same message with the same settings always gets the same answer, so you can "
+               "compare runs fairly.")
 
 CUSTOMER_MESSAGE_HELP = NodeHelp(
     summary="The start of every pipeline. Each request in a run is one customer support "
@@ -66,7 +68,7 @@ JEV_INTENT_ROUTER_HELP = NodeHelp(
         "route.<intent>. Below it, the message leaves on route.low_confidence instead.",
         "Exactly one branch fires per request; nodes on the other branches are skipped.",
         "A branch with nothing connected to it drops the requests that take it.",
-        MOCK_NOTE,
+        REPEAT_NOTE,
     ],
     inputs={"text": "The message to classify."},
     params={
@@ -82,8 +84,8 @@ JEV_INTENT_ROUTER_HELP = NodeHelp(
         "probabilities": "The probability of every allowed intent, as JSON.",
         "confidence": "How sure the router is about its choice, from 0 (all options equally "
                       "likely) to 1 (certain).",
-        "route.*": "One branch per allowed intent. The message leaves on the chosen one when "
-                   "the confidence clears the threshold.",
+        "route.*": "One branch per allowed intent; the default intents are listed here. The "
+                   "message leaves on the chosen one when the confidence clears the threshold.",
         "route.low_confidence": "Where the message goes when the router isn't sure enough.",
     },
     example=HelpExample(
@@ -125,7 +127,7 @@ JEV_SAFETY_CHECK_HELP = NodeHelp(
         "It only looks for the categories you enable.",
         "The check doesn't change the message; it only decides where it goes.",
         "A flagged message on an unconnected route.unsafe counts as blocked, not dropped.",
-        MOCK_NOTE,
+        REPEAT_NOTE,
     ],
     inputs={"text": "The message to check."},
     params={
@@ -175,7 +177,9 @@ LLM_ANSWER_GENERATOR_HELP = NodeHelp(
         "with every token it writes.",
         "Questions that need specific product facts go better when the answer is grounded in "
         "matching docs.",
-        MOCK_NOTE,
+        "The model's own safety filter can refuse a message. No reply goes out, the request "
+        "counts as blocked, and the node shows \"N blocked\".",
+        REPEAT_NOTE,
     ],
     inputs={
         "text": "The customer's message.",

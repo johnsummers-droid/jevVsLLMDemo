@@ -33,7 +33,7 @@ function selectedValues(definition: NodeDefinition, params: Record<string, unkno
 }
 
 /** Same as Python's value.replace("_", " ").capitalize(). */
-function branchLabel(value: string): string {
+export function branchLabel(value: string): string {
   const spaced = value.replace(/_/g, ' ')
   return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase()
 }

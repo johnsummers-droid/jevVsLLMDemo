@@ -260,7 +260,7 @@
           "If the confidence is at or above the threshold, the message leaves on route.<intent>. Below it, the message leaves on route.low_confidence instead.",
           "Exactly one branch fires per request; nodes on the other branches are skipped.",
           "A branch with nothing connected to it drops the requests that take it.",
-          "In this simulation the service is simulated: it behaves like the real one, and the same message with the same settings always gets the same answer."
+          "The same message with the same settings always gets the same answer, so you can compare runs fairly."
         ],
         "inputs": {
           "text": "The message to classify."
@@ -273,7 +273,7 @@
           "intent": "The chosen intent.",
           "probabilities": "The probability of every allowed intent, as JSON.",
           "confidence": "How sure the router is about its choice, from 0 (all options equally likely) to 1 (certain).",
-          "route.*": "One branch per allowed intent. The message leaves on the chosen one when the confidence clears the threshold.",
+          "route.*": "One branch per allowed intent; the default intents are listed here. The message leaves on the chosen one when the confidence clears the threshold.",
           "route.low_confidence": "Where the message goes when the router isn't sure enough."
         },
         "example": {
@@ -436,7 +436,7 @@
           "It only looks for the categories you enable.",
           "The check doesn't change the message; it only decides where it goes.",
           "A flagged message on an unconnected route.unsafe counts as blocked, not dropped.",
-          "In this simulation the service is simulated: it behaves like the real one, and the same message with the same settings always gets the same answer."
+          "The same message with the same settings always gets the same answer, so you can compare runs fairly."
         ],
         "inputs": {
           "text": "The message to check."
@@ -569,7 +569,8 @@
           "Unlike a Jev node it doesn't make a bounded decision: its output is open-ended text, so it can be wrong, invent details or be talked into saying things it shouldn't.",
           "Cost depends on the tokens it reads and writes and on the model tier; time grows with every token it writes.",
           "Questions that need specific product facts go better when the answer is grounded in matching docs.",
-          "In this simulation the service is simulated: it behaves like the real one, and the same message with the same settings always gets the same answer."
+          "The model's own safety filter can refuse a message. No reply goes out, the request counts as blocked, and the node shows \"N blocked\".",
+          "The same message with the same settings always gets the same answer, so you can compare runs fairly."
         ],
         "inputs": {
           "text": "The customer's message.",

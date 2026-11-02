@@ -61,6 +61,32 @@ describe('help panel', () => {
     }
   })
 
+  it('lists the router\'s real branches, not the route.* template', () => {
+    const definition = catalogNodes.find((n) => n.type === 'jev_intent_router')!
+    useHelpStore.getState().toggle(definition.type)
+    render(<HelpPanel />)
+    const outputs = screen.getByRole('heading', { level: 3, name: 'Outputs' }).parentElement!
+    const terms = within(outputs).getAllByRole('term').map((t) => t.querySelector('code')!.textContent)
+    expect(terms).toEqual([
+      'intent',
+      'probabilities',
+      'confidence',
+      'route.billing',
+      'route.technical_support',
+      'route.bug_report',
+      'route.feature_request',
+      'route.low_confidence',
+    ])
+    for (const label of ['Billing', 'Technical support', 'Bug report', 'Feature request']) {
+      expect(within(outputs).getByText(label)).toBeTruthy()
+    }
+    // One shared description for the four branches, and the example names its branch too.
+    expect(within(outputs).getAllByText(definition.help!.outputs!['route.*'])).toHaveLength(1)
+    const panel = document.getElementById('help-panel')!
+    expect(within(panel).queryByText(/^Route\b/)).toBeNull()
+    expect(panel.textContent).not.toContain('route.*')
+  })
+
   it('closes with x and with Esc, but not while typing', () => {
     render(
       <>
