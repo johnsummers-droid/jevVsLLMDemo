@@ -15,6 +15,7 @@ class Port(CamelModel):
     required: bool = True  # inputs only
     multi: bool = False  # inputs: accepts several edges; the first live value wins
     branch: bool = False  # outputs: member of the node's exclusive branch group
+    hidden: bool = False  # left out of the UI unless a graph already connects it
     enum_values: list[str] | None = None
     score_range: tuple[int, int] | None = None
     json_schema_ref: str | None = None  # e.g. "Distribution", "Docs", "PolicyReport"

@@ -13,14 +13,15 @@ JEV_SAFETY_CHECK_HELP = NodeHelp(
         "Jev scores the message against the categories you enable and returns a risk score "
         "for each.",
         "If the overall risk is at or above the threshold, the message is flagged: it leaves "
-        "on route.unsafe and the top category is reported. Otherwise it leaves on "
-        "route.safe.",
+        "on route.unsafe. Otherwise it leaves on route.safe.",
         "It only looks for the categories you enable.",
         "The check doesn't change the message; it only decides where it goes.",
         "A flagged message on an unconnected route.unsafe counts as blocked, not dropped.",
         REPEAT_NOTE,
     ],
-    inputs={"text": "The message to check."},
+    inputs={
+        "text": "The message to check for risk.",
+    },
     params={
         "categories": "Which kinds of risk to look for: prompt injection, abuse, fraud, "
                       "requests for personal data, self-harm.",
@@ -28,12 +29,11 @@ JEV_SAFETY_CHECK_HELP = NodeHelp(
                      "flags more harmless messages.",
     },
     outputs={
-        "is_safe": "True when the message was not flagged.",
+        "is_safe": "True if the message was not flagged.",
         "confidence": "How sure the check is of its verdict, from 0 to 1.",
-        "categories": "The flagged category (if any) and the score of every enabled "
-                      "category, as JSON.",
-        "route.safe": "Messages that passed.",
-        "route.unsafe": "Messages that were flagged.",
+        "categories": "The flagged category and each category's score, as JSON.",
+        "route.safe": "Carries the message when it passes the check.",
+        "route.unsafe": "Carries the message when it's flagged. Unconnected, the message is blocked.",
     },
     example=HelpExample(
         ticket_id="p-14",

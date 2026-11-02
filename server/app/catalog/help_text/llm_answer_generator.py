@@ -22,8 +22,8 @@ LLM_ANSWER_GENERATOR_HELP = NodeHelp(
         REPEAT_NOTE,
     ],
     inputs={
-        "text": "The customer's message.",
-        "context": "Optional help-center docs from a knowledge lookup.",
+        "text": "The customer's message to answer.",
+        "context": "Optional help-center articles, from a knowledge lookup, to base the answer on.",
     },
     params={
         "model": "Small is faster and cheaper; large is slower, costs more per token and is "
@@ -33,7 +33,9 @@ LLM_ANSWER_GENERATOR_HELP = NodeHelp(
         "prompt": "The system prompt: instructions on how to behave. What you write here "
                   "affects how it handles tricky messages.",
     },
-    outputs={"text": "The answer it wrote."},
+    outputs={
+        "text": "The reply the model wrote. It can be wrong or unsafe, so check it.",
+    },
     example=HelpExample(
         ticket_id="p-01",
         input_text=("I was charged twice for my March invoice. Can you check what "

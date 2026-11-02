@@ -17,6 +17,10 @@
           "default": "",
           "type": "string"
         },
+        "hidden": {
+          "default": false,
+          "type": "boolean"
+        },
         "kind": {
           "const": "bool",
           "type": "string"
@@ -127,6 +131,10 @@
           "default": "",
           "type": "string"
         },
+        "hidden": {
+          "default": false,
+          "type": "boolean"
+        },
         "kind": {
           "const": "enum",
           "type": "string"
@@ -214,6 +222,10 @@
           "default": "",
           "type": "string"
         },
+        "hidden": {
+          "default": false,
+          "type": "boolean"
+        },
         "kind": {
           "const": "int",
           "type": "string"
@@ -251,6 +263,10 @@
         "help": {
           "default": "",
           "type": "string"
+        },
+        "hidden": {
+          "default": false,
+          "type": "boolean"
         },
         "kind": {
           "const": "multi_enum",
@@ -454,6 +470,10 @@
           "default": "",
           "type": "string"
         },
+        "hidden": {
+          "default": false,
+          "type": "boolean"
+        },
         "kind": {
           "const": "number",
           "type": "string"
@@ -542,6 +562,10 @@
           "type": "boolean"
         },
         "branch": {
+          "default": false,
+          "type": "boolean"
+        },
+        "hidden": {
           "default": false,
           "type": "boolean"
         },
@@ -638,6 +662,10 @@
           "default": "",
           "type": "string"
         },
+        "hidden": {
+          "default": false,
+          "type": "boolean"
+        },
         "kind": {
           "const": "string_list",
           "type": "string"
@@ -678,6 +706,10 @@
         "help": {
           "default": "",
           "type": "string"
+        },
+        "hidden": {
+          "default": false,
+          "type": "boolean"
         },
         "kind": {
           "const": "text",

@@ -6,6 +6,8 @@ mock error rates or say which policy rule catches which risk. Numbers that the d
 already holds (param defaults, latency, cost per call) are shown by the panel; don't repeat
 them here, or they drift.
 
+A template output's description (route.*) may say {branch}: the UI puts in each branch's name.
+
 Each example runs in tests/test_help.py through the node's runner at run seed 0; its outputs
 must match what is written here.
 """

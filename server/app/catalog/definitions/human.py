@@ -9,11 +9,11 @@ HUMAN_REVIEW_QUEUE = NodeDefinition(
                 "Counts as escalated.",
     inputs=[
         Port(id="text", label="Text", type="text", multi=True),
-        Port(id="context", label="Context", type="json", required=False),
+        Port(id="context", label="Context", type="json", required=False, hidden=True),
     ],
     outputs=[Port(id="text", label="Text", type="text")],
     params=[
-        IntParam(key="capacity", label="Reviewers", default=2, min=1, max=10),
+        IntParam(key="capacity", label="Reviewers", default=2, min=1, max=10, hidden=True),
         IntParam(key="reviewer_latency_s", label="Review time (s)", default=120, min=30, max=600),
     ],
     # $2.00 per review is a mock default; it moves to server config with the other prices.

@@ -6,10 +6,11 @@ import { TypedHandle } from '../handles/TypedHandle'
 import { HelpButton } from '../help/HelpButton'
 import { CATEGORY_LABELS } from './categoryLabels'
 import { CategoryIcon } from './CategoryIcon'
-import { expandOutputs } from '../lib/graphMapping'
 import { portKey, worstSeverity } from '../lib/issues'
+import { visibleInputs, visibleOutputs } from '../lib/ports'
 import { NodeStatsBadge } from '../run/NodeStatsBadge'
 import { useCatalogStore } from '../store/catalogStore'
+import { useGraphStore } from '../store/graphStore'
 import { useValidationStore } from '../store/validationStore'
 import type { FlowNode, NodeCategory, Port } from '../types'
 
@@ -42,8 +43,15 @@ export function BaseNode({ id, data, selected, category, children }: BaseNodePro
   const definition = useCatalogStore((s) => s.byType[data.nodeType])
   const issues = useValidationStore((s) => s.index.byNode[id])
   const severity = worstSeverity(issues)
-  const outputs = useMemo(() => (definition ? expandOutputs(definition, data.params) : []), [definition, data.params])
-  const outputKey = outputs.map((p) => p.id).join('|')
+  // A joined string, so that this node re-renders only when its own outgoing edges change.
+  const connected = useGraphStore((s) => s.edges.filter((e) => e.source === id).map((e) => e.sourceHandle).join('|'))
+  const connectedIn = useGraphStore((s) => s.edges.filter((e) => e.target === id).map((e) => e.targetHandle).join('|'))
+  const inputs = useMemo(() => (definition ? visibleInputs(definition, new Set(connectedIn.split('|'))) : []), [definition, connectedIn])
+  const outputs = useMemo(
+    () => (definition ? visibleOutputs(definition, data.params, new Set(connected.split('|'))) : []),
+    [definition, data.params, connected],
+  )
+  const outputKey = [...inputs, ...outputs].map((p) => p.id).join('|')
   const updateNodeInternals = useUpdateNodeInternals()
   useEffect(() => updateNodeInternals(id), [id, outputKey, updateNodeInternals])
 
@@ -63,7 +71,7 @@ export function BaseNode({ id, data, selected, category, children }: BaseNodePro
   const ports = definition ? (
     <div className="pipeline-node__ports">
       <div className="pipeline-node__inputs">
-        {definition.inputs.map((port) => (
+        {inputs.map((port) => (
           <PortRow key={port.id} nodeId={id} port={port} kind="target" />
         ))}
       </div>

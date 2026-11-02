@@ -11,21 +11,21 @@ POLICY_ENGINE_HELP = NodeHelp(
     how_it_works=[
         "Every enabled rule, every blocked phrase and every selected data class is checked "
         "against the text.",
-        "Any match blocks the text: it leaves on route.block, and the report lists each "
-        "match. No match: it leaves on route.pass.",
+        "Any match blocks the text: it leaves on route.block. No match: it leaves on "
+        "route.pass.",
         "The text itself is never changed; only its route.",
         "Rules look for patterns, so they catch the wording they were written for and can "
         "miss the same idea phrased differently.",
         "Blocked text on an unconnected route.block counts as blocked, not dropped.",
     ],
     inputs={
-        "text": "The text to check, usually the LLM's answer.",
-        "context": "Optional; not used by the rules.",
+        "text": "The text to check, usually the LLM's reply.",
+        "context": "Optional. The rules don't use it yet.",
     },
     params={
-        "rules": "Built-in rules. no_refund_promises: promising or guaranteeing a refund. "
-                 "no_legal_advice: giving a legal opinion. no_internal_urls: links to internal "
-                 "or admin sites. no_credentials: stating a password, API key, secret or "
+        "rules": "Built-in rules. No refund promises: promising or guaranteeing a refund. "
+                 "No legal advice: giving a legal opinion. No internal URLs: links to internal "
+                 "or admin sites. No credentials: stating a password, API key, secret or "
                  "token.",
         "blocked_phrases": "Your own phrases. Each is matched anywhere in the text, ignoring "
                            "case.",
@@ -33,10 +33,10 @@ POLICY_ENGINE_HELP = NodeHelp(
                         "card numbers, social security numbers.",
     },
     outputs={
-        "passed": "True when nothing matched.",
-        "report": "Every match: which rule and the text it matched, as JSON.",
-        "route.pass": "Text that passed.",
-        "route.block": "Text that was blocked.",
+        "passed": "True if no rule matched.",
+        "report": "Every rule that matched and the text it matched, as JSON.",
+        "route.pass": "Carries the text when no rule matched.",
+        "route.block": "Carries the text when a rule matched. Unconnected, the text is blocked.",
     },
     example=HelpExample(
         ticket_id="p-01",
@@ -48,7 +48,7 @@ POLICY_ENGINE_HELP = NodeHelp(
                 {"rule": "no_refund_promises", "match": "guarantee a refund"}]},
         },
         explanation="The answer guarantees a refund, which the default rule forbids, so it "
-                    "leaves on route.block with the match in the report.",
+                    "leaves on route.block.",
     ),
     tips=[
         "Only one rule is on by default. Think about which kinds of answer you never want to "

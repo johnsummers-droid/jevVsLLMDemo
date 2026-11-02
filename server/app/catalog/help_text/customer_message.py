@@ -9,7 +9,7 @@ CUSTOMER_MESSAGE_HELP = NodeHelp(
               "node that should read the message, such as a router or a safety check.",
     how_it_works=[
         "A run sends a stream of tickets through the graph; this node emits one per request.",
-        "Text is the customer's message. Meta carries the channel and language.",
+        "Text is the customer's message.",
         "Some tickets are routine, some are complex or vague, and some try to trick the "
         "pipeline into doing something it shouldn't.",
     ],
@@ -22,14 +22,14 @@ CUSTOMER_MESSAGE_HELP = NodeHelp(
                        "traffic mix.",
     },
     outputs={
-        "text": "The customer's message.",
-        "meta": "Channel and language of the ticket, as JSON.",
+        "text": "The customer's message, passed on word for word.",
+        "meta": "The ticket's channel, as JSON.",
     },
     example=HelpExample(
         ticket_id="p-01",
         outputs={
             "text": "I was charged twice for my March invoice. Can you check what happened?",
-            "meta": {"channel": "chat", "language": "en"},
+            "meta": {"channel": "chat"},
         },
         explanation="A billing ticket arrives. Its text goes to whatever the Text output is "
                     "connected to.",

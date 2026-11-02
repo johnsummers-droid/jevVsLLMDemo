@@ -16,7 +16,9 @@ CUSTOMER_RESPONSE_HELP = NodeHelp(
         "release.",
         "When several branches can reach it on the same request, the first to arrive wins.",
     ],
-    inputs={"text": "The answer to send. Several branches can connect to it."},
+    inputs={
+        "text": "The reply sent to the customer, whatever it says.",
+    },
     params={
         "channel": "How the answer is delivered: email or chat. Display only for now.",
         "sla_ms": "The response-time target to display. It doesn't change the run.",

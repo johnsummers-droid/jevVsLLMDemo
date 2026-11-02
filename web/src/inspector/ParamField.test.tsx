@@ -53,9 +53,9 @@ describe('ParamField', () => {
   it('multi_enum: keeps option order and refuses going below the minimum', () => {
     const spec: ParamSpec = { kind: 'multi_enum', key: 'i', label: 'Intents', default: ['b'], options: ['a', 'b', 'c'] }
     const onChange = setup(spec, ['b'])
-    fireEvent.click(screen.getByRole('checkbox', { name: 'a' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'A' }))
     expect(onChange).toHaveBeenLastCalledWith(['a', 'b'])
-    fireEvent.click(screen.getByRole('checkbox', { name: 'b' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'B' }))
     expect(alert()?.textContent).toMatch(/at least 1/)
     expect(onChange).toHaveBeenCalledTimes(1)
   })

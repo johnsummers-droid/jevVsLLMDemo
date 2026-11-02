@@ -16,11 +16,11 @@ POLICY_ENGINE = NodeDefinition(
     description="Deterministic regex and phrase rules. Passes or blocks the text.",
     inputs=[
         Port(id="text", label="Text", type="text", multi=True),
-        Port(id="context", label="Context", type="json", required=False),
+        Port(id="context", label="Context", type="json", required=False, hidden=True),
     ],
     outputs=[
-        Port(id="passed", label="Passed", type="boolean"),
-        Port(id="report", label="Report", type="json", json_schema_ref="PolicyReport"),
+        Port(id="passed", label="Passed", type="boolean", hidden=True),
+        Port(id="report", label="Report", type="json", json_schema_ref="PolicyReport", hidden=True),
         Port(id="route.pass", label="Pass", type="text", branch=True),
         Port(id="route.block", label="Block", type="text", branch=True),
     ],

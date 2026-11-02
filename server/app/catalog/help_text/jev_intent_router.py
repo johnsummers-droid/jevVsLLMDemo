@@ -18,7 +18,9 @@ JEV_INTENT_ROUTER_HELP = NodeHelp(
         "A branch with nothing connected to it drops the requests that take it.",
         REPEAT_NOTE,
     ],
-    inputs={"text": "The message to classify."},
+    inputs={
+        "text": "The message to classify.",
+    },
     params={
         "allowed_intents": "The intents the router may choose from. Each one adds a "
                            "route.<intent> branch. A message whose real intent isn't on the "
@@ -28,13 +30,11 @@ JEV_INTENT_ROUTER_HELP = NodeHelp(
                      "more.",
     },
     outputs={
-        "intent": "The chosen intent.",
-        "probabilities": "The probability of every allowed intent, as JSON.",
-        "confidence": "How sure the router is about its choice, from 0 (all options equally "
-                      "likely) to 1 (certain).",
-        "route.*": "One branch per allowed intent; the default intents are listed here. The "
-                   "message leaves on the chosen one when the confidence clears the threshold.",
-        "route.low_confidence": "Where the message goes when the router isn't sure enough.",
+        "intent": "The chosen intent, as a value.",
+        "probabilities": "How likely each allowed intent is, as JSON.",
+        "confidence": "How sure Jev is, from 0 to 1.",
+        "route.*": "Carries {branch} messages.",
+        "route.low_confidence": "Carries the message when the router isn't sure enough of any intent.",
     },
     example=HelpExample(
         ticket_id="p-02",

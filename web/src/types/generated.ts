@@ -60,6 +60,7 @@ export interface BoolParam {
   key: string
   label: string
   help?: string
+  hidden?: boolean
   kind: 'bool'
   default: boolean
 }
@@ -92,6 +93,7 @@ export interface Port {
   required?: boolean
   multi?: boolean
   branch?: boolean
+  hidden?: boolean
   enumValues?: string[] | null
   scoreRange?: [number, number] | null
   jsonSchemaRef?: string | null
@@ -101,6 +103,7 @@ export interface NumberParam {
   key: string
   label: string
   help?: string
+  hidden?: boolean
   kind: 'number'
   default: number
   min: number
@@ -111,6 +114,7 @@ export interface IntParam {
   key: string
   label: string
   help?: string
+  hidden?: boolean
   kind: 'int'
   default: number
   min: number
@@ -120,6 +124,7 @@ export interface EnumParam {
   key: string
   label: string
   help?: string
+  hidden?: boolean
   kind: 'enum'
   default: string
   /**
@@ -131,6 +136,7 @@ export interface MultiEnumParam {
   key: string
   label: string
   help?: string
+  hidden?: boolean
   kind: 'multi_enum'
   default: string[]
   /**
@@ -143,6 +149,7 @@ export interface StringListParam {
   key: string
   label: string
   help?: string
+  hidden?: boolean
   kind: 'string_list'
   default: string[]
   maxItems?: number
@@ -152,6 +159,7 @@ export interface TextParam {
   key: string
   label: string
   help?: string
+  hidden?: boolean
   kind: 'text'
   default: string
   maxLen?: number
@@ -616,7 +624,6 @@ export interface StoredGraph {
 }
 export interface TicketMeta {
   channel: string
-  language: string
 }
 export interface ValidationIssue {
   code: IssueCode

@@ -1,7 +1,7 @@
 // One editor per ParamSpec kind. Invalid input stays in the field with an error and is not
 // committed; checkParam mirrors the server's rules.
 import { useId, useState, type ReactNode } from 'react'
-import { checkParam } from '../lib/params'
+import { checkParam, optionLabel } from '../lib/params'
 import type { ParamSpec } from '../types'
 
 interface ParamFieldProps {
@@ -58,7 +58,7 @@ export function ParamField({ spec, value, onChange }: ParamFieldProps) {
         <select id={id} value={toText(value)} onChange={(e) => commit(e.target.value)}>
           {spec.options.map((option) => (
             <option key={option} value={option}>
-              {option}
+              {optionLabel(option)}
             </option>
           ))}
         </select>
@@ -75,7 +75,7 @@ export function ParamField({ spec, value, onChange }: ParamFieldProps) {
           {spec.options.map((option) => (
             <label key={option} className="param-field__option">
               <input type="checkbox" checked={selected.includes(option)} onChange={() => toggle(option)} />
-              {option}
+              {optionLabel(option)}
             </label>
           ))}
         </div>

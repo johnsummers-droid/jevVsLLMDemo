@@ -185,3 +185,34 @@ def test_get_default_graph() -> None:
     response = client.get("/api/graphs/default")
     assert response.status_code == 200
     assert response.json() == json.loads(DEFAULT_GRAPH_FIXTURE.read_text())
+
+
+def test_only_params_with_no_effect_on_a_run_are_hidden() -> None:
+    hidden = {(e.definition.type, p.key) for e in REGISTRY.values() for p in e.definition.params if p.hidden}
+    assert hidden == {
+        ("customer_message", "traffic_mix"),
+        ("customer_message", "attack_rate"),
+        ("human_review_queue", "capacity"),
+        ("customer_response", "channel"),
+        ("customer_response", "sla_ms"),
+    }
+
+
+def test_only_inputs_nothing_reads_are_hidden() -> None:
+    hidden = {(e.definition.type, p.id) for e in REGISTRY.values() for p in e.definition.inputs if p.hidden}
+    assert hidden == {("policy_engine", "context"), ("human_review_queue", "context")}
+
+
+def test_only_outputs_nothing_can_use_are_hidden() -> None:
+    hidden = {(e.definition.type, p.id) for e in REGISTRY.values() for p in e.definition.outputs if p.hidden}
+    assert hidden == {
+        ("customer_message", "meta"),
+        ("jev_intent_router", "intent"),
+        ("jev_intent_router", "probabilities"),
+        ("jev_intent_router", "confidence"),
+        ("jev_safety_check", "is_safe"),
+        ("jev_safety_check", "confidence"),
+        ("jev_safety_check", "categories"),
+        ("policy_engine", "passed"),
+        ("policy_engine", "report"),
+    }

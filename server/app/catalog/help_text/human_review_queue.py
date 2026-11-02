@@ -17,15 +17,17 @@ HUMAN_REVIEW_QUEUE_HELP = NodeHelp(
         "Each review has a fixed cost, which adds up quickly against the cost budget.",
     ],
     inputs={
-        "text": "The request or draft answer to review. Several branches can feed it.",
-        "context": "Optional extra information for the reviewer.",
+        "text": "The request or draft reply for a person to review.",
+        "context": "Optional. The reviewer doesn't use it yet.",
     },
     params={
         "capacity": "How many reviewers work this queue. Queueing isn't simulated yet, so "
                     "it doesn't change a run today.",
         "reviewer_latency_s": "How long a typical review takes, in seconds.",
     },
-    outputs={"text": "The reviewed text, safe to send."},
+    outputs={
+        "text": "The reviewed text, almost always safe to send.",
+    },
     example=HelpExample(
         ticket_id="p-11",
         input_text=("Something is wrong with my account and the numbers don't add "

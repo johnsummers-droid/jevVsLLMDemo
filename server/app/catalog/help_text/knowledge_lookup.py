@@ -15,13 +15,16 @@ KNOWLEDGE_LOOKUP_HELP = NodeHelp(
         "More articles take a little longer to fetch and make the LLM read more, which costs "
         "more tokens.",
     ],
-    inputs={"text": "The message to find articles for."},
+    inputs={
+        "text": "The message to find articles for.",
+    },
     params={
         "source": "Where to search: the FAQ, the knowledge base, or past tickets.",
         "top_k": "How many articles to return at most.",
     },
-    outputs={"docs": "The matching articles (id, title, snippet, intent, match score), as "
-                     "JSON."},
+    outputs={
+        "docs": "The best matching help-center articles. Connect to an LLM's Context.",
+    },
     example=HelpExample(
         ticket_id="p-07",
         input_text=("Our SSO integration with Okta stopped working after we rotated "

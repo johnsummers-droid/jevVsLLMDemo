@@ -43,7 +43,7 @@ class NodeHelp(CamelModel):
     summary: str
     placement: str
     how_it_works: list[str] = Field(min_length=1)
-    inputs: dict[str, str] = Field(default_factory=dict)  # by port id
+    inputs: dict[str, str] = Field(default_factory=dict)  # by port id; every input
     params: dict[str, str] = Field(default_factory=dict)  # by param key; every param
     outputs: dict[str, str] = Field(default_factory=dict)  # by port id; every output
     example: HelpExample | None = None
@@ -54,6 +54,9 @@ def _duplicates(ids: list[str]) -> set[str]:
     return {i for i in ids if ids.count(i) > 1}
 
 
+PORT_TEXT_MAX = 100  # a port's description sits in a narrow Inspector column
+
+
 def _check_help(definition: "NodeDefinition", help: NodeHelp) -> None:
     def check(what: str, given: set[str], known: set[str], complete: bool) -> None:
         if unknown := given - known:
@@ -61,9 +64,12 @@ def _check_help(definition: "NodeDefinition", help: NodeHelp) -> None:
         if complete and (missing := known - given):
             raise ValueError(f"help {what}: missing {sorted(missing)}")
 
-    check("inputs", set(help.inputs), {p.id for p in definition.inputs}, complete=False)
+    check("inputs", set(help.inputs), {p.id for p in definition.inputs}, complete=True)
     check("params", set(help.params), {p.key for p in definition.params}, complete=True)
     check("outputs", set(help.outputs), {p.id for p in definition.outputs}, complete=True)
+    for port_id, text in {**help.inputs, **help.outputs}.items():
+        if len(text) > PORT_TEXT_MAX:
+            raise ValueError(f"help port {port_id}: over {PORT_TEXT_MAX} characters")
     if help.example is not None:
         check("example params", set(help.example.params), {p.key for p in definition.params},
               complete=False)

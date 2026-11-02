@@ -7,7 +7,6 @@ from app.models.base import CamelModel
 
 class TicketMeta(CamelModel):
     channel: str
-    language: str
 
 
 class Doc(CamelModel):

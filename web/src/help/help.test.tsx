@@ -8,6 +8,7 @@ import { Palette } from '../palette/Palette'
 import { useCatalogStore } from '../store/catalogStore'
 import { useGraphStore } from '../store/graphStore'
 import { useHelpStore } from '../store/helpStore'
+import { isHiddenParam } from '../lib/params'
 import { catalogByType, catalogNodes } from '../test/fixtures'
 import type { FlowNode } from '../types'
 import { HelpPanel } from './HelpPanel'
@@ -42,23 +43,33 @@ describe('help panel', () => {
         help.example && 'Example',
         help.tips?.length && 'Tips',
         definition.inputs.length && 'Inputs',
-        definition.params.length && 'Settings',
-        definition.outputs.length && 'Outputs',
+        definition.params.some((s) => !isHiddenParam(s)) && 'Settings',
+        definition.outputs.some((p) => !p.hidden) && 'Outputs',
         'Cost and speed',
       ].filter(Boolean),
     )
     const text = document.getElementById('help-panel')!.textContent!
     for (const s of [help.summary, help.placement, ...help.howItWorks, ...(help.tips ?? [])]) expect(text).toContain(s)
-    for (const spec of definition.params) {
+    for (const spec of definition.params.filter((s) => !isHiddenParam(s))) {
       expect(text).toContain(spec.key)
       expect(text).toContain(help.params![spec.key])
     }
-    for (const port of definition.outputs) expect(text).toContain(help.outputs![port.id])
+    for (const port of definition.outputs.filter((p) => !p.hidden && !p.dynamicFromParam)) expect(text).toContain(help.outputs![port.id])
     if (help.example) {
       expect(text).toContain(help.example.explanation)
       if (help.example.inputText) expect(text).toContain(help.example.inputText)
       if (help.example.firedBranch) expect(text).toContain(help.example.firedBranch)
     }
+  })
+
+  it('leaves out hidden settings, and the section when none are left', () => {
+    render(<HelpPanel />)
+    act(() => useHelpStore.getState().open('human_review_queue'))
+    const settings = screen.getByRole('heading', { level: 3, name: 'Settings' }).parentElement!
+    expect(within(settings).getAllByRole('term').map((t) => t.querySelector('code')!.textContent)).toEqual(['reviewer_latency_s'])
+    act(() => useHelpStore.getState().open('customer_message'))
+    expect(screen.queryByRole('heading', { level: 3, name: 'Settings' })).toBeNull()
+    expect(document.getElementById('help-panel')!.textContent).not.toContain(catalogByType.customer_message.help!.params!.language)
   })
 
   it('lists the router\'s real branches, not the route.* template', () => {
@@ -68,9 +79,6 @@ describe('help panel', () => {
     const outputs = screen.getByRole('heading', { level: 3, name: 'Outputs' }).parentElement!
     const terms = within(outputs).getAllByRole('term').map((t) => t.querySelector('code')!.textContent)
     expect(terms).toEqual([
-      'intent',
-      'probabilities',
-      'confidence',
       'route.billing',
       'route.technical_support',
       'route.bug_report',
@@ -80,8 +88,8 @@ describe('help panel', () => {
     for (const label of ['Billing', 'Technical support', 'Bug report', 'Feature request']) {
       expect(within(outputs).getByText(label)).toBeTruthy()
     }
-    // One shared description for the four branches, and the example names its branch too.
-    expect(within(outputs).getAllByText(definition.help!.outputs!['route.*'])).toHaveLength(1)
+    expect(within(outputs).getByText('Carries billing messages.')).toBeTruthy()
+    expect(within(outputs).getByText('Carries technical support messages.')).toBeTruthy()
     const panel = document.getElementById('help-panel')!
     expect(within(panel).queryByText(/^Route\b/)).toBeNull()
     expect(panel.textContent).not.toContain('route.*')

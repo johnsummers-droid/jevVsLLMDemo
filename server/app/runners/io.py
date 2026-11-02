@@ -17,7 +17,7 @@ class CustomerMessageRunner:
                   ctx: RunContext) -> NodeResult:
         ticket = ctx.ticket
         taint = {"injection"} if ticket.category == "prompt_injection" else set()
-        meta = TicketMeta(channel="chat", language=params["language"])
+        meta = TicketMeta(channel="chat")
         return NodeResult(
             outputs={
                 "text": text(ticket.text, taint),
