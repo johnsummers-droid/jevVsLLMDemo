@@ -37,10 +37,11 @@ services:
         value: info
       # mock or live. Changed here on purpose, in a PR: a Blueprint sync applies these values.
       # Before going live: run scripts/live_check.py, then scripts/prewarm.py (see the runbook).
+      # Mock while prod is idle (2026-11-04). Set both back to live before the workshop.
       - key: JEV_MODE
-        value: live
+        value: mock
       - key: LLM_MODE
-        value: live
+        value: mock
       - key: LLM_PROVIDER
         value: gemini
       - key: LIVE_SPEND_CAP_USD
